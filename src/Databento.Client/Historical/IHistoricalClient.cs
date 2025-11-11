@@ -1,3 +1,4 @@
+using Databento.Client.Metadata;
 using Databento.Client.Models;
 
 namespace Databento.Client.Historical;
@@ -24,4 +25,19 @@ public interface IHistoricalClient : IAsyncDisposable
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get metadata for a historical query
+    /// Note: This feature is currently not fully implemented in the native layer
+    /// </summary>
+    /// <param name="dataset">Dataset name</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <returns>Metadata object, or null if not available</returns>
+    IMetadata? GetMetadata(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime);
 }

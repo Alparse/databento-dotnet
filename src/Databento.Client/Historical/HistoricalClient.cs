@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
+using Databento.Client.Metadata;
 using Databento.Client.Models;
 using Databento.Interop;
 using Databento.Interop.Handles;
@@ -116,6 +117,42 @@ public sealed class HistoricalClient : IHistoricalClient
         }
 
         await queryTask;
+    }
+
+    /// <summary>
+    /// Get metadata for a historical query
+    /// Note: This feature is currently not fully implemented in the native layer
+    /// </summary>
+    public IMetadata? GetMetadata(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        // Convert times to nanoseconds since epoch
+        long startTimeNs = startTime.ToUnixTimeMilliseconds() * 1_000_000;
+        long endTimeNs = endTime.ToUnixTimeMilliseconds() * 1_000_000;
+
+        byte[] errorBuffer = new byte[512];
+
+        var metadataHandle = NativeMethods.dbento_historical_get_metadata(
+            _handle,
+            dataset,
+            schema.ToSchemaString(),
+            startTimeNs,
+            endTimeNs,
+            errorBuffer,
+            (nuint)errorBuffer.Length);
+
+        if (metadataHandle == IntPtr.Zero)
+        {
+            // Native layer doesn't support metadata-only queries yet
+            return null;
+        }
+
+        return new Metadata.Metadata(new MetadataHandle(metadataHandle));
     }
 
     public ValueTask DisposeAsync()

@@ -2,20 +2,7 @@
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(tree:*)",
-      "Bash(ls:*)",
-      "Bash(cd:*)",
-      "Bash(pwd:*)",
-      "Bash(git:*)",
-      "Bash(C:/vcpkg/vcpkg.exe:*)",
-      "Bash(cmake:*)",
-      "Bash(dotnet:*)",
-      "Bash(msbuild:*)",
-      "Bash(where:*)",
-      "Bash(powershell:*)",
-      "Bash(test:*)",
-      "Bash(dumpbin:*)",
+      "Bash",
       "Read(C:/Users/serha/source/repos/databento_alt/**)",
       "Read(//c/Users/serha/source/repos/databento_alt/**)",
       "Read(//c/zstd/**)",
@@ -30,7 +17,8 @@
       "TodoWrite(*)",
       "BashOutput(*)",
       "KillShell(*)",
-      "Bash(Select-String -Pattern \"error|Build FAILED|Build succeeded\" -Context 0,2)"
+      "Bash(Select-String -Pattern \"error|Build FAILED|Build succeeded\" -Context 0,2)",
+      "Bash(git push:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",
