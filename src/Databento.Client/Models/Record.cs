@@ -32,6 +32,11 @@ public abstract class Record
         DateTimeOffset.FromUnixTimeMilliseconds(TimestampNs / 1_000_000);
 
     /// <summary>
+    /// Raw DBN-format bytes for this record (if available)
+    /// </summary>
+    internal byte[]? RawBytes { get; set; }
+
+    /// <summary>
     /// Deserialize a record from raw bytes with the given RType
     /// </summary>
     internal static unsafe Record FromBytes(ReadOnlySpan<byte> bytes, byte rtype)
@@ -108,6 +113,9 @@ public abstract class Record
             // System/metadata messages
             _ => new UnknownRecord { RType = rtype, RawData = bytes.ToArray() }
         };
+
+        // Store raw bytes for potential writing
+        result.RawBytes = bytes.ToArray();
 
         return result;
     }

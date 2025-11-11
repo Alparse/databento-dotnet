@@ -27,6 +27,7 @@ typedef void* DbentoMetadataHandle;
 typedef void* DbentoTsSymbolMapHandle;
 typedef void* DbentoPitSymbolMapHandle;
 typedef void* DbnFileReaderHandle;
+typedef void* DbnFileWriterHandle;
 
 // ============================================================================
 // Callback Types
@@ -527,6 +528,48 @@ DATABENTO_API int dbento_dbn_file_next_record(
  * @param handle DBN file reader handle
  */
 DATABENTO_API void dbento_dbn_file_close(DbnFileReaderHandle handle);
+
+// ============================================================================
+// DBN File Writer API
+// ============================================================================
+
+/**
+ * Create a DBN file writer for writing records
+ * @param file_path Path where the DBN file will be created
+ * @param metadata_json JSON string containing DBN metadata
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return Handle to DBN file writer, or NULL on failure
+ */
+DATABENTO_API DbnFileWriterHandle dbento_dbn_file_create(
+    const char* file_path,
+    const char* metadata_json,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Write a record to a DBN file
+ * @param handle DBN file writer handle
+ * @param record_bytes Raw record data (DBN format)
+ * @param record_length Length of record in bytes
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative on error
+ */
+DATABENTO_API int dbento_dbn_file_write_record(
+    DbnFileWriterHandle handle,
+    const uint8_t* record_bytes,
+    size_t record_length,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Close and finalize a DBN file writer
+ * @param handle DBN file writer handle
+ */
+DATABENTO_API void dbento_dbn_file_close_writer(DbnFileWriterHandle handle);
 
 #ifdef __cplusplus
 }

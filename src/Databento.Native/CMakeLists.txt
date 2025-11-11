@@ -30,6 +30,7 @@ add_library(databento_native SHARED
     src/symbol_map_wrapper.cpp
     src/batch_wrapper.cpp
     src/dbn_file_reader_wrapper.cpp
+    src/dbn_file_writer_wrapper.cpp
     src/callback_bridge.cpp
     src/error_handling.cpp
 )

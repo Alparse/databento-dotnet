@@ -348,4 +348,26 @@ public static partial class NativeMethods
 
     [LibraryImport(LibName)]
     public static partial void dbento_dbn_file_close(IntPtr handle);
+
+    // ========================================================================
+    // DBN File Writer API
+    // ========================================================================
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr dbento_dbn_file_create(
+        string filePath,
+        string metadataJson,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_dbn_file_write_record(
+        DbnFileWriterHandle handle,
+        byte[] recordBytes,
+        nuint recordLength,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial void dbento_dbn_file_close_writer(IntPtr handle);
 }
