@@ -86,19 +86,38 @@ public sealed class PitSymbolMap : IPitSymbolMap
     /// <summary>
     /// Update symbol map from a record (for live data)
     /// </summary>
+    /// <param name="record">Record to process (only SymbolMapping records update the map)</param>
     /// <remarks>
-    /// This method is for advanced usage and requires access to raw DBN record bytes.
-    /// For most use cases, create symbol maps from Metadata using CreateSymbolMapForDate().
-    /// Currently not implemented as Record objects don't preserve raw bytes.
+    /// This method updates the internal symbol map when SymbolMapping records are received.
+    /// It is primarily used during live streaming to dynamically build symbol mappings.
+    /// Only records of type SymbolMapping (RType 0x1B) will update the map; all other record types are silently ignored.
+    /// For historical data, prefer using Metadata.CreateSymbolMap() or CreateSymbolMapForDate() instead.
     /// </remarks>
+    /// <exception cref="InvalidOperationException">If the record does not have raw bytes available</exception>
+    /// <exception cref="DbentoException">If the native operation fails</exception>
     public void OnRecord(Record record)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(record);
 
-        // TODO: Implement when we have a way to serialize Record back to raw DBN bytes
-        // or modify the streaming pipeline to preserve raw bytes for symbol mapping updates
-        throw new NotImplementedException(
-            "OnRecord is not yet implemented. Create symbol maps from Metadata instead.");
+        if (record.RawBytes == null || record.RawBytes.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Record does not have raw bytes available. " +
+                "Only records read from DBN streams can be used with OnRecord().");
+        }
+
+        int result = NativeMethods.dbento_pit_symbol_map_on_record(
+            _handle,
+            record.RawBytes,
+            (nuint)record.RawBytes.Length);
+
+        if (result != 0)
+        {
+            throw new DbentoException(
+                "Failed to update PIT symbol map from record. " +
+                $"Instrument ID: {record.InstrumentId}, RType: 0x{record.RType:X2}");
+        }
     }
 
     public void Dispose()
