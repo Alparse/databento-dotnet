@@ -53,12 +53,12 @@ All 16 DBN record types from databento-cpp are fully implemented:
 | FlagSet (bit flags) | ✅ | ✅ | Complete |
 | Constants & sentinel values | ✅ | ✅ | Complete |
 | Schema enums | ✅ | ✅ | Complete |
-| **Historical Client** | ✅ | ⚠️ | Partial (streaming only) |
-| Time-range queries | ✅ | ⚠️ | Wrapper exists, needs testing |
+| **Historical Client** | ✅ | ✅ | Complete (time-range queries) |
+| Time-range queries | ✅ | ✅ | Complete with IAsyncEnumerable |
 | Batch downloads | ✅ | ❌ | Not yet implemented |
-| **Metadata & Symbol Mapping** | ✅ | ❌ | Not yet implemented |
-| Instrument metadata queries | ✅ | ❌ | Planned |
-| Symbol resolution | ✅ | ❌ | Planned |
+| **Metadata & Symbol Mapping** | ✅ | ⚠️ | Partial (infrastructure ready) |
+| Instrument metadata queries | ✅ | ⚠️ | API ready, native impl pending |
+| Symbol resolution | ✅ | ⚠️ | GetSymbol(instrumentId) implemented |
 | **Advanced Features** | | | |
 | Compression (zstd) | ✅ | ✅ | Handled by native layer |
 | SSL/TLS | ✅ | ✅ | Handled by native layer |
@@ -77,7 +77,13 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### Recent Changes
 
-**Phase 3 (Current)** - Helper Classes & Utilities
+**Phase 4 (Current)** - Metadata & Symbol Mapping
+- Created IMetadata interface for instrument information queries
+- Implemented Metadata class for symbol lookups by instrument ID
+- Added GetMetadata method to HistoricalClient
+- Infrastructure ready for metadata queries (pending native layer completion)
+
+**Phase 3** - Helper Classes & Utilities
 - Added FlagSet for bit flag manipulation (Last, Tob, Snapshot, Mbp, BadTsRecv, MaybeBadBook, PublisherSpecific)
 - Added Constants with sentinel values (UndefPrice, UndefTimestamp, FixedPriceScale)
 - Fixed Schema enum to include all OHLCV variants
