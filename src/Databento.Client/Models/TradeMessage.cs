@@ -18,12 +18,12 @@ public class TradeMessage : Record
     /// <summary>
     /// Trade action
     /// </summary>
-    public char Action { get; set; }
+    public Action Action { get; set; }
 
     /// <summary>
     /// Trade side (bid/ask)
     /// </summary>
-    public char Side { get; set; }
+    public Side Side { get; set; }
 
     /// <summary>
     /// Trade flags

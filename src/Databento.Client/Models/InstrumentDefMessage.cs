@@ -1,0 +1,325 @@
+namespace Databento.Client.Models;
+
+/// <summary>
+/// Instrument definition message - 520 bytes
+/// Contains detailed static information about an instrument
+/// </summary>
+public class InstrumentDefMessage : Record
+{
+    /// <summary>
+    /// Timestamp when received by Databento (nanoseconds)
+    /// </summary>
+    public long TsRecv { get; set; }
+
+    /// <summary>
+    /// Minimum price increment (tick size, fixed-point)
+    /// </summary>
+    public long MinPriceIncrement { get; set; }
+
+    /// <summary>
+    /// Display factor for price formatting
+    /// </summary>
+    public long DisplayFactor { get; set; }
+
+    /// <summary>
+    /// Expiration timestamp (nanoseconds)
+    /// </summary>
+    public long Expiration { get; set; }
+
+    /// <summary>
+    /// Activation timestamp (nanoseconds)
+    /// </summary>
+    public long Activation { get; set; }
+
+    /// <summary>
+    /// High limit price (fixed-point)
+    /// </summary>
+    public long HighLimitPrice { get; set; }
+
+    /// <summary>
+    /// Low limit price (fixed-point)
+    /// </summary>
+    public long LowLimitPrice { get; set; }
+
+    /// <summary>
+    /// Maximum price variation (fixed-point)
+    /// </summary>
+    public long MaxPriceVariation { get; set; }
+
+    /// <summary>
+    /// Trading reference price (fixed-point)
+    /// </summary>
+    public long TradingReferencePrice { get; set; }
+
+    /// <summary>
+    /// Unit of measure quantity
+    /// </summary>
+    public long UnitOfMeasureQty { get; set; }
+
+    /// <summary>
+    /// Minimum price increment amount
+    /// </summary>
+    public long MinPriceIncrementAmount { get; set; }
+
+    /// <summary>
+    /// Price ratio (fixed-point)
+    /// </summary>
+    public long PriceRatio { get; set; }
+
+    /// <summary>
+    /// Strike price (fixed-point)
+    /// </summary>
+    public long StrikePrice { get; set; }
+
+    /// <summary>
+    /// Instrument attribute value
+    /// </summary>
+    public int InstAttribValue { get; set; }
+
+    /// <summary>
+    /// Underlying instrument ID
+    /// </summary>
+    public uint UnderlyingId { get; set; }
+
+    /// <summary>
+    /// Raw instrument ID
+    /// </summary>
+    public uint RawInstrumentId { get; set; }
+
+    /// <summary>
+    /// Market depth (implied)
+    /// </summary>
+    public int MarketDepthImplied { get; set; }
+
+    /// <summary>
+    /// Market depth
+    /// </summary>
+    public int MarketDepth { get; set; }
+
+    /// <summary>
+    /// Market segment ID
+    /// </summary>
+    public uint MarketSegmentId { get; set; }
+
+    /// <summary>
+    /// Maximum trade volume
+    /// </summary>
+    public uint MaxTradeVol { get; set; }
+
+    /// <summary>
+    /// Minimum lot size
+    /// </summary>
+    public int MinLotSize { get; set; }
+
+    /// <summary>
+    /// Minimum lot size for block trades
+    /// </summary>
+    public int MinLotSizeBlock { get; set; }
+
+    /// <summary>
+    /// Minimum lot size for round lots
+    /// </summary>
+    public int MinLotSizeRoundLot { get; set; }
+
+    /// <summary>
+    /// Minimum trade volume
+    /// </summary>
+    public uint MinTradeVol { get; set; }
+
+    /// <summary>
+    /// Contract multiplier
+    /// </summary>
+    public int ContractMultiplier { get; set; }
+
+    /// <summary>
+    /// Decay quantity
+    /// </summary>
+    public int DecayQuantity { get; set; }
+
+    /// <summary>
+    /// Original contract size
+    /// </summary>
+    public int OriginalContractSize { get; set; }
+
+    /// <summary>
+    /// Trading reference date
+    /// </summary>
+    public ushort TradingReferenceDate { get; set; }
+
+    /// <summary>
+    /// Application ID
+    /// </summary>
+    public short ApplId { get; set; }
+
+    /// <summary>
+    /// Maturity year
+    /// </summary>
+    public ushort MaturityYear { get; set; }
+
+    /// <summary>
+    /// Decay start date
+    /// </summary>
+    public ushort DecayStartDate { get; set; }
+
+    /// <summary>
+    /// Channel ID
+    /// </summary>
+    public ushort ChannelId { get; set; }
+
+    /// <summary>
+    /// Currency code (e.g., "USD")
+    /// </summary>
+    public string Currency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Settlement currency code
+    /// </summary>
+    public string SettlCurrency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Security subtype
+    /// </summary>
+    public string SecSubType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Raw symbol string
+    /// </summary>
+    public string RawSymbol { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Security group
+    /// </summary>
+    public string Group { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Exchange code
+    /// </summary>
+    public string Exchange { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Asset class
+    /// </summary>
+    public string Asset { get; set; } = string.Empty;
+
+    /// <summary>
+    /// CFI code (Classification of Financial Instruments)
+    /// </summary>
+    public string Cfi { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Security type
+    /// </summary>
+    public string SecurityType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Unit of measure
+    /// </summary>
+    public string UnitOfMeasure { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Underlying symbol
+    /// </summary>
+    public string Underlying { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Strike price currency
+    /// </summary>
+    public string StrikePriceCurrency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Instrument class
+    /// </summary>
+    public InstrumentClass InstrumentClass { get; set; }
+
+    /// <summary>
+    /// Match algorithm
+    /// </summary>
+    public MatchAlgorithm MatchAlgorithm { get; set; }
+
+    /// <summary>
+    /// Market data security trading status
+    /// </summary>
+    public byte MdSecurityTradingStatus { get; set; }
+
+    /// <summary>
+    /// Main fraction
+    /// </summary>
+    public byte MainFraction { get; set; }
+
+    /// <summary>
+    /// Price display format
+    /// </summary>
+    public byte PriceDisplayFormat { get; set; }
+
+    /// <summary>
+    /// Settlement price type
+    /// </summary>
+    public byte SettlPriceType { get; set; }
+
+    /// <summary>
+    /// Sub-fraction
+    /// </summary>
+    public byte SubFraction { get; set; }
+
+    /// <summary>
+    /// Underlying product
+    /// </summary>
+    public byte UnderlyingProduct { get; set; }
+
+    /// <summary>
+    /// Security update action
+    /// </summary>
+    public SecurityUpdateAction SecurityUpdateAction { get; set; }
+
+    /// <summary>
+    /// Maturity month
+    /// </summary>
+    public byte MaturityMonth { get; set; }
+
+    /// <summary>
+    /// Maturity day
+    /// </summary>
+    public byte MaturityDay { get; set; }
+
+    /// <summary>
+    /// Maturity week
+    /// </summary>
+    public byte MaturityWeek { get; set; }
+
+    /// <summary>
+    /// User-defined instrument flag
+    /// </summary>
+    public UserDefinedInstrument UserDefinedInstrument { get; set; }
+
+    /// <summary>
+    /// Contract multiplier unit
+    /// </summary>
+    public sbyte ContractMultiplierUnit { get; set; }
+
+    /// <summary>
+    /// Flow schedule type
+    /// </summary>
+    public sbyte FlowScheduleType { get; set; }
+
+    /// <summary>
+    /// Tick rule
+    /// </summary>
+    public byte TickRule { get; set; }
+
+    /// <summary>
+    /// Get receive timestamp as DateTimeOffset
+    /// </summary>
+    public DateTimeOffset TsRecvTime =>
+        DateTimeOffset.FromUnixTimeMilliseconds(TsRecv / 1_000_000);
+
+    /// <summary>
+    /// Get expiration as DateTimeOffset
+    /// </summary>
+    public DateTimeOffset ExpirationTime =>
+        DateTimeOffset.FromUnixTimeMilliseconds(Expiration / 1_000_000);
+
+    public override string ToString()
+    {
+        return $"InstrumentDef: {RawSymbol} ({Exchange}) | {SecurityType} {InstrumentClass} [{Timestamp:O}]";
+    }
+}

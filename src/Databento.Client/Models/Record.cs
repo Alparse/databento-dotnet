@@ -57,7 +57,26 @@ public abstract class Record
             (0x00, 48) => DeserializeTradeMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
             // MBO messages (56 bytes)
-            (0xA0, 56) => new UnknownRecord { RType = rtype, RawData = bytes.ToArray() },
+            (0xA0, 56) => DeserializeMboMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // MBP-1 messages (80 bytes)
+            (0x01, 80) => DeserializeMbp1Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // MBP-10 messages (368 bytes)
+            (0x02, 368) => DeserializeMbp10Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // OHLCV messages (56 bytes) - multiple RType values
+            (0x12, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1s
+            (0x13, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1m
+            (0x14, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1h
+            (0x15, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1d
+            (0x16, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // EOD
+
+            // Status messages (40 bytes)
+            (0x17, 40) => DeserializeStatusMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // Instrument definition messages (520 bytes)
+            (0x18, 520) => DeserializeInstrumentDefMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
             // System/metadata messages
             _ => new UnknownRecord { RType = rtype, RawData = bytes.ToArray() }
@@ -85,8 +104,8 @@ public abstract class Record
 
         long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
-        char action = (char)bytes[28];
-        char side = (char)bytes[29];
+        Action action = (Action)bytes[28];
+        Side side = (Side)bytes[29];
         byte flags = bytes[30];
         byte depth = bytes[31];
         uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(44, 4));
@@ -106,7 +125,321 @@ public abstract class Record
             Sequence = sequence
         };
     }
+
+    private static MboMessage DeserializeMboMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 56)
+            throw new ArgumentException("Invalid MboMsg data - too small", nameof(bytes));
+
+        // MboMsg layout (56 bytes):
+        // offset 16-23: order_id (uint64)
+        // offset 24-31: price (int64)
+        // offset 32-35: size (uint32)
+        // offset 36: flags (uint8)
+        // offset 37: channel_id (uint8)
+        // offset 38: action (uint8/char)
+        // offset 39: side (uint8/char)
+        // offset 40-47: ts_recv (uint64)
+        // offset 48-51: ts_in_delta (int32)
+        // offset 52-55: sequence (uint32)
+
+        ulong orderId = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(16, 8));
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(32, 4));
+        byte flags = bytes[36];
+        byte channelId = bytes[37];
+        Action action = (Action)bytes[38];
+        Side side = (Side)bytes[39];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(40, 8));
+        int tsInDelta = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(48, 4));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(52, 4));
+
+        return new MboMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            OrderId = orderId,
+            Price = price,
+            Size = size,
+            Flags = flags,
+            ChannelId = channelId,
+            Action = action,
+            Side = side,
+            TsRecv = tsRecv,
+            TsInDelta = tsInDelta,
+            Sequence = sequence
+        };
+    }
+
+    private static Mbp1Message DeserializeMbp1Msg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 80)
+            throw new ArgumentException("Invalid Mbp1Msg data - too small", nameof(bytes));
+
+        // Mbp1Msg layout (80 bytes):
+        // offset 16-23: price (int64)
+        // offset 24-27: size (uint32)
+        // offset 28: action (uint8/char)
+        // offset 29: side (uint8/char)
+        // offset 30: flags (uint8)
+        // offset 31: depth (uint8)
+        // offset 32-39: ts_recv (uint64)
+        // offset 40-43: ts_in_delta (int32)
+        // offset 44-47: sequence (uint32)
+        // offset 48-79: levels[1] (BidAskPair - 32 bytes)
+
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
+        Action action = (Action)bytes[28];
+        Side side = (Side)bytes[29];
+        byte flags = bytes[30];
+        byte depth = bytes[31];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        int tsInDelta = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(40, 4));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(44, 4));
+
+        // Deserialize BidAskPair
+        BidAskPair level = DeserializeBidAskPair(bytes.Slice(48, 32));
+
+        return new Mbp1Message
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Price = price,
+            Size = size,
+            Action = action,
+            Side = side,
+            Flags = flags,
+            Depth = depth,
+            TsRecv = tsRecv,
+            TsInDelta = tsInDelta,
+            Sequence = sequence,
+            Level = level
+        };
+    }
+
+    private static Mbp10Message DeserializeMbp10Msg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 368)
+            throw new ArgumentException("Invalid Mbp10Msg data - too small", nameof(bytes));
+
+        // Mbp10Msg layout (368 bytes): same as Mbp1 but with 10 levels (320 bytes)
+
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
+        Action action = (Action)bytes[28];
+        Side side = (Side)bytes[29];
+        byte flags = bytes[30];
+        byte depth = bytes[31];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        int tsInDelta = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(40, 4));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(44, 4));
+
+        // Deserialize 10 BidAskPairs
+        BidAskPair[] levels = new BidAskPair[10];
+        for (int i = 0; i < 10; i++)
+        {
+            levels[i] = DeserializeBidAskPair(bytes.Slice(48 + i * 32, 32));
+        }
+
+        return new Mbp10Message
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Price = price,
+            Size = size,
+            Action = action,
+            Side = side,
+            Flags = flags,
+            Depth = depth,
+            TsRecv = tsRecv,
+            TsInDelta = tsInDelta,
+            Sequence = sequence,
+            Levels = levels
+        };
+    }
+
+    private static BidAskPair DeserializeBidAskPair(ReadOnlySpan<byte> bytes)
+    {
+        // BidAskPair layout (32 bytes):
+        // offset 0-7: bid_px (int64)
+        // offset 8-15: ask_px (int64)
+        // offset 16-19: bid_sz (uint32)
+        // offset 20-23: ask_sz (uint32)
+        // offset 24-27: bid_ct (uint32)
+        // offset 28-31: ask_ct (uint32)
+
+        return new BidAskPair
+        {
+            BidPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(0, 8)),
+            AskPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(8, 8)),
+            BidSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(16, 4)),
+            AskSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(20, 4)),
+            BidCount = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4)),
+            AskCount = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(28, 4))
+        };
+    }
+
+    private static OhlcvMessage DeserializeOhlcvMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 56)
+            throw new ArgumentException("Invalid OhlcvMsg data - too small", nameof(bytes));
+
+        // OhlcvMsg layout (56 bytes):
+        // offset 16-23: open (int64)
+        // offset 24-31: high (int64)
+        // offset 32-39: low (int64)
+        // offset 40-47: close (int64)
+        // offset 48-55: volume (uint64)
+
+        long open = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        long high = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
+        long low = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        long close = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(40, 8));
+        ulong volume = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(48, 8));
+
+        return new OhlcvMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Open = open,
+            High = high,
+            Low = low,
+            Close = close,
+            Volume = volume
+        };
+    }
+
+    private static StatusMessage DeserializeStatusMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 40)
+            throw new ArgumentException("Invalid StatusMsg data - too small", nameof(bytes));
+
+        // StatusMsg layout (40 bytes):
+        // offset 16-23: ts_recv (uint64)
+        // offset 24-25: action (uint16/StatusAction)
+        // offset 26-27: reason (uint16/StatusReason)
+        // offset 28: trading_event (uint8/TradingEvent)
+        // offset 29: is_trading (char/TriState)
+        // offset 30: is_quoting (char/TriState)
+        // offset 31: is_short_sell_restricted (char/TriState)
+
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        StatusAction action = (StatusAction)System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(24, 2));
+        StatusReason reason = (StatusReason)System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(26, 2));
+        TradingEvent tradingEvent = (TradingEvent)bytes[28];
+        TriState isTrading = (TriState)bytes[29];
+        TriState isQuoting = (TriState)bytes[30];
+        TriState isShortSellRestricted = (TriState)bytes[31];
+
+        return new StatusMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            TsRecv = tsRecv,
+            Action = action,
+            Reason = reason,
+            TradingEvent = tradingEvent,
+            IsTrading = isTrading,
+            IsQuoting = isQuoting,
+            IsShortSellRestricted = isShortSellRestricted
+        };
+    }
+
+    private static InstrumentDefMessage DeserializeInstrumentDefMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 520)
+            throw new ArgumentException("Invalid InstrumentDefMsg data - too small", nameof(bytes));
+
+        // InstrumentDefMsg layout (520 bytes) - very large, many fields
+        // This is a simplified deserialization of the most important fields
+
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        long minPriceIncrement = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
+        long displayFactor = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        long expiration = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(40, 8));
+        long activation = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(48, 8));
+        long highLimitPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(56, 8));
+        long lowLimitPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(64, 8));
+        long maxPriceVariation = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(72, 8));
+        long tradingReferencePrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(80, 8));
+
+        // Read string fields (null-terminated C strings)
+        string currency = ReadCString(bytes.Slice(178, 5));
+        string settlCurrency = ReadCString(bytes.Slice(183, 5));
+        string secSubType = ReadCString(bytes.Slice(188, 6));
+        string rawSymbol = ReadCString(bytes.Slice(194, 22));
+        string group = ReadCString(bytes.Slice(216, 21));
+        string exchange = ReadCString(bytes.Slice(237, 5));
+        string asset = ReadCString(bytes.Slice(242, 7));
+        string cfi = ReadCString(bytes.Slice(249, 7));
+        string securityType = ReadCString(bytes.Slice(256, 7));
+        string unitOfMeasure = ReadCString(bytes.Slice(263, 31));
+        string underlying = ReadCString(bytes.Slice(294, 21));
+
+        InstrumentClass instrumentClass = (InstrumentClass)bytes[319];
+        long strikePrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(320, 8));
+        MatchAlgorithm matchAlgorithm = (MatchAlgorithm)bytes[328];
+
+        return new InstrumentDefMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            TsRecv = tsRecv,
+            MinPriceIncrement = minPriceIncrement,
+            DisplayFactor = displayFactor,
+            Expiration = expiration,
+            Activation = activation,
+            HighLimitPrice = highLimitPrice,
+            LowLimitPrice = lowLimitPrice,
+            MaxPriceVariation = maxPriceVariation,
+            TradingReferencePrice = tradingReferencePrice,
+            Currency = currency,
+            SettlCurrency = settlCurrency,
+            SecSubType = secSubType,
+            RawSymbol = rawSymbol,
+            Group = group,
+            Exchange = exchange,
+            Asset = asset,
+            Cfi = cfi,
+            SecurityType = securityType,
+            UnitOfMeasure = unitOfMeasure,
+            Underlying = underlying,
+            InstrumentClass = instrumentClass,
+            StrikePrice = strikePrice,
+            MatchAlgorithm = matchAlgorithm
+        };
+    }
+
+    private static string ReadCString(ReadOnlySpan<byte> bytes)
+    {
+        // Find null terminator
+        int length = bytes.IndexOf((byte)0);
+        if (length < 0) length = bytes.Length;
+
+        // Convert to string, trimming any padding
+        return System.Text.Encoding.UTF8.GetString(bytes.Slice(0, length)).TrimEnd('\0', ' ');
+    }
 }
+
 
 /// <summary>
 /// Placeholder for unknown record types

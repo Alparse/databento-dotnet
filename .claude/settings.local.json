@@ -1,17 +1,41 @@
 {
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
       "Bash(tree:*)",
-      "Bash(C:/vcpkg/vcpkg.exe install:*)",
-      "Bash(C:/vcpkg/vcpkg.exe integrate:*)",
-      "Bash(dotnet build:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "Bash(pwd:*)",
+      "Bash(git:*)",
+      "Bash(C:/vcpkg/vcpkg.exe:*)",
+      "Bash(cmake:*)",
+      "Bash(dotnet:*)",
+      "Bash(msbuild:*)",
       "Bash(where:*)",
       "Bash(powershell:*)",
       "Bash(test:*)",
-      "Bash(cmake --build:*)"
+      "Bash(dumpbin:*)",
+      "Read(C:/Users/serha/source/repos/databento_alt/**)",
+      "Read(//c/Users/serha/source/repos/databento_alt/**)",
+      "Read(//c/zstd/**)",
+      "Read(//c/vcpkg/installed/x64-windows/bin/**)",
+      "Write(C:/Users/serha/source/repos/databento_alt/**)",
+      "Write(//c/Users/serha/source/repos/databento_alt/**)",
+      "Edit(C:/Users/serha/source/repos/databento_alt/**)",
+      "Edit(//c/Users/serha/source/repos/databento_alt/**)",
+      "Glob(*)",
+      "Grep(*)",
+      "Task(*)",
+      "TodoWrite(*)",
+      "BashOutput(*)",
+      "KillShell(*)",
+      "Bash(git add:*)"
     ],
-    "deny": [],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(del /F /Q C:\\*)"
+    ],
     "ask": []
   }
 }
