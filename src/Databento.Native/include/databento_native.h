@@ -24,6 +24,8 @@ extern "C" {
 typedef void* DbentoLiveClientHandle;
 typedef void* DbentoHistoricalClientHandle;
 typedef void* DbentoMetadataHandle;
+typedef void* DbentoTsSymbolMapHandle;
+typedef void* DbentoPitSymbolMapHandle;
 
 // ============================================================================
 // Callback Types
@@ -248,6 +250,131 @@ DATABENTO_API int dbento_metadata_get_symbol_mapping(
  * @param handle Metadata handle
  */
 DATABENTO_API void dbento_metadata_destroy(DbentoMetadataHandle handle);
+
+// ============================================================================
+// Symbol Map API
+// ============================================================================
+
+/**
+ * Create a timeseries symbol map from metadata
+ * @param metadata_handle Metadata handle to create symbol map from
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return Handle to timeseries symbol map, or NULL on failure
+ */
+DATABENTO_API DbentoTsSymbolMapHandle dbento_metadata_create_symbol_map(
+    DbentoMetadataHandle metadata_handle,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Create a point-in-time symbol map for a specific date
+ * @param metadata_handle Metadata handle to create symbol map from
+ * @param year Year (e.g., 2024)
+ * @param month Month (1-12)
+ * @param day Day (1-31)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return Handle to point-in-time symbol map, or NULL on failure
+ */
+DATABENTO_API DbentoPitSymbolMapHandle dbento_metadata_create_symbol_map_for_date(
+    DbentoMetadataHandle metadata_handle,
+    int year,
+    unsigned int month,
+    unsigned int day,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Check if timeseries symbol map is empty
+ * @param handle TsSymbolMap handle
+ * @return 1 if empty, 0 if not empty, -1 on error
+ */
+DATABENTO_API int dbento_ts_symbol_map_is_empty(DbentoTsSymbolMapHandle handle);
+
+/**
+ * Get size of timeseries symbol map
+ * @param handle TsSymbolMap handle
+ * @return Number of mappings, or 0 on error
+ */
+DATABENTO_API size_t dbento_ts_symbol_map_size(DbentoTsSymbolMapHandle handle);
+
+/**
+ * Find symbol in timeseries symbol map
+ * @param handle TsSymbolMap handle
+ * @param year Year (e.g., 2024)
+ * @param month Month (1-12)
+ * @param day Day (1-31)
+ * @param instrument_id Instrument ID to look up
+ * @param symbol_buffer Buffer to receive symbol string
+ * @param symbol_buffer_size Size of symbol buffer
+ * @return 0 on success, negative error code if not found
+ */
+DATABENTO_API int dbento_ts_symbol_map_find(
+    DbentoTsSymbolMapHandle handle,
+    int year,
+    unsigned int month,
+    unsigned int day,
+    uint32_t instrument_id,
+    char* symbol_buffer,
+    size_t symbol_buffer_size
+);
+
+/**
+ * Destroy timeseries symbol map and free resources
+ * @param handle TsSymbolMap handle
+ */
+DATABENTO_API void dbento_ts_symbol_map_destroy(DbentoTsSymbolMapHandle handle);
+
+/**
+ * Check if point-in-time symbol map is empty
+ * @param handle PitSymbolMap handle
+ * @return 1 if empty, 0 if not empty, -1 on error
+ */
+DATABENTO_API int dbento_pit_symbol_map_is_empty(DbentoPitSymbolMapHandle handle);
+
+/**
+ * Get size of point-in-time symbol map
+ * @param handle PitSymbolMap handle
+ * @return Number of mappings, or 0 on error
+ */
+DATABENTO_API size_t dbento_pit_symbol_map_size(DbentoPitSymbolMapHandle handle);
+
+/**
+ * Find symbol in point-in-time symbol map
+ * @param handle PitSymbolMap handle
+ * @param instrument_id Instrument ID to look up
+ * @param symbol_buffer Buffer to receive symbol string
+ * @param symbol_buffer_size Size of symbol buffer
+ * @return 0 on success, negative error code if not found
+ */
+DATABENTO_API int dbento_pit_symbol_map_find(
+    DbentoPitSymbolMapHandle handle,
+    uint32_t instrument_id,
+    char* symbol_buffer,
+    size_t symbol_buffer_size
+);
+
+/**
+ * Update point-in-time symbol map from a record (for live data)
+ * @param handle PitSymbolMap handle
+ * @param record_bytes Raw record data (DBN format)
+ * @param record_length Length of record in bytes
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_pit_symbol_map_on_record(
+    DbentoPitSymbolMapHandle handle,
+    const uint8_t* record_bytes,
+    size_t record_length
+);
+
+/**
+ * Destroy point-in-time symbol map and free resources
+ * @param handle PitSymbolMap handle
+ */
+DATABENTO_API void dbento_pit_symbol_map_destroy(DbentoPitSymbolMapHandle handle);
 
 #ifdef __cplusplus
 }

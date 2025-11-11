@@ -18,4 +18,19 @@ public interface IMetadata : IDisposable
     /// <param name="instrumentId">Instrument ID to check</param>
     /// <returns>True if mapping exists</returns>
     bool Contains(uint instrumentId);
+
+    /// <summary>
+    /// Create a timeseries symbol map from this metadata.
+    /// Useful for working with historical data where symbols may change over time.
+    /// </summary>
+    /// <returns>Timeseries symbol map</returns>
+    ITsSymbolMap CreateSymbolMap();
+
+    /// <summary>
+    /// Create a point-in-time symbol map for a specific date from this metadata.
+    /// Useful for working with live data or historical requests over a single day.
+    /// </summary>
+    /// <param name="date">The date for the symbol mappings</param>
+    /// <returns>Point-in-time symbol map</returns>
+    IPitSymbolMap CreateSymbolMapForDate(DateOnly date);
 }

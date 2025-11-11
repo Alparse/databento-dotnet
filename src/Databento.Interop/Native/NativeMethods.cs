@@ -212,4 +212,64 @@ public static partial class NativeMethods
 
     [LibraryImport(LibName)]
     public static partial void dbento_free_string(IntPtr strPtr);
+
+    // ========================================================================
+    // Symbol Map API
+    // ========================================================================
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr dbento_metadata_create_symbol_map(
+        MetadataHandle metadataHandle,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr dbento_metadata_create_symbol_map_for_date(
+        MetadataHandle metadataHandle,
+        int year,
+        uint month,
+        uint day,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_ts_symbol_map_is_empty(TsSymbolMapHandle handle);
+
+    [LibraryImport(LibName)]
+    public static partial nuint dbento_ts_symbol_map_size(TsSymbolMapHandle handle);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_ts_symbol_map_find(
+        TsSymbolMapHandle handle,
+        int year,
+        uint month,
+        uint day,
+        uint instrumentId,
+        byte[] symbolBuffer,
+        nuint symbolBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial void dbento_ts_symbol_map_destroy(IntPtr handle);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_pit_symbol_map_is_empty(PitSymbolMapHandle handle);
+
+    [LibraryImport(LibName)]
+    public static partial nuint dbento_pit_symbol_map_size(PitSymbolMapHandle handle);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_pit_symbol_map_find(
+        PitSymbolMapHandle handle,
+        uint instrumentId,
+        byte[] symbolBuffer,
+        nuint symbolBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_pit_symbol_map_on_record(
+        PitSymbolMapHandle handle,
+        byte[] recordBytes,
+        nuint recordLength);
+
+    [LibraryImport(LibName)]
+    public static partial void dbento_pit_symbol_map_destroy(IntPtr handle);
 }

@@ -27,6 +27,7 @@ FetchContent_MakeAvailable(databento-cpp)
 add_library(databento_native SHARED
     src/live_client_wrapper.cpp
     src/historical_client_wrapper.cpp
+    src/symbol_map_wrapper.cpp
     src/callback_bridge.cpp
     src/error_handling.cpp
 )

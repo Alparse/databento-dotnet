@@ -50,6 +50,55 @@ public sealed class Metadata : IMetadata
         return GetSymbol(instrumentId) != null;
     }
 
+    /// <summary>
+    /// Create a timeseries symbol map from this metadata.
+    /// Useful for working with historical data where symbols may change over time.
+    /// </summary>
+    public ITsSymbolMap CreateSymbolMap()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        byte[] errorBuffer = new byte[512];
+        var handlePtr = NativeMethods.dbento_metadata_create_symbol_map(
+            _handle,
+            errorBuffer,
+            (nuint)errorBuffer.Length);
+
+        if (handlePtr == IntPtr.Zero)
+        {
+            var error = System.Text.Encoding.UTF8.GetString(errorBuffer).TrimEnd('\0');
+            throw new DbentoException($"Failed to create timeseries symbol map: {error}");
+        }
+
+        return new TsSymbolMap(new TsSymbolMapHandle(handlePtr));
+    }
+
+    /// <summary>
+    /// Create a point-in-time symbol map for a specific date from this metadata.
+    /// Useful for working with live data or historical requests over a single day.
+    /// </summary>
+    public IPitSymbolMap CreateSymbolMapForDate(DateOnly date)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        byte[] errorBuffer = new byte[512];
+        var handlePtr = NativeMethods.dbento_metadata_create_symbol_map_for_date(
+            _handle,
+            date.Year,
+            (uint)date.Month,
+            (uint)date.Day,
+            errorBuffer,
+            (nuint)errorBuffer.Length);
+
+        if (handlePtr == IntPtr.Zero)
+        {
+            var error = System.Text.Encoding.UTF8.GetString(errorBuffer).TrimEnd('\0');
+            throw new DbentoException($"Failed to create point-in-time symbol map: {error}");
+        }
+
+        return new PitSymbolMap(new PitSymbolMapHandle(handlePtr));
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
