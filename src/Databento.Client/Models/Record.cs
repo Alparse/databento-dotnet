@@ -78,6 +78,33 @@ public abstract class Record
             // Instrument definition messages (520 bytes)
             (0x18, 520) => DeserializeInstrumentDefMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
+            // Imbalance messages (112 bytes)
+            (0x19, 112) => DeserializeImbalanceMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // Error messages (320 bytes)
+            (0x1A, 320) => DeserializeErrorMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // Symbol mapping messages (176 bytes)
+            (0x1B, 176) => DeserializeSymbolMappingMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // System messages (320 bytes)
+            (0x1C, 320) => DeserializeSystemMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // Statistics messages (80 bytes)
+            (0x1D, 80) => DeserializeStatMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
+            // BBO messages (80 bytes) - multiple types
+            (0xC2, 80) => DeserializeBboMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Bbo1S
+            (0xC3, 80) => DeserializeBboMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Bbo1M
+
+            // CBBO messages (80 bytes) - multiple types
+            (0xB2, 80) => DeserializeCbboMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Cbbo1S
+            (0xB3, 80) => DeserializeCbboMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Cbbo1M
+            (0xB4, 80) => DeserializeCbboMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Tcbbo
+
+            // CMBP-1 messages (80 bytes)
+            (0xB1, 80) => DeserializeCmbp1Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
+
             // System/metadata messages
             _ => new UnknownRecord { RType = rtype, RawData = bytes.ToArray() }
         };
@@ -426,6 +453,253 @@ public abstract class Record
             InstrumentClass = instrumentClass,
             StrikePrice = strikePrice,
             MatchAlgorithm = matchAlgorithm
+        };
+    }
+
+    private static ImbalanceMessage DeserializeImbalanceMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 112)
+            throw new ArgumentException("Invalid ImbalanceMsg data - too small", nameof(bytes));
+
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        long refPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
+        long auctionTime = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        ulong pairedQty = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(64, 8));
+        ulong totalImbalanceQty = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(72, 8));
+        Side side = (Side)bytes[96];
+
+        return new ImbalanceMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            TsRecv = tsRecv,
+            RefPrice = refPrice,
+            AuctionTime = auctionTime,
+            PairedQty = pairedQty,
+            TotalImbalanceQty = totalImbalanceQty,
+            Side = side
+        };
+    }
+
+    private static ErrorMessage DeserializeErrorMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 320)
+            throw new ArgumentException("Invalid ErrorMsg data - too small", nameof(bytes));
+
+        string error = ReadCString(bytes.Slice(16, 302));
+        byte code = bytes[318];
+        bool isLast = bytes[319] != 0;
+
+        return new ErrorMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Error = error,
+            Code = code,
+            IsLast = isLast
+        };
+    }
+
+    private static SymbolMappingMessage DeserializeSymbolMappingMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 176)
+            throw new ArgumentException("Invalid SymbolMappingMsg data - too small", nameof(bytes));
+
+        SType stypeIn = (SType)bytes[16];
+        string stypeInSymbol = ReadCString(bytes.Slice(17, 71));
+        SType stypeOut = (SType)bytes[88];
+        string stypeOutSymbol = ReadCString(bytes.Slice(89, 71));
+        long startTs = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(160, 8));
+        long endTs = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(168, 8));
+
+        return new SymbolMappingMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            STypeIn = stypeIn,
+            STypeInSymbol = stypeInSymbol,
+            STypeOut = stypeOut,
+            STypeOutSymbol = stypeOutSymbol,
+            StartTs = startTs,
+            EndTs = endTs
+        };
+    }
+
+    private static SystemMessage DeserializeSystemMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 320)
+            throw new ArgumentException("Invalid SystemMsg data - too small", nameof(bytes));
+
+        string message = ReadCString(bytes.Slice(16, 303));
+        byte code = bytes[319];
+
+        return new SystemMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Message = message,
+            Code = code
+        };
+    }
+
+    private static StatMessage DeserializeStatMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 80)
+            throw new ArgumentException("Invalid StatMsg data - too small", nameof(bytes));
+
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        long tsRef = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        long quantity = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(40, 8));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(48, 4));
+        int tsInDelta = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(52, 4));
+        ushort statType = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(56, 2));
+        ushort channelId = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(58, 2));
+        byte updateAction = bytes[60];
+        byte statFlags = bytes[61];
+
+        return new StatMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            TsRecv = tsRecv,
+            TsRef = tsRef,
+            Price = price,
+            Quantity = quantity,
+            Sequence = sequence,
+            TsInDelta = tsInDelta,
+            StatType = statType,
+            ChannelId = channelId,
+            UpdateAction = updateAction,
+            StatFlags = statFlags
+        };
+    }
+
+    private static BboMessage DeserializeBboMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 80)
+            throw new ArgumentException("Invalid BboMsg data - too small", nameof(bytes));
+
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
+        Side side = (Side)bytes[28];
+        byte flags = bytes[29];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(40, 4));
+        BidAskPair level = DeserializeBidAskPair(bytes.Slice(48, 32));
+
+        return new BboMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Price = price,
+            Size = size,
+            Side = side,
+            Flags = flags,
+            TsRecv = tsRecv,
+            Sequence = sequence,
+            Level = level
+        };
+    }
+
+    private static CbboMessage DeserializeCbboMsg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 80)
+            throw new ArgumentException("Invalid CbboMsg data - too small", nameof(bytes));
+
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
+        Side side = (Side)bytes[28];
+        byte flags = bytes[29];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        uint sequence = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(40, 4));
+        ConsolidatedBidAskPair level = DeserializeConsolidatedBidAskPair(bytes.Slice(48, 32));
+
+        return new CbboMessage
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Price = price,
+            Size = size,
+            Side = side,
+            Flags = flags,
+            TsRecv = tsRecv,
+            Sequence = sequence,
+            Level = level
+        };
+    }
+
+    private static Cmbp1Message DeserializeCmbp1Msg(ReadOnlySpan<byte> bytes, byte rtype,
+        ushort publisherId, uint instrumentId, long tsEvent)
+    {
+        if (bytes.Length < 80)
+            throw new ArgumentException("Invalid Cmbp1Msg data - too small", nameof(bytes));
+
+        long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
+        uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
+        Action action = (Action)bytes[28];
+        Side side = (Side)bytes[29];
+        byte flags = bytes[30];
+        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
+        int tsInDelta = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(40, 4));
+        ConsolidatedBidAskPair level = DeserializeConsolidatedBidAskPair(bytes.Slice(48, 32));
+
+        return new Cmbp1Message
+        {
+            RType = rtype,
+            PublisherId = publisherId,
+            InstrumentId = instrumentId,
+            TimestampNs = tsEvent,
+            Price = price,
+            Size = size,
+            Action = action,
+            Side = side,
+            Flags = flags,
+            TsRecv = tsRecv,
+            TsInDelta = tsInDelta,
+            Level = level
+        };
+    }
+
+    private static ConsolidatedBidAskPair DeserializeConsolidatedBidAskPair(ReadOnlySpan<byte> bytes)
+    {
+        // ConsolidatedBidAskPair layout (32 bytes):
+        // offset 0-7: bid_px (int64)
+        // offset 8-15: ask_px (int64)
+        // offset 16-19: bid_sz (uint32)
+        // offset 20-23: ask_sz (uint32)
+        // offset 24-25: bid_pb (uint16)
+        // offset 26-27: ask_pb (uint16)
+
+        return new ConsolidatedBidAskPair
+        {
+            BidPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(0, 8)),
+            AskPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(8, 8)),
+            BidSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(16, 4)),
+            AskSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(20, 4)),
+            BidPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(24, 2)),
+            AskPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(26, 2))
         };
     }
 

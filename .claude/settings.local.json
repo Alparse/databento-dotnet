@@ -29,8 +29,7 @@
       "Task(*)",
       "TodoWrite(*)",
       "BashOutput(*)",
-      "KillShell(*)",
-      "Bash(git add:*)"
+      "KillShell(*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",
