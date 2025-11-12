@@ -253,7 +253,7 @@ public sealed class LiveClient : ILiveClient
     /// <summary>
     /// Stop receiving data
     /// </summary>
-    public Task StopAsync(CancellationToken cancellationToken = default)
+    public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         // CRITICAL FIX: Use atomic read for disposal state
         if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
@@ -261,10 +261,14 @@ public sealed class LiveClient : ILiveClient
             NativeMethods.dbento_live_stop(_handle);
             // MEDIUM FIX: Use Interlocked for consistency
             Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Stopped);
+
+            // MEDIUM FIX: Add small delay before completing channel to prevent race condition
+            // This allows any in-flight callbacks to complete their channel writes
+            // before we mark the channel as complete
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
             _recordChannel.Writer.Complete();
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -435,7 +439,7 @@ public sealed class LiveClient : ILiveClient
                 // Wait with 5-second timeout to prevent deadlocks
                 await _streamTask.WaitAsync(TimeSpan.FromSeconds(5));
             }
-            catch (TimeoutException)
+            catch (System.TimeoutException)
             {
                 // Log warning - task didn't complete within timeout
                 // In production, consider tracking this metric

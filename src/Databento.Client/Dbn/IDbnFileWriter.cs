@@ -6,7 +6,10 @@ namespace Databento.Client.Dbn;
 /// <summary>
 /// Writer for DBN (Databento Binary) format files
 /// </summary>
-public interface IDbnFileWriter : IDisposable
+/// <remarks>
+/// MEDIUM FIX: Implements both IDisposable and IAsyncDisposable for proper async resource cleanup
+/// </remarks>
+public interface IDbnFileWriter : IDisposable, IAsyncDisposable
 {
     /// <summary>
     /// Write a single record to the DBN file

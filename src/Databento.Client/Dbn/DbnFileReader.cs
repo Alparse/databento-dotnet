@@ -171,4 +171,14 @@ public sealed class DbnFileReader : IDbnFileReader
         _disposed = true;
         _handle?.Dispose();
     }
+
+    /// <summary>
+    /// MEDIUM FIX: Asynchronously dispose the file reader and free resources
+    /// Provides proper async cleanup for async usage patterns
+    /// </summary>
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        return ValueTask.CompletedTask;
+    }
 }

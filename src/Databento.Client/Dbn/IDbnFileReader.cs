@@ -6,7 +6,10 @@ namespace Databento.Client.Dbn;
 /// <summary>
 /// Reader for DBN (Databento Binary) format files
 /// </summary>
-public interface IDbnFileReader : IDisposable
+/// <remarks>
+/// MEDIUM FIX: Implements both IDisposable and IAsyncDisposable for proper async resource cleanup
+/// </remarks>
+public interface IDbnFileReader : IDisposable, IAsyncDisposable
 {
     /// <summary>
     /// Get metadata about the DBN file

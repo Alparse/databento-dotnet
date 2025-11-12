@@ -119,4 +119,14 @@ public sealed class DbnFileWriter : IDbnFileWriter
         _disposed = true;
         _handle?.Dispose();
     }
+
+    /// <summary>
+    /// MEDIUM FIX: Asynchronously dispose the file writer and finalize the file
+    /// Provides proper async cleanup for async usage patterns
+    /// </summary>
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        return ValueTask.CompletedTask;
+    }
 }
