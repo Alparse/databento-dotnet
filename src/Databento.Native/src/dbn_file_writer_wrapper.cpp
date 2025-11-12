@@ -165,7 +165,9 @@ DATABENTO_API int dbento_dbn_file_write_record(
         std::vector<uint8_t> mutable_copy(record_bytes, record_bytes + record_length);
         const db::Record record{reinterpret_cast<db::RecordHeader*>(mutable_copy.data())};
 
-        // Encode the record
+        // SAFETY: EncodeRecord processes the record synchronously and does not store
+        // the pointer. The mutable_copy vector remains alive until after EncodeRecord
+        // returns, ensuring no use-after-free. This is safe by design of databento-cpp.
         wrapper->encoder->EncodeRecord(record);
 
         return 0; // Success

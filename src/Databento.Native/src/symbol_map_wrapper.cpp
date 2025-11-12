@@ -244,7 +244,12 @@ DATABENTO_API int dbento_pit_symbol_map_on_record(
         // Copy data to mutable buffer to avoid const_cast undefined behavior
         std::vector<uint8_t> mutable_copy(record_bytes, record_bytes + record_length);
         db::Record record(reinterpret_cast<db::RecordHeader*>(mutable_copy.data()));
+
+        // SAFETY: OnRecord processes the record synchronously and does not store
+        // the pointer. The mutable_copy vector remains alive until after OnRecord
+        // returns, ensuring no use-after-free. This is safe by design of databento-cpp.
         wrapper->map->OnRecord(record);
+
         return 0;
     }
     catch (...) {

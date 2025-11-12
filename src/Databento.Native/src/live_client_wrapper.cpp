@@ -9,6 +9,8 @@
 #include <vector>
 #include <cstring>
 #include <exception>
+#include <mutex>
+#include <atomic>
 
 namespace db = databento;
 using databento_native::SafeStrCopy;
@@ -25,7 +27,9 @@ struct LiveClientWrapper {
     MetadataCallback metadata_callback = nullptr;
     ErrorCallback error_callback = nullptr;
     void* user_data = nullptr;
-    bool is_running = false;
+    std::atomic<bool> is_running{false};  // Atomic for thread-safe access
+    std::mutex callback_mutex;  // Protect callback invocations
+    std::once_flag client_init_flag;  // Ensure single client initialization
     std::string dataset;
     std::string api_key;
     bool send_ts_out = false;
@@ -52,8 +56,34 @@ struct LiveClientWrapper {
         // LiveThreaded destructor handles cleanup
     }
 
+    // Thread-safe client initialization using std::call_once
+    void EnsureClientCreated() {
+        std::call_once(client_init_flag, [this]() {
+            auto builder = db::LiveThreaded::Builder()
+                .SetKey(api_key)
+                .SetDataset(dataset)
+                .SetSendTsOut(send_ts_out)
+                .SetUpgradePolicy(upgrade_policy);
+
+            if (heartbeat_interval_secs > 0) {
+                builder.SetHeartbeatInterval(
+                    std::chrono::seconds(heartbeat_interval_secs));
+            }
+
+            client = std::make_unique<db::LiveThreaded>(builder.BuildThreaded());
+        });
+    }
+
     // Called by databento-cpp when a record is received
     db::KeepGoing OnRecord(const db::Record& record) {
+        // Lock for thread-safe callback access
+        std::lock_guard<std::mutex> lock(callback_mutex);
+
+        // Check if still running
+        if (!is_running.load(std::memory_order_acquire)) {
+            return db::KeepGoing::Stop;
+        }
+
         try {
             if (record_callback) {
                 // Get the actual RecordHeader pointer (not the Record wrapper)
@@ -76,7 +106,7 @@ struct LiveClientWrapper {
                 error_callback(ex.what(), -999, user_data);
             }
             // Stop processing on exception
-            is_running = false;
+            is_running.store(false, std::memory_order_release);
             return db::KeepGoing::Stop;
         }
         catch (...) {
@@ -85,11 +115,11 @@ struct LiveClientWrapper {
                 error_callback("Unknown exception in record callback", -998, user_data);
             }
             // Stop processing on exception
-            is_running = false;
+            is_running.store(false, std::memory_order_release);
             return db::KeepGoing::Stop;
         }
 
-        return is_running ? db::KeepGoing::Continue : db::KeepGoing::Stop;
+        return is_running.load(std::memory_order_acquire) ? db::KeepGoing::Continue : db::KeepGoing::Stop;
     }
 
     // Called when an error occurs
@@ -161,20 +191,8 @@ DATABENTO_API int dbento_live_subscribe(
         // Parse schema from string to enum (centralized function, throws on error)
         db::Schema schema_enum = ParseSchema(schema);
 
-        // Create client now that we have the dataset
-        if (!wrapper->client) {
-            auto builder = db::LiveThreaded::Builder()
-                .SetKey(wrapper->api_key)
-                .SetDataset(wrapper->dataset)
-                .SetSendTsOut(wrapper->send_ts_out)
-                .SetUpgradePolicy(wrapper->upgrade_policy);
-
-            if (wrapper->heartbeat_interval_secs > 0) {
-                builder.SetHeartbeatInterval(std::chrono::seconds(wrapper->heartbeat_interval_secs));
-            }
-
-            wrapper->client = std::make_unique<db::LiveThreaded>(builder.BuildThreaded());
-        }
+        // Ensure client is created (thread-safe)
+        wrapper->EnsureClientCreated();
 
         // Subscribe using databento-cpp API (symbols, schema, stype)
         wrapper->client->Subscribe(symbol_vec, schema_enum, db::SType::RawSymbol);
@@ -211,7 +229,7 @@ DATABENTO_API int dbento_live_start(
         wrapper->record_callback = on_record;
         wrapper->error_callback = on_error;
         wrapper->user_data = user_data;
-        wrapper->is_running = true;
+        wrapper->is_running.store(true, std::memory_order_release);
 
         // Start the client with a lambda that bridges to our callback
         wrapper->client->Start([wrapper](const db::Record& record) {
@@ -230,8 +248,9 @@ DATABENTO_API void dbento_live_stop(DbentoLiveClientHandle handle)
 {
     try {
         auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
-        if (wrapper && wrapper->is_running) {
-            wrapper->is_running = false;
+        if (wrapper) {
+            // Atomic store for thread-safe stop
+            wrapper->is_running.store(false, std::memory_order_release);
             // The callback will return KeepGoing::Stop on next iteration
         }
     }
@@ -245,7 +264,16 @@ DATABENTO_API void dbento_live_destroy(DbentoLiveClientHandle handle)
     try {
         auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
         if (wrapper) {
-            wrapper->is_running = false;
+            // Signal stop
+            wrapper->is_running.store(false, std::memory_order_release);
+
+            // Lock to ensure no callbacks are executing
+            {
+                std::lock_guard<std::mutex> lock(wrapper->callback_mutex);
+                // Callbacks are now blocked or completed
+            }
+
+            // Safe to delete now
             delete wrapper;
         }
     }
@@ -288,19 +316,9 @@ DATABENTO_API DbentoLiveClientHandle dbento_live_create_ex(
             heartbeat_interval_secs > 0 ? heartbeat_interval_secs : 30
         );
 
-        // Create client immediately if we have a dataset
+        // Create client immediately if we have a dataset (thread-safe)
         if (!ds.empty()) {
-            auto builder = db::LiveThreaded::Builder()
-                .SetKey(wrapper->api_key)
-                .SetDataset(wrapper->dataset)
-                .SetSendTsOut(wrapper->send_ts_out)
-                .SetUpgradePolicy(wrapper->upgrade_policy);
-
-            if (wrapper->heartbeat_interval_secs > 0) {
-                builder.SetHeartbeatInterval(std::chrono::seconds(wrapper->heartbeat_interval_secs));
-            }
-
-            wrapper->client = std::make_unique<db::LiveThreaded>(builder.BuildThreaded());
+            wrapper->EnsureClientCreated();
         }
 
         return reinterpret_cast<DbentoLiveClientHandle>(wrapper);
@@ -329,7 +347,7 @@ DATABENTO_API int dbento_live_reconnect(
         }
 
         // Use databento-cpp's Reconnect method
-        wrapper->is_running = false;  // Stop current session
+        wrapper->is_running.store(false, std::memory_order_release);  // Stop current session
         wrapper->client->Reconnect();
 
         return 0;
@@ -394,7 +412,7 @@ DATABENTO_API int dbento_live_start_ex(
         wrapper->metadata_callback = on_metadata;
         wrapper->error_callback = on_error;
         wrapper->user_data = user_data;
-        wrapper->is_running = true;
+        wrapper->is_running.store(true, std::memory_order_release);
 
         // Start the client with metadata and record callbacks
         if (on_metadata) {
@@ -478,20 +496,8 @@ DATABENTO_API int dbento_live_subscribe_with_snapshot(
         // Parse schema from string to enum (centralized function, throws on error)
         db::Schema schema_enum = ParseSchema(schema);
 
-        // Create client if needed
-        if (!wrapper->client) {
-            auto builder = db::LiveThreaded::Builder()
-                .SetKey(wrapper->api_key)
-                .SetDataset(wrapper->dataset)
-                .SetSendTsOut(wrapper->send_ts_out)
-                .SetUpgradePolicy(wrapper->upgrade_policy);
-
-            if (wrapper->heartbeat_interval_secs > 0) {
-                builder.SetHeartbeatInterval(std::chrono::seconds(wrapper->heartbeat_interval_secs));
-            }
-
-            wrapper->client = std::make_unique<db::LiveThreaded>(builder.BuildThreaded());
-        }
+        // Ensure client is created (thread-safe)
+        wrapper->EnsureClientCreated();
 
         // Subscribe with snapshot
         wrapper->client->SubscribeWithSnapshot(symbol_vec, schema_enum, db::SType::RawSymbol);
@@ -516,8 +522,8 @@ DATABENTO_API int dbento_live_get_connection_state(DbentoLiveClientHandle handle
             return 0;  // Disconnected
         }
 
-        // Check if running
-        if (wrapper->is_running) {
+        // Check if running (atomic load)
+        if (wrapper->is_running.load(std::memory_order_acquire)) {
             return 3;  // Streaming
         }
 

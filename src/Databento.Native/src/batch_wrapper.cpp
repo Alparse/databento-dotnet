@@ -87,8 +87,17 @@ static json BatchFileDescToJson(const db::BatchFileDesc& file) {
 
 // Allocate a string that can be freed with dbento_free_string
 static char* AllocateString(const std::string& str) {
+    // Validate size to prevent overflow
+    if (str.size() > SIZE_MAX - 1) {
+        return nullptr;  // String too large
+    }
+
     char* result = new char[str.size() + 1];
-    std::strcpy(result, str.c_str());
+
+    // Use memcpy instead of strcpy for safety
+    std::memcpy(result, str.c_str(), str.size());
+    result[str.size()] = '\0';
+
     return result;
 }
 

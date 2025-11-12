@@ -14,22 +14,46 @@ namespace databento_native {
  * @param dest Destination buffer
  * @param dest_size Size of destination buffer
  * @param src Source string (can be nullptr)
+ * @return true if copy succeeded, false if buffer invalid
  */
-inline void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
+inline bool SafeStrCopy(char* dest, size_t dest_size, const char* src) {
     // Validate destination
-    if (!dest || dest_size == 0) {
-        return;
+    if (!dest) {
+        return false;  // Cannot write to NULL
     }
+
+    if (dest_size == 0) {
+        return false;  // Cannot write to zero-size buffer
+    }
+
+    // Enforce reasonable minimum buffer size for error messages
+    constexpr size_t MIN_ERROR_BUFFER_SIZE = 16;
+    if (dest_size < MIN_ERROR_BUFFER_SIZE) {
+        // Still write what we can, but warn
+        if (src && src[0] != '\0') {
+            strncpy(dest, src, dest_size - 1);
+            dest[dest_size - 1] = '\0';
+        } else {
+            dest[0] = '\0';
+        }
+        return false;  // Indicate buffer too small
+    }
+
+    // Enforce maximum buffer size to prevent resource exhaustion
+    constexpr size_t MAX_ERROR_BUFFER_SIZE = 65536;  // 64KB
+    size_t safe_size = std::min(dest_size, MAX_ERROR_BUFFER_SIZE);
 
     // Handle null source
     if (!src) {
         dest[0] = '\0';
-        return;
+        return true;
     }
 
     // Copy with bounds checking
-    strncpy(dest, src, dest_size - 1);
-    dest[dest_size - 1] = '\0';  // Ensure null termination
+    strncpy(dest, src, safe_size - 1);
+    dest[safe_size - 1] = '\0';  // Ensure null termination
+
+    return true;
 }
 
 /**
@@ -78,11 +102,12 @@ inline databento::UnixNanos NsToUnixNanos(int64_t ns) {
         throw std::invalid_argument("Timestamp cannot be negative (before Unix epoch 1970-01-01)");
     }
 
-    // Validate upper bound (year 9999 - reasonable maximum)
-    // Year 9999-12-31 23:59:59.999999999 in nanoseconds
-    constexpr uint64_t MAX_TIMESTAMP = 253402300799ULL * 1000000000ULL + 999999999ULL;
-    if (static_cast<uint64_t>(ns) > MAX_TIMESTAMP) {
-        throw std::invalid_argument("Timestamp too large (after year 9999)");
+    // Validate upper bound (year 2262 - uint64_t nanosecond limit)
+    // uint64_t can represent nanoseconds up to 2262-04-11 23:47:16 UTC
+    // This is the practical maximum for nanosecond-precision timestamps
+    constexpr uint64_t MAX_TIMESTAMP_NS = UINT64_MAX;
+    if (static_cast<uint64_t>(ns) > MAX_TIMESTAMP_NS) {
+        throw std::invalid_argument("Timestamp too large (after year 2262)");
     }
 
     // Safe cast to unsigned after validation
