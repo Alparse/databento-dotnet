@@ -1,33 +1,33 @@
 namespace Databento.Client.Models;
 
 /// <summary>
-/// Record type identifier
+/// Record type identifier - Values match databento-cpp enums.hpp
 /// </summary>
 public enum RType : byte
 {
-    Mbp0 = 0x00,
-    Mbp1 = 0x01,
-    Mbp10 = 0x02,
-    OhlcvDeprecated = 0x11,
-    Ohlcv1S = 0x12,
-    Ohlcv1M = 0x13,
-    Ohlcv1H = 0x14,
-    Ohlcv1D = 0x15,
-    OhlcvEod = 0x16,
-    Status = 0x17,
-    InstrumentDef = 0x18,
-    Imbalance = 0x19,
-    Error = 0x1A,
-    SymbolMapping = 0x1B,
-    System = 0x1C,
-    Statistics = 0x1D,
-    Mbo = 0xA0,
-    Cmbp1 = 0xB1,
-    Cbbo1S = 0xC0,
-    Cbbo1M = 0xC1,
-    Tcbbo = 0xC2,
-    Bbo1S = 0xC3,
-    Bbo1M = 0xC4
+    Mbp0 = 0x00,              // Trade messages
+    Mbp1 = 0x01,              // Market by Price Level 1
+    Mbp10 = 0x0A,             // FIXED: was 0x02, correct is 0x0A
+    OhlcvDeprecated = 0x11,   // Deprecated OHLCV
+    Status = 0x12,            // FIXED: was 0x17, correct is 0x12 - Trading status
+    InstrumentDef = 0x13,     // FIXED: was 0x18, correct is 0x13 - Instrument definitions
+    Imbalance = 0x14,         // FIXED: was 0x19, correct is 0x14 - Order imbalances
+    Error = 0x15,             // FIXED: was 0x1A, correct is 0x15 - Error messages
+    SymbolMapping = 0x16,     // FIXED: was 0x1B, correct is 0x16 - Symbol mappings
+    System = 0x17,            // FIXED: was 0x1C, correct is 0x17 - System messages / heartbeats
+    Statistics = 0x18,        // FIXED: was 0x1D, correct is 0x18 - Market statistics
+    Ohlcv1S = 0x20,           // FIXED: was 0x12, correct is 0x20 - OHLCV 1 second
+    Ohlcv1M = 0x21,           // FIXED: was 0x13, correct is 0x21 - OHLCV 1 minute
+    Ohlcv1H = 0x22,           // FIXED: was 0x14, correct is 0x22 - OHLCV 1 hour
+    Ohlcv1D = 0x23,           // FIXED: was 0x15, correct is 0x23 - OHLCV 1 day
+    OhlcvEod = 0x24,          // FIXED: was 0x16, correct is 0x24 - OHLCV end of day
+    Mbo = 0xA0,               // Market by Order
+    Cmbp1 = 0xB1,             // Consolidated Market by Price Level 1
+    Cbbo1S = 0xC0,            // Consolidated Best Bid/Offer 1 second
+    Cbbo1M = 0xC1,            // Consolidated Best Bid/Offer 1 minute
+    Tcbbo = 0xC2,             // Trade with Consolidated BBO
+    Bbo1S = 0xC3,             // Best Bid/Offer 1 second
+    Bbo1M = 0xC4              // Best Bid/Offer 1 minute
 }
 
 /// <summary>

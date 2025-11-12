@@ -69,36 +69,37 @@ public abstract class Record
             // TbboMessage exists as a type but can't be distinguished at deserialization without schema context
             (0x01, 80) => DeserializeMbp1Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // MBP-10 messages (368 bytes)
-            (0x02, 368) => DeserializeMbp10Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // MBP-10 messages (368 bytes) - FIXED: was 0x02, correct is 0x0A
+            (0x0A, 368) => DeserializeMbp10Msg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // OHLCV messages (56 bytes) - multiple RType values
-            (0x12, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1s
-            (0x13, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1m
-            (0x14, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1h
-            (0x15, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1d
-            (0x16, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // EOD
+            // OHLCV messages (56 bytes) - multiple RType values - FIXED: All values corrected
+            (0x11, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // Deprecated
+            (0x20, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1s - FIXED: was 0x12
+            (0x21, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1m - FIXED: was 0x13
+            (0x22, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1h - FIXED: was 0x14
+            (0x23, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // 1d - FIXED: was 0x15
+            (0x24, 56) => DeserializeOhlcvMsg(bytes, rtype, publisherId, instrumentId, tsEvent), // EOD - FIXED: was 0x16
 
-            // Status messages (40 bytes)
-            (0x17, 40) => DeserializeStatusMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Status messages (40 bytes) - FIXED: was 0x17, correct is 0x12
+            (0x12, 40) => DeserializeStatusMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // Instrument definition messages (520 bytes)
-            (0x18, 520) => DeserializeInstrumentDefMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Instrument definition messages (520 bytes) - FIXED: was 0x18, correct is 0x13
+            (0x13, 520) => DeserializeInstrumentDefMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // Imbalance messages (112 bytes)
-            (0x19, 112) => DeserializeImbalanceMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Imbalance messages (112 bytes) - FIXED: was 0x19, correct is 0x14
+            (0x14, 112) => DeserializeImbalanceMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // Error messages (320 bytes)
-            (0x1A, 320) => DeserializeErrorMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Error messages (320 bytes) - FIXED: was 0x1A, correct is 0x15
+            (0x15, 320) => DeserializeErrorMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // Symbol mapping messages (176 bytes)
-            (0x1B, 176) => DeserializeSymbolMappingMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Symbol mapping messages (176 bytes) - FIXED: was 0x1B, correct is 0x16
+            (0x16, 176) => DeserializeSymbolMappingMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // System messages (320 bytes)
-            (0x1C, 320) => DeserializeSystemMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // System messages (320 bytes) - FIXED: was 0x1C, correct is 0x17
+            (0x17, 320) => DeserializeSystemMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
-            // Statistics messages (80 bytes)
-            (0x1D, 80) => DeserializeStatMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
+            // Statistics messages (80 bytes) - FIXED: was 0x1D, correct is 0x18
+            (0x18, 80) => DeserializeStatMsg(bytes, rtype, publisherId, instrumentId, tsEvent),
 
             // CMBP-1 messages (80 bytes)
             (0xB1, 80) => DeserializeCmbp1Msg(bytes, rtype, publisherId, instrumentId, tsEvent), // Cmbp1

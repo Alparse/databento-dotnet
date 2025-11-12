@@ -22,18 +22,19 @@ All 16 DBN record types from databento-cpp are fully implemented:
 | TradeMessage | ✅ | 48 bytes | Trades (RType 0x00) |
 | MboMessage | ✅ | 56 bytes | Market by Order (RType 0xA0) |
 | Mbp1Message | ✅ | 80 bytes | Market by Price Level 1 (RType 0x01) |
-| Mbp10Message | ✅ | 368 bytes | Market by Price Level 10 (RType 0x02) |
-| OhlcvMessage | ✅ | 56 bytes | OHLCV bars - 1s, 1m, 1h, 1d, EOD (RType 0x12-0x16) |
-| StatusMessage | ✅ | 40 bytes | Trading status (RType 0x17) |
-| InstrumentDefMessage | ✅ | 520 bytes | Instrument definitions (RType 0x18) |
-| ImbalanceMessage | ✅ | 112 bytes | Order imbalances (RType 0x19) |
-| ErrorMessage | ✅ | 320 bytes | Error messages (RType 0x1A) |
-| SymbolMappingMessage | ✅ | 176 bytes | Symbol mappings (RType 0x1B) |
-| SystemMessage | ✅ | 320 bytes | System messages & heartbeats (RType 0x1C) |
-| StatMessage | ✅ | 80 bytes | Market statistics (RType 0x1D) |
-| BboMessage | ✅ | 80 bytes | Best Bid/Offer - 1s, 1m (RType 0xC2-0xC3) |
-| CbboMessage | ✅ | 80 bytes | Consolidated BBO - 1s, 1m, tick (RType 0xB2-0xB4) |
+| Mbp10Message | ✅ | 368 bytes | Market by Price Level 10 (RType 0x0A) |
+| OhlcvMessage | ✅ | 56 bytes | OHLCV bars - deprecated, 1s, 1m, 1h, 1d, EOD (RType 0x11, 0x20-0x24) |
+| StatusMessage | ✅ | 40 bytes | Trading status (RType 0x12) |
+| InstrumentDefMessage | ✅ | 520 bytes | Instrument definitions (RType 0x13) |
+| ImbalanceMessage | ✅ | 112 bytes | Order imbalances (RType 0x14) |
+| ErrorMessage | ✅ | 320 bytes | Error messages (RType 0x15) |
+| SymbolMappingMessage | ✅ | 176 bytes | Symbol mappings (RType 0x16) |
+| SystemMessage | ✅ | 320 bytes | System messages & heartbeats (RType 0x17) |
+| StatMessage | ✅ | 80 bytes | Market statistics (RType 0x18) |
+| BboMessage | ✅ | 80 bytes | Best Bid/Offer - 1s, 1m (RType 0xC3-0xC4) |
+| CbboMessage | ✅ | 80 bytes | Consolidated BBO - 1s, 1m (RType 0xC0-0xC1) |
 | Cmbp1Message | ✅ | 80 bytes | Consolidated Market by Price (RType 0xB1) |
+| TcbboMessage | ✅ | 80 bytes | Trade with Consolidated BBO (RType 0xC2) |
 | UnknownRecord | ✅ | Variable | Fallback for unrecognized types |
 
 ### API Coverage
@@ -77,6 +78,13 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### Recent Changes
 
+**Critical Bug Fix** - RType Enum Correction
+- **FIXED**: Corrected 13 incorrect RType enum values that were causing all non-trade messages to deserialize as UnknownRecord
+- Fixed: Mbp10 (0x02→0x0A), Status (0x17→0x12), InstrumentDef (0x18→0x13), Imbalance (0x19→0x14), Error (0x1A→0x15), SymbolMapping (0x1B→0x16), System (0x17→0x17), Statistics (0x1D→0x18), all OHLCV variants (0x12-0x16→0x11,0x20-0x24)
+- Added missing OhlcvDeprecated (0x11) case to switch statement
+- All deserializers now work correctly - SystemMessage, StatusMessage, SymbolMappingMessage, etc. properly recognized
+- Root cause: C# RType enum values didn't match databento-cpp enums.hpp specification
+
 **Phase 5 (Current)** - Configuration & Builder Enhancements
 - Added 9 configuration enumerations (HistoricalGateway, FeedMode, SplitDuration, Delivery, Encoding, Compression, VersionUpgradePolicy, JobState, DatasetCondition)
 - Enhanced HistoricalClientBuilder with 5 new methods (WithGateway, WithAddress, WithUpgradePolicy, WithUserAgent, WithTimeout)
@@ -98,7 +106,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 **Phase 2** - Complete Record Type Implementation
 - Implemented remaining 8 record types (ImbalanceMessage, StatMessage, ErrorMessage, SystemMessage, SymbolMappingMessage, BboMessage, CbboMessage, Cmbp1Message)
-- Updated Record.FromBytes with all RType mappings (0x00-0x1D, 0xA0, 0xB1-0xB4, 0xC2-0xC3)
+- Updated Record.FromBytes with all RType mappings (0x00, 0x01, 0x0A-0x18, 0x20-0x24, 0xA0, 0xB1, 0xC0-0xC4)
 - Added ConsolidatedBidAskPair for multi-venue data
 
 **Phase 1** - Initial Implementation
