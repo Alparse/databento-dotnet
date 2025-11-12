@@ -921,6 +921,17 @@ DATABENTO_API void dbento_unit_prices_destroy(
     DbentoUnitPricesHandle handle
 );
 
+// ============================================================================
+// Memory Management
+// ============================================================================
+
+/**
+ * Free a string allocated by the native library
+ * Must be called for any char* returned by batch API, symbology, etc.
+ * @param str String pointer to free (can be NULL)
+ */
+DATABENTO_API void dbento_free_string(char* str);
+
 #ifdef __cplusplus
 }
 #endif

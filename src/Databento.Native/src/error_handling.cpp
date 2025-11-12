@@ -43,3 +43,13 @@ int CategorizeException(const std::exception& e) {
 
     return ErrorCodes::UnknownError;
 }
+
+// ============================================================================
+// Memory Management
+// ============================================================================
+
+DATABENTO_API void dbento_free_string(char* str) {
+    if (str) {
+        delete[] str;
+    }
+}

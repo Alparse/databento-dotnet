@@ -1,4 +1,5 @@
 #include "databento_native.h"
+#include "common_helpers.hpp"
 #include <databento/symbol_map.hpp>
 #include <databento/dbn.hpp>
 #include <databento/record.hpp>
@@ -8,6 +9,7 @@
 #include <cstring>
 
 namespace db = databento;
+using databento_native::SafeStrCopy;
 
 // ============================================================================
 // Internal Wrapper Structures
@@ -37,13 +39,6 @@ struct MetadataWrapper {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-static void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
-    if (dest && dest_size > 0 && src) {
-        strncpy(dest, src, dest_size - 1);
-        dest[dest_size - 1] = '\0';
-    }
-}
 
 // ============================================================================
 // TsSymbolMap API Implementation
@@ -245,10 +240,10 @@ DATABENTO_API int dbento_pit_symbol_map_on_record(
             return -1;
         }
 
-        // Create Record from bytes (Record constructor takes non-const pointer)
-        // Cast away const since we're just reading the data
-        db::Record record(const_cast<db::RecordHeader*>(
-            reinterpret_cast<const db::RecordHeader*>(record_bytes)));
+        // Create Record from bytes (Record constructor requires mutable pointer)
+        // Copy data to mutable buffer to avoid const_cast undefined behavior
+        std::vector<uint8_t> mutable_copy(record_bytes, record_bytes + record_length);
+        db::Record record(reinterpret_cast<db::RecordHeader*>(mutable_copy.data()));
         wrapper->map->OnRecord(record);
         return 0;
     }

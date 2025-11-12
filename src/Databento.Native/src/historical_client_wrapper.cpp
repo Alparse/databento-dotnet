@@ -1,4 +1,5 @@
 #include "databento_native.h"
+#include "common_helpers.hpp"
 #include <databento/historical.hpp>
 #include <databento/record.hpp>
 #include <databento/enums.hpp>
@@ -13,6 +14,7 @@
 #include <sstream>
 
 namespace db = databento;
+using databento_native::SafeStrCopy;
 
 // ============================================================================
 // Internal Wrapper Class
@@ -37,12 +39,6 @@ struct MetadataWrapper {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-static void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
-    if (dest && dest_size > 0 && src) {
-        strncpy(dest, src, dest_size - 1);
-        dest[dest_size - 1] = '\0';
-    }
-}
 
 // Convert nanoseconds since epoch to UnixNanos
 static db::UnixNanos NsToUnixNanos(int64_t ns) {

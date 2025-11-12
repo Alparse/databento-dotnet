@@ -1,4 +1,5 @@
 #include "databento_native.h"
+#include "common_helpers.hpp"
 #include <databento/dbn_file_store.hpp>
 #include <databento/enums.hpp>
 #include <databento/datetime.hpp>
@@ -10,6 +11,7 @@
 
 namespace db = databento;
 using json = nlohmann::json;
+using databento_native::SafeStrCopy;
 
 // ============================================================================
 // DBN File Reader Wrapper Structure
@@ -28,13 +30,6 @@ struct DbnFileReaderWrapper {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-static void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
-    if (dest && dest_size > 0 && src) {
-        strncpy(dest, src, dest_size - 1);
-        dest[dest_size - 1] = '\0';
-    }
-}
 
 // Allocate a string that can be freed with dbento_free_string
 static char* AllocateString(const std::string& str) {

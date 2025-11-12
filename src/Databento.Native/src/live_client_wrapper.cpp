@@ -1,4 +1,5 @@
 #include "databento_native.h"
+#include "common_helpers.hpp"
 #include <databento/live_threaded.hpp>
 #include <databento/live.hpp>
 #include <databento/record.hpp>
@@ -10,6 +11,7 @@
 #include <exception>
 
 namespace db = databento;
+using databento_native::SafeStrCopy;
 
 // ============================================================================
 // Internal Wrapper Class
@@ -49,20 +51,41 @@ struct LiveClientWrapper {
 
     // Called by databento-cpp when a record is received
     db::KeepGoing OnRecord(const db::Record& record) {
-        if (record_callback) {
-            // Get the actual RecordHeader pointer (not the Record wrapper)
-            const auto& header = record.Header();
-            const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&header);
+        try {
+            if (record_callback) {
+                // Get the actual RecordHeader pointer (not the Record wrapper)
+                const auto& header = record.Header();
+                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&header);
 
-            // Get record size based on its type
-            size_t length = record.Size();
+                // Get record size based on its type
+                size_t length = record.Size();
 
-            // Get record type
-            uint8_t type = static_cast<uint8_t>(record.RType());
+                // Get record type
+                uint8_t type = static_cast<uint8_t>(record.RType());
 
-            // Invoke callback
-            record_callback(bytes, length, type, user_data);
+                // Invoke callback - protected from exceptions
+                record_callback(bytes, length, type, user_data);
+            }
         }
+        catch (const std::exception& ex) {
+            // Report error through error callback if available
+            if (error_callback) {
+                error_callback(ex.what(), -999, user_data);
+            }
+            // Stop processing on exception
+            is_running = false;
+            return db::KeepGoing::Stop;
+        }
+        catch (...) {
+            // Catch all exceptions including C# ones
+            if (error_callback) {
+                error_callback("Unknown exception in record callback", -998, user_data);
+            }
+            // Stop processing on exception
+            is_running = false;
+            return db::KeepGoing::Stop;
+        }
+
         return is_running ? db::KeepGoing::Continue : db::KeepGoing::Stop;
     }
 
@@ -73,16 +96,6 @@ struct LiveClientWrapper {
         }
     }
 };
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-static void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
-    if (dest && dest_size > 0) {
-        strncpy(dest, src, dest_size - 1);
-        dest[dest_size - 1] = '\0';
-    }
-}
 
 // ============================================================================
 // C API Implementation
@@ -397,10 +410,24 @@ DATABENTO_API int dbento_live_start_ex(
         if (on_metadata) {
             wrapper->client->Start(
                 [wrapper](const db::Metadata& metadata) {
-                    if (wrapper->metadata_callback) {
-                        // Serialize metadata to JSON string for C# consumption
-                        // For now, pass empty string (metadata serialization TBD)
-                        wrapper->metadata_callback("", 0, wrapper->user_data);
+                    try {
+                        if (wrapper->metadata_callback) {
+                            // Serialize metadata to JSON string for C# consumption
+                            // For now, pass empty string (metadata serialization TBD)
+                            wrapper->metadata_callback("", 0, wrapper->user_data);
+                        }
+                    }
+                    catch (const std::exception& ex) {
+                        // Report error through error callback
+                        if (wrapper->error_callback) {
+                            wrapper->error_callback(ex.what(), -997, wrapper->user_data);
+                        }
+                    }
+                    catch (...) {
+                        // Catch all exceptions
+                        if (wrapper->error_callback) {
+                            wrapper->error_callback("Unknown exception in metadata callback", -996, wrapper->user_data);
+                        }
                     }
                 },
                 [wrapper](const db::Record& record) {

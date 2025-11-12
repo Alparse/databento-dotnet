@@ -27,7 +27,7 @@ public sealed class LiveClient : ILiveClient
     private readonly List<(string dataset, Schema schema, string[] symbols, bool withSnapshot)> _subscriptions;
     private Task? _streamTask;
     private bool _disposed;
-    private ConnectionState _connectionState;
+    private volatile ConnectionState _connectionState;
 
     /// <summary>
     /// Event fired when data is received
@@ -352,13 +352,23 @@ public sealed class LiveClient : ILiveClient
         // Stop streaming
         await StopAsync();
 
-        // Cancel and wait for stream task
+        // Cancel and wait for stream task with timeout
         _cts.Cancel();
         if (_streamTask != null)
         {
             try
             {
-                await _streamTask;
+                // Wait with 5-second timeout to prevent deadlocks
+                await _streamTask.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            catch (TimeoutException)
+            {
+                // Log warning - task didn't complete within timeout
+                // In production, consider tracking this metric
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine(
+                    "Warning: LiveClient stream task did not complete within timeout during disposal");
+#endif
             }
             catch (OperationCanceledException)
             {

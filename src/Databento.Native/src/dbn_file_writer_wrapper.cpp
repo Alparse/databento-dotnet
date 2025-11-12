@@ -1,4 +1,5 @@
 #include "databento_native.h"
+#include "common_helpers.hpp"
 #include <databento/dbn_encoder.hpp>
 #include <databento/file_stream.hpp>
 #include <databento/dbn.hpp>
@@ -15,6 +16,7 @@
 
 namespace db = databento;
 using json = nlohmann::json;
+using databento_native::SafeStrCopy;
 
 // ============================================================================
 // DBN File Writer Wrapper Structure
@@ -37,13 +39,6 @@ struct DbnFileWriterWrapper {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-static void SafeStrCopy(char* dest, size_t dest_size, const char* src) {
-    if (dest && dest_size > 0 && src) {
-        strncpy(dest, src, dest_size - 1);
-        dest[dest_size - 1] = '\0';
-    }
-}
 
 // Parse JSON metadata and construct db::Metadata
 static db::Metadata ParseMetadataFromJson(const std::string& json_str) {
@@ -165,9 +160,10 @@ DATABENTO_API int dbento_dbn_file_write_record(
             return -1;
         }
 
-        // Create Record from raw bytes
-        const db::RecordHeader* header = reinterpret_cast<const db::RecordHeader*>(record_bytes);
-        const db::Record record{const_cast<db::RecordHeader*>(header)};
+        // Create Record from raw bytes (Record constructor requires mutable pointer)
+        // Copy data to mutable buffer to avoid const_cast undefined behavior
+        std::vector<uint8_t> mutable_copy(record_bytes, record_bytes + record_length);
+        const db::Record record{reinterpret_cast<db::RecordHeader*>(mutable_copy.data())};
 
         // Encode the record
         wrapper->encoder->EncodeRecord(record);
