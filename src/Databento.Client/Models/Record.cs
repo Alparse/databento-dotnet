@@ -127,8 +127,10 @@ public abstract class Record
     private static TradeMessage DeserializeTradeMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 48)
-            throw new ArgumentException("Invalid TradeMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 48;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid TradeMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // TradeMsg layout (48 bytes):
         // offset 16-23: price (int64)
@@ -168,8 +170,10 @@ public abstract class Record
     private static MboMessage DeserializeMboMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 56)
-            throw new ArgumentException("Invalid MboMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 56;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid MboMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // MboMsg layout (56 bytes):
         // offset 16-23: order_id (uint64)
@@ -216,8 +220,10 @@ public abstract class Record
     private static Mbp1Message DeserializeMbp1Msg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid Mbp1Msg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid Mbp1Msg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // Mbp1Msg layout (80 bytes):
         // offset 16-23: price (int64)
@@ -266,8 +272,10 @@ public abstract class Record
     private static Mbp10Message DeserializeMbp10Msg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 368)
-            throw new ArgumentException("Invalid Mbp10Msg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 368;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid Mbp10Msg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // Mbp10Msg layout (368 bytes): same as Mbp1 but with 10 levels (320 bytes)
 
@@ -331,8 +339,10 @@ public abstract class Record
     private static OhlcvMessage DeserializeOhlcvMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 56)
-            throw new ArgumentException("Invalid OhlcvMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 56;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid OhlcvMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // OhlcvMsg layout (56 bytes):
         // offset 16-23: open (int64)
@@ -364,8 +374,10 @@ public abstract class Record
     private static StatusMessage DeserializeStatusMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 40)
-            throw new ArgumentException("Invalid StatusMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 40;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid StatusMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // StatusMsg layout (40 bytes):
         // offset 16-23: ts_recv (uint64)
@@ -403,8 +415,10 @@ public abstract class Record
     private static InstrumentDefMessage DeserializeInstrumentDefMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 520)
-            throw new ArgumentException("Invalid InstrumentDefMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 520;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid InstrumentDefMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // InstrumentDefMsg layout (520 bytes) - very large, many fields
         // This is a simplified deserialization of the most important fields
@@ -471,8 +485,10 @@ public abstract class Record
     private static ImbalanceMessage DeserializeImbalanceMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 112)
-            throw new ArgumentException("Invalid ImbalanceMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 112;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid ImbalanceMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         long refPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
@@ -499,8 +515,10 @@ public abstract class Record
     private static ErrorMessage DeserializeErrorMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 320)
-            throw new ArgumentException("Invalid ErrorMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 320;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid ErrorMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         string error = ReadCString(bytes.Slice(16, 302));
         byte code = bytes[318];
@@ -521,8 +539,10 @@ public abstract class Record
     private static SymbolMappingMessage DeserializeSymbolMappingMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 176)
-            throw new ArgumentException("Invalid SymbolMappingMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 176;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid SymbolMappingMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         SType stypeIn = (SType)bytes[16];
         string stypeInSymbol = ReadCString(bytes.Slice(17, 71));
@@ -549,8 +569,10 @@ public abstract class Record
     private static SystemMessage DeserializeSystemMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 320)
-            throw new ArgumentException("Invalid SystemMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 320;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid SystemMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         string message = ReadCString(bytes.Slice(16, 303));
         byte code = bytes[319];
@@ -569,8 +591,10 @@ public abstract class Record
     private static StatMessage DeserializeStatMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid StatMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid StatMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         long tsRef = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
@@ -605,8 +629,10 @@ public abstract class Record
     private static BboMessage DeserializeBboMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid BboMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid BboMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
@@ -635,8 +661,10 @@ public abstract class Record
     private static CbboMessage DeserializeCbboMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid CbboMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid CbboMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
@@ -665,8 +693,10 @@ public abstract class Record
     private static Cmbp1Message DeserializeCmbp1Msg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid Cmbp1Msg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid Cmbp1Msg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
         uint size = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(24, 4));
@@ -697,8 +727,10 @@ public abstract class Record
     private static TcbboMessage DeserializeTcbboMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        if (bytes.Length < 80)
-            throw new ArgumentException("Invalid TcbboMsg data - too small", nameof(bytes));
+        // MEDIUM FIX: Exact size check instead of minimum
+        const int ExpectedSize = 80;
+        if (bytes.Length != ExpectedSize)
+            throw new ArgumentException($"Invalid TcbboMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
 
         // TcbboMsg has the same structure as Cmbp1Msg but represents trade with consolidated BBO
         long price = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));

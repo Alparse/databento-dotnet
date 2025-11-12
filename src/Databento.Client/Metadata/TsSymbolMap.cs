@@ -5,8 +5,14 @@ using Databento.Interop.Native;
 namespace Databento.Client.Metadata;
 
 /// <summary>
-/// Timeseries symbol map implementation for resolving instrument IDs to symbols across time
+/// Timeseries symbol map implementation for resolving instrument IDs to symbols across time.
+/// IMPORTANT: This class holds native resources and must be disposed when no longer needed.
+/// Use 'using' statements or call Dispose() explicitly to prevent resource leaks.
 /// </summary>
+/// <remarks>
+/// Timeseries symbol maps maintain mappings that can change over time (e.g., futures contracts with different symbols on different dates).
+/// These mappings are backed by native memory that must be freed via disposal.
+/// </remarks>
 public sealed class TsSymbolMap : ITsSymbolMap
 {
     private readonly TsSymbolMapHandle _handle;

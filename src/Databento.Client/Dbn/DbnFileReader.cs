@@ -32,7 +32,8 @@ public sealed class DbnFileReader : IDbnFileReader
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"DBN file not found: {filePath}", filePath);
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var handlePtr = NativeMethods.dbento_dbn_file_open(
             filePath,
             errorBuffer,
@@ -60,7 +61,8 @@ public sealed class DbnFileReader : IDbnFileReader
         if (_cachedMetadata != null)
             return _cachedMetadata;
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var jsonPtr = NativeMethods.dbento_dbn_file_get_metadata(
             _handle,
             errorBuffer,
@@ -98,9 +100,13 @@ public sealed class DbnFileReader : IDbnFileReader
 
         // Use a reasonably large buffer for records
         byte[] recordBuffer = new byte[8192];
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
 
         await Task.Yield(); // Make it properly async
+
+        // MEDIUM FIX: Track record number for better error messages
+        ulong recordNumber = 0;
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -123,8 +129,9 @@ public sealed class DbnFileReader : IDbnFileReader
             {
                 // Error occurred
                 // HIGH FIX: Use safe error string extraction
-            var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-                throw new DbentoException($"Error reading DBN file record: {error}");
+                // MEDIUM FIX: Include record number in error message
+                var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
+                throw new DbentoException($"Error reading DBN file record #{recordNumber}: {error}");
             }
 
             // Success - parse the record
@@ -133,7 +140,19 @@ public sealed class DbnFileReader : IDbnFileReader
                 byte[] recordBytes = new byte[recordLength];
                 Array.Copy(recordBuffer, recordBytes, (int)recordLength);
 
-                var record = Record.FromBytes(recordBytes, recordType);
+                // MEDIUM FIX: Wrap deserialization to provide better error context
+                Record record;
+                try
+                {
+                    record = Record.FromBytes(recordBytes, recordType);
+                }
+                catch (Exception ex)
+                {
+                    // Include record number in error for better debugging
+                    throw new DbentoException($"Error deserializing DBN file record #{recordNumber}: {ex.Message}", ex);
+                }
+
+                recordNumber++;
                 yield return record;
             }
 

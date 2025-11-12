@@ -36,7 +36,8 @@ public sealed class DbnFileWriter : IDbnFileWriter
         // Serialize metadata to JSON
         string metadataJson = JsonSerializer.Serialize(metadata);
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var handlePtr = NativeMethods.dbento_dbn_file_create(
             filePath,
             metadataJson,
@@ -66,7 +67,8 @@ public sealed class DbnFileWriter : IDbnFileWriter
             throw new InvalidOperationException("Record does not have raw bytes available for writing. " +
                 "Only records read from DBN files can be written.");
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         int result = NativeMethods.dbento_dbn_file_write_record(
             _handle,
             record.RawBytes,

@@ -5,8 +5,14 @@ using Databento.Interop.Native;
 namespace Databento.Client.Metadata;
 
 /// <summary>
-/// Metadata implementation for querying instrument information
+/// Metadata implementation for querying instrument information.
+/// IMPORTANT: This class holds native resources and must be disposed when no longer needed.
+/// Use 'using' statements or call Dispose() explicitly to prevent resource leaks.
 /// </summary>
+/// <remarks>
+/// Metadata objects maintain mappings between instrument IDs and symbols.
+/// These mappings are backed by native memory that must be freed via disposal.
+/// </remarks>
 public sealed class Metadata : IMetadata
 {
     private readonly MetadataHandle _handle;
@@ -58,7 +64,8 @@ public sealed class Metadata : IMetadata
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var handlePtr = NativeMethods.dbento_metadata_create_symbol_map(
             _handle,
             errorBuffer,
@@ -82,7 +89,8 @@ public sealed class Metadata : IMetadata
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var handlePtr = NativeMethods.dbento_metadata_create_symbol_map_for_date(
             _handle,
             date.Year,

@@ -99,7 +99,8 @@ public sealed class LiveClient : ILiveClient
         }
 
         // Create native client with full configuration (Phase 15)
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var handlePtr = NativeMethods.dbento_live_create_ex(
             apiKey,
             defaultDataset,
@@ -130,10 +131,15 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
 
         var result = NativeMethods.dbento_live_subscribe(
             _handle,
@@ -168,10 +174,15 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
 
         // Use native subscribe with snapshot support
         var result = NativeMethods.dbento_live_subscribe_with_snapshot(
@@ -212,7 +223,8 @@ public sealed class LiveClient : ILiveClient
         // Start receiving on a background thread
         _streamTask = Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
 
             var result = NativeMethods.dbento_live_start(
                 _handle,
@@ -281,7 +293,8 @@ public sealed class LiveClient : ILiveClient
         }
 
         // Use native reconnect (doesn't dispose handle!)
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var result = NativeMethods.dbento_live_reconnect(_handle, errorBuffer, (nuint)errorBuffer.Length);
 
         if (result != 0)
@@ -305,7 +318,8 @@ public sealed class LiveClient : ILiveClient
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         // Use native resubscribe (handles all tracked subscriptions internally)
-        byte[] errorBuffer = new byte[512];
+        // MEDIUM FIX: Increased from 512 to 2048 for full error context
+        byte[] errorBuffer = new byte[2048];
         var result = NativeMethods.dbento_live_resubscribe(_handle, errorBuffer, (nuint)errorBuffer.Length);
 
         if (result != 0)

@@ -83,6 +83,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var channel = Channel.CreateUnbounded<Record>();
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
@@ -155,7 +159,8 @@ public sealed class HistoricalClient : IHistoricalClient
         {
             try
             {
-                byte[] errorBuffer = new byte[512];
+                // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
 
                 var result = NativeMethods.dbento_historical_get_range(
                     _handle,
@@ -211,6 +216,10 @@ public sealed class HistoricalClient : IHistoricalClient
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -221,7 +230,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
 
             var result = NativeMethods.dbento_historical_get_range_to_file(
                 _handle,
@@ -257,6 +267,9 @@ public sealed class HistoricalClient : IHistoricalClient
         DateTimeOffset endTime)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
 
         // Convert times to nanoseconds since epoch (HIGH FIX: using checked arithmetic)
         long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
@@ -296,7 +309,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_list_publishers(
                 _handle, errorBuffer, (nuint)errorBuffer.Length);
 
@@ -338,7 +352,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_list_datasets(
                 _handle, venue, errorBuffer, (nuint)errorBuffer.Length);
 
@@ -378,9 +393,13 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_list_schemas(
                 _handle, dataset, errorBuffer, (nuint)errorBuffer.Length);
 
@@ -423,7 +442,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_list_fields(
                 _handle,
                 encoding.ToEncodingString(),
@@ -467,9 +487,13 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_get_dataset_condition(
                 _handle, dataset, errorBuffer, (nuint)errorBuffer.Length);
 
@@ -502,9 +526,13 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_get_dataset_range(
                 _handle, dataset, errorBuffer, (nuint)errorBuffer.Length);
 
@@ -541,6 +569,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -550,7 +582,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var count = NativeMethods.dbento_metadata_get_record_count(
                 _handle,
                 dataset,
@@ -587,6 +620,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -596,7 +633,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var size = NativeMethods.dbento_metadata_get_billable_size(
                 _handle,
                 dataset,
@@ -633,6 +671,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -642,7 +684,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var costPtr = NativeMethods.dbento_metadata_get_cost(
                 _handle,
                 dataset,
@@ -686,6 +729,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -695,7 +742,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_metadata_get_billing_info(
                 _handle,
                 dataset,
@@ -816,6 +864,10 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // MEDIUM FIX: Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
@@ -825,7 +877,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_batch_submit_job(
                 _handle,
                 dataset,
@@ -881,6 +934,10 @@ public sealed class HistoricalClient : IHistoricalClient
         ulong limit,
         CancellationToken cancellationToken = default)
     {
+        // MEDIUM FIX: Validate input parameters for fail-fast behavior
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
         // For now, delegate to basic version with defaults
         // Advanced version would require additional native wrapper implementation
         return await BatchSubmitJobAsync(dataset, symbols, schema, startTime, endTime, cancellationToken);
@@ -896,7 +953,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_batch_list_jobs(
                 _handle,
                 errorBuffer,
@@ -959,7 +1017,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_batch_list_files(
                 _handle,
                 jobId,
@@ -1005,7 +1064,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var jsonPtr = NativeMethods.dbento_batch_download_all(
                 _handle,
                 outputDir,
@@ -1053,7 +1113,8 @@ public sealed class HistoricalClient : IHistoricalClient
 
         return await Task.Run(() =>
         {
-            byte[] errorBuffer = new byte[512];
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[2048];
             var pathPtr = NativeMethods.dbento_batch_download_file(
                 _handle,
                 outputDir,

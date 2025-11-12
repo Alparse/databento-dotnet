@@ -7,8 +7,14 @@ using Databento.Interop.Native;
 namespace Databento.Client.Metadata;
 
 /// <summary>
-/// Point-in-time symbol map implementation for resolving instrument IDs to symbols
+/// Point-in-time symbol map implementation for resolving instrument IDs to symbols.
+/// IMPORTANT: This class holds native resources and must be disposed when no longer needed.
+/// Use 'using' statements or call Dispose() explicitly to prevent resource leaks.
 /// </summary>
+/// <remarks>
+/// Point-in-time symbol maps maintain mappings for a specific point in time (e.g., for a single trading day).
+/// These mappings are backed by native memory that must be freed via disposal.
+/// </remarks>
 public sealed class PitSymbolMap : IPitSymbolMap
 {
     private readonly PitSymbolMapHandle _handle;
