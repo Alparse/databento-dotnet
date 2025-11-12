@@ -140,7 +140,9 @@ public sealed class HistoricalClient : IHistoricalClient
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error processing record: {ex.Message}");
+                    // MEDIUM FIX: Don't swallow exceptions - propagate to caller via channel completion
+                    channel.Writer.Complete(ex);
+                    throw;
                 }
             };
         }
@@ -307,8 +309,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var publishers = JsonSerializer.Deserialize<List<PublisherDetail>>(json) ?? new List<PublisherDetail>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get publishers: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var publishers = JsonSerializer.Deserialize<List<PublisherDetail>>(json);
+                if (publishers == null)
+                    throw new DbentoException("Failed to deserialize publishers response");
+
                 return (IReadOnlyList<PublisherDetail>)publishers;
             }
             finally
@@ -342,8 +351,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var datasets = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get datasets: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var datasets = JsonSerializer.Deserialize<List<string>>(json);
+                if (datasets == null)
+                    throw new DbentoException("Failed to deserialize datasets response");
+
                 return (IReadOnlyList<string>)datasets;
             }
             finally
@@ -377,8 +393,14 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var schemaStrings = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get schemas: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var schemaStrings = JsonSerializer.Deserialize<List<string>>(json);
+                if (schemaStrings == null)
+                    throw new DbentoException("Failed to deserialize schemas response");
                 var schemas = schemaStrings.Select(s => SchemaExtensions.ParseSchema(s)).ToList();
                 return (IReadOnlyList<Schema>)schemas;
             }
@@ -418,8 +440,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var fields = JsonSerializer.Deserialize<List<FieldDetail>>(json) ?? new List<FieldDetail>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get fields: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var fields = JsonSerializer.Deserialize<List<FieldDetail>>(json);
+                if (fields == null)
+                    throw new DbentoException("Failed to deserialize fields response");
+
                 return (IReadOnlyList<FieldDetail>)fields;
             }
             finally
@@ -882,8 +911,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var jobs = JsonSerializer.Deserialize<List<BatchJob>>(json) ?? new List<BatchJob>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get batch jobs: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var jobs = JsonSerializer.Deserialize<List<BatchJob>>(json);
+                if (jobs == null)
+                    throw new DbentoException("Failed to deserialize batch jobs response");
+
                 return (IReadOnlyList<BatchJob>)jobs;
             }
             finally
@@ -939,8 +975,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var files = JsonSerializer.Deserialize<List<BatchFileDesc>>(json) ?? new List<BatchFileDesc>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get batch files: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var files = JsonSerializer.Deserialize<List<BatchFileDesc>>(json);
+                if (files == null)
+                    throw new DbentoException("Failed to deserialize batch files response");
+
                 return (IReadOnlyList<BatchFileDesc>)files;
             }
             finally
@@ -979,8 +1022,15 @@ public sealed class HistoricalClient : IHistoricalClient
 
             try
             {
-                var json = Marshal.PtrToStringUTF8(jsonPtr) ?? "[]";
-                var paths = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                var json = Marshal.PtrToStringUTF8(jsonPtr);
+                if (string.IsNullOrEmpty(json))
+                    throw new DbentoException("Failed to get download paths: empty response from native layer");
+
+                // MEDIUM FIX: Throw on deserialization failure instead of returning empty collection
+                var paths = JsonSerializer.Deserialize<List<string>>(json);
+                if (paths == null)
+                    throw new DbentoException("Failed to deserialize download paths response");
+
                 return (IReadOnlyList<string>)paths;
             }
             finally

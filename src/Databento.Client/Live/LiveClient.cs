@@ -29,7 +29,8 @@ public sealed class LiveClient : ILiveClient
     private Task? _streamTask;
     // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
     private int _disposeState = 0;
-    private volatile ConnectionState _connectionState;
+    // MEDIUM FIX: Use atomic operations instead of volatile for consistency
+    private int _connectionState = (int)ConnectionState.Disconnected;
 
     /// <summary>
     /// Event fired when data is received
@@ -52,15 +53,8 @@ public sealed class LiveClient : ILiveClient
             if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0)
                 return ConnectionState.Disconnected;
 
-            var state = NativeMethods.dbento_live_get_connection_state(_handle);
-            return state switch
-            {
-                0 => ConnectionState.Disconnected,
-                1 => ConnectionState.Connecting,
-                2 => ConnectionState.Connected,
-                3 => ConnectionState.Streaming,
-                _ => ConnectionState.Disconnected
-            };
+            // MEDIUM FIX: Read connection state atomically
+            return (ConnectionState)Interlocked.CompareExchange(ref _connectionState, 0, 0);
         }
     }
 
@@ -85,7 +79,8 @@ public sealed class LiveClient : ILiveClient
         _upgradePolicy = upgradePolicy;
         _heartbeatInterval = heartbeatInterval;
         _subscriptions = new System.Collections.Concurrent.ConcurrentBag<(string, Schema, string[], bool)>();
-        _connectionState = ConnectionState.Disconnected;
+        // MEDIUM FIX: Use Interlocked for consistency
+        Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
 
         // Create channel for streaming records
         _recordChannel = Channel.CreateUnbounded<Record>(new UnboundedChannelOptions
@@ -211,7 +206,8 @@ public sealed class LiveClient : ILiveClient
         if (_streamTask != null)
             throw new InvalidOperationException("Client is already started");
 
-        _connectionState = ConnectionState.Connecting;
+        // MEDIUM FIX: Use Interlocked for consistency
+        Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Connecting);
 
         // Start receiving on a background thread
         _streamTask = Task.Run(() =>
@@ -230,11 +226,13 @@ public sealed class LiveClient : ILiveClient
             {
                 // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-                _connectionState = ConnectionState.Disconnected;
+                // MEDIUM FIX: Use Interlocked for consistency
+                Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
                 throw new DbentoException($"Start failed: {error}", result);
             }
 
-            _connectionState = ConnectionState.Streaming;
+            // MEDIUM FIX: Use Interlocked for consistency
+            Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Streaming);
         }, cancellationToken);
 
         return Task.CompletedTask;
@@ -249,7 +247,8 @@ public sealed class LiveClient : ILiveClient
         if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
         {
             NativeMethods.dbento_live_stop(_handle);
-            _connectionState = ConnectionState.Stopped;
+            // MEDIUM FIX: Use Interlocked for consistency
+            Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Stopped);
             _recordChannel.Writer.Complete();
         }
 
@@ -263,7 +262,8 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        _connectionState = ConnectionState.Reconnecting;
+        // MEDIUM FIX: Use Interlocked for consistency
+        Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Reconnecting);
 
         // Stop current stream task if running
         if (_streamTask != null)
@@ -288,11 +288,13 @@ public sealed class LiveClient : ILiveClient
         {
             // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            _connectionState = ConnectionState.Disconnected;
+            // MEDIUM FIX: Use Interlocked for consistency
+            Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
             throw new DbentoException($"Reconnect failed: {error}", result);
         }
 
-        _connectionState = ConnectionState.Connected;
+        // MEDIUM FIX: Use Interlocked for consistency
+        Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Connected);
     }
 
     /// <summary>
