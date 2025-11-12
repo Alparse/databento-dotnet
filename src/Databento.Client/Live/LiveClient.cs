@@ -26,7 +26,8 @@ public sealed class LiveClient : ILiveClient
     private readonly string _apiKey;
     private readonly List<(string dataset, Schema schema, string[] symbols, bool withSnapshot)> _subscriptions;
     private Task? _streamTask;
-    private bool _disposed;
+    // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
+    private int _disposeState = 0;
     private volatile ConnectionState _connectionState;
 
     /// <summary>
@@ -46,7 +47,8 @@ public sealed class LiveClient : ILiveClient
     {
         get
         {
-            if (_disposed)
+            // CRITICAL FIX: Use atomic read
+            if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0)
                 return ConnectionState.Disconnected;
 
             var state = NativeMethods.dbento_live_get_connection_state(_handle);
@@ -129,7 +131,7 @@ public sealed class LiveClient : ILiveClient
         IEnumerable<string> symbols,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         var symbolArray = symbols.ToArray();
         byte[] errorBuffer = new byte[512];
@@ -164,7 +166,7 @@ public sealed class LiveClient : ILiveClient
         IEnumerable<string> symbols,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         var symbolArray = symbols.ToArray();
         byte[] errorBuffer = new byte[512];
@@ -196,7 +198,7 @@ public sealed class LiveClient : ILiveClient
     /// </summary>
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         if (_streamTask != null)
             throw new InvalidOperationException("Client is already started");
@@ -234,7 +236,8 @@ public sealed class LiveClient : ILiveClient
     /// </summary>
     public Task StopAsync(CancellationToken cancellationToken = default)
     {
-        if (!_disposed)
+        // CRITICAL FIX: Use atomic read for disposal state
+        if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
         {
             NativeMethods.dbento_live_stop(_handle);
             _connectionState = ConnectionState.Stopped;
@@ -249,7 +252,7 @@ public sealed class LiveClient : ILiveClient
     /// </summary>
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         _connectionState = ConnectionState.Reconnecting;
 
@@ -287,7 +290,7 @@ public sealed class LiveClient : ILiveClient
     /// </summary>
     public async Task ResubscribeAsync(CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         // Use native resubscribe (handles all tracked subscriptions internally)
         byte[] errorBuffer = new byte[512];
@@ -316,8 +319,47 @@ public sealed class LiveClient : ILiveClient
 
     private unsafe void OnRecordReceived(byte* recordBytes, nuint recordLength, byte recordType, IntPtr userData)
     {
+        // CRITICAL FIX: Check disposal state atomically before processing
+        if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0)
+        {
+            // Disposing or disposed - ignore callback
+            return;
+        }
+
         try
         {
+            // CRITICAL FIX: Validate pointer before dereferencing
+            if (recordBytes == null)
+            {
+                var ex = new DbentoException("Received null pointer from native code");
+                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                return;
+            }
+
+            // CRITICAL FIX: Validate length to prevent integer overflow
+            if (recordLength == 0)
+            {
+                var ex = new DbentoException("Received zero-length record");
+                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                return;
+            }
+
+            if (recordLength > int.MaxValue)
+            {
+                var ex = new DbentoException($"Record too large: {recordLength} bytes exceeds maximum {int.MaxValue}");
+                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                return;
+            }
+
+            // Sanity check: reasonable maximum record size (10MB)
+            const int MaxReasonableRecordSize = 10 * 1024 * 1024;
+            if (recordLength > MaxReasonableRecordSize)
+            {
+                var ex = new DbentoException($"Record suspiciously large: {recordLength} bytes");
+                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                return;
+            }
+
             // Copy bytes to managed memory
             var bytes = new byte[recordLength];
             Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
@@ -325,11 +367,15 @@ public sealed class LiveClient : ILiveClient
             // Deserialize record using the recordType parameter
             var record = Record.FromBytes(bytes, recordType);
 
-            // Write to channel
-            _recordChannel.Writer.TryWrite(record);
+            // CRITICAL FIX: Double-check disposal state before channel operations
+            if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
+            {
+                // Write to channel
+                _recordChannel.Writer.TryWrite(record);
 
-            // Fire event
-            DataReceived?.Invoke(this, new DataReceivedEventArgs(record));
+                // Fire event
+                DataReceived?.Invoke(this, new DataReceivedEventArgs(record));
+            }
         }
         catch (Exception ex)
         {
@@ -345,9 +391,10 @@ public sealed class LiveClient : ILiveClient
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-
-        _disposed = true;
+        // CRITICAL FIX: Atomic state transition (0=active -> 1=disposing -> 2=disposed)
+        // If already disposing or disposed, return immediately
+        if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
+            return;
 
         // Stop streaming
         await StopAsync();
@@ -382,5 +429,8 @@ public sealed class LiveClient : ILiveClient
         // Dispose handle
         _handle?.Dispose();
         _cts?.Dispose();
+
+        // CRITICAL FIX: Mark as fully disposed
+        Interlocked.Exchange(ref _disposeState, 2);
     }
 }

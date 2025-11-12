@@ -27,6 +27,9 @@ public sealed class HistoricalClient : IHistoricalClient
     private readonly TimeSpan _timeout;
     private bool _disposed;
 
+    // CRITICAL FIX: Store active callbacks to prevent GC collection
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, RecordCallbackDelegate> _activeCallbacks = new();
+
     internal HistoricalClient(string apiKey)
         : this(apiKey, HistoricalGateway.Bo1, null, null, VersionUpgradePolicy.Upgrade, null, TimeSpan.FromSeconds(30))
     {
@@ -86,29 +89,61 @@ public sealed class HistoricalClient : IHistoricalClient
         long startTimeNs = startTime.ToUnixTimeMilliseconds() * 1_000_000;
         long endTimeNs = endTime.ToUnixTimeMilliseconds() * 1_000_000;
 
-        // Create callback delegates
+        // CRITICAL FIX: Create callback and store it to prevent GC
+        var callbackId = Guid.NewGuid();
         RecordCallbackDelegate recordCallback;
         unsafe
         {
             recordCallback = (recordBytes, recordLength, recordType, userData) =>
             {
-            try
-            {
-                var bytes = new byte[recordLength];
-                unsafe
+                try
                 {
-                    Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
-                }
+                    // CRITICAL FIX: Validate pointer before dereferencing
+                    if (recordBytes == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Error: Received null pointer from native code");
+                        return;
+                    }
 
-                var record = Record.FromBytes(bytes, recordType);
-                channel.Writer.TryWrite(record);
-            }
-            catch (Exception)
-            {
-                // Log or handle error
-            }
+                    // CRITICAL FIX: Validate length to prevent integer overflow
+                    if (recordLength == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Error: Received zero-length record");
+                        return;
+                    }
+
+                    if (recordLength > int.MaxValue)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error: Record too large: {recordLength} bytes exceeds maximum {int.MaxValue}");
+                        return;
+                    }
+
+                    // Sanity check: reasonable maximum record size (10MB)
+                    const int MaxReasonableRecordSize = 10 * 1024 * 1024;
+                    if (recordLength > MaxReasonableRecordSize)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error: Record suspiciously large: {recordLength} bytes");
+                        return;
+                    }
+
+                    var bytes = new byte[recordLength];
+                    unsafe
+                    {
+                        Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
+                    }
+
+                    var record = Record.FromBytes(bytes, recordType);
+                    channel.Writer.TryWrite(record);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error processing record: {ex.Message}");
+                }
             };
         }
+
+        // Store callback to prevent GC collection while native code holds reference
+        _activeCallbacks[callbackId] = recordCallback;
 
         // Start query on background thread
         var queryTask = Task.Run(() =>
@@ -139,6 +174,8 @@ public sealed class HistoricalClient : IHistoricalClient
             finally
             {
                 channel.Writer.Complete();
+                // Remove callback from active set after native operation completes
+                _activeCallbacks.TryRemove(callbackId, out _);
             }
         }, cancellationToken);
 
