@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/dbn_encoder.hpp>
 #include <databento/file_stream.hpp>
 #include <databento/dbn.hpp>
@@ -133,7 +134,8 @@ DATABENTO_API DbnFileWriterHandle dbento_dbn_file_create(
 
         // Create wrapper
         auto* wrapper = new DbnFileWriterWrapper(path, std::move(file_stream), std::move(encoder));
-        return reinterpret_cast<DbnFileWriterHandle>(wrapper);
+        return reinterpret_cast<DbnFileWriterHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::DbnFileWriter, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -149,9 +151,12 @@ DATABENTO_API int dbento_dbn_file_write_record(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<DbnFileWriterWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<DbnFileWriterWrapper>(
+            handle, databento_native::HandleType::DbnFileWriter, &validation_error);
         if (!wrapper || !wrapper->encoder) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid file writer handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Encoder not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -180,9 +185,16 @@ DATABENTO_API int dbento_dbn_file_write_record(
 
 DATABENTO_API void dbento_dbn_file_close_writer(DbnFileWriterHandle handle)
 {
-    if (handle) {
-        auto* wrapper = reinterpret_cast<DbnFileWriterWrapper*>(handle);
-        delete wrapper;
-        // Destructor will automatically flush and close the file stream
+    try {
+        auto* wrapper = databento_native::ValidateAndCast<DbnFileWriterWrapper>(
+            handle, databento_native::HandleType::DbnFileWriter, nullptr);
+        if (wrapper) {
+            // Destructor will automatically flush and close the file stream
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
+    }
+    catch (...) {
+        // Swallow exceptions in cleanup
     }
 }

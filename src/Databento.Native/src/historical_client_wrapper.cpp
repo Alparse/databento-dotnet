@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/historical.hpp>
 #include <databento/record.hpp>
 #include <databento/enums.hpp>
@@ -58,7 +59,8 @@ DATABENTO_API DbentoHistoricalClientHandle dbento_historical_create(
         }
 
         auto* wrapper = new HistoricalClientWrapper(api_key);
-        return reinterpret_cast<DbentoHistoricalClientHandle>(wrapper);
+        return reinterpret_cast<DbentoHistoricalClientHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::HistoricalClient, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -80,9 +82,12 @@ DATABENTO_API int dbento_historical_get_range(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -161,9 +166,12 @@ DATABENTO_API int dbento_historical_get_range_to_file(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -235,9 +243,12 @@ DATABENTO_API DbentoMetadataHandle dbento_historical_get_metadata(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -276,8 +287,12 @@ DATABENTO_API DbentoMetadataHandle dbento_historical_get_metadata(
 DATABENTO_API void dbento_historical_destroy(DbentoHistoricalClientHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup
@@ -295,7 +310,8 @@ DATABENTO_API int dbento_metadata_get_symbol_mapping(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<MetadataWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<MetadataWrapper>(
+            handle, databento_native::HandleType::Metadata, nullptr);
         if (!wrapper) {
             return -1;
         }
@@ -315,8 +331,12 @@ DATABENTO_API int dbento_metadata_get_symbol_mapping(
 DATABENTO_API void dbento_metadata_destroy(DbentoMetadataHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<MetadataWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<MetadataWrapper>(
+            handle, databento_native::HandleType::Metadata, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup
@@ -347,9 +367,12 @@ DATABENTO_API DbentoSymbologyResolutionHandle dbento_historical_symbology_resolv
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -402,7 +425,8 @@ DATABENTO_API DbentoSymbologyResolutionHandle dbento_historical_symbology_resolv
         );
 
         auto* res_wrapper = new SymbologyResolutionWrapper(std::move(resolution));
-        return reinterpret_cast<DbentoSymbologyResolutionHandle>(res_wrapper);
+        return reinterpret_cast<DbentoSymbologyResolutionHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::SymbologyResolution, res_wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -414,7 +438,8 @@ DATABENTO_API size_t dbento_symbology_resolution_mappings_count(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         return wrapper ? wrapper->resolution.mappings.size() : 0;
     }
     catch (...) {
@@ -429,7 +454,8 @@ DATABENTO_API int dbento_symbology_resolution_get_mapping_key(
     size_t key_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper || !key_buffer || key_buffer_size == 0) {
             return -1;
         }
@@ -455,7 +481,8 @@ DATABENTO_API size_t dbento_symbology_resolution_get_intervals_count(
     const char* symbol_key)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper || !symbol_key) {
             return 0;
         }
@@ -484,7 +511,8 @@ DATABENTO_API int dbento_symbology_resolution_get_interval(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper || !symbol_key) {
             return -1;
         }
@@ -520,7 +548,8 @@ DATABENTO_API size_t dbento_symbology_resolution_partial_count(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         return wrapper ? wrapper->resolution.partial.size() : 0;
     }
     catch (...) {
@@ -535,7 +564,8 @@ DATABENTO_API int dbento_symbology_resolution_get_partial(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper || !symbol_buffer || symbol_buffer_size == 0) {
             return -1;
         }
@@ -556,7 +586,8 @@ DATABENTO_API size_t dbento_symbology_resolution_not_found_count(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         return wrapper ? wrapper->resolution.not_found.size() : 0;
     }
     catch (...) {
@@ -571,7 +602,8 @@ DATABENTO_API int dbento_symbology_resolution_get_not_found(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper || !symbol_buffer || symbol_buffer_size == 0) {
             return -1;
         }
@@ -592,7 +624,8 @@ DATABENTO_API int dbento_symbology_resolution_get_stype_in(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper) {
             return -1;
         }
@@ -607,7 +640,8 @@ DATABENTO_API int dbento_symbology_resolution_get_stype_out(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
         if (!wrapper) {
             return -1;
         }
@@ -622,8 +656,12 @@ DATABENTO_API void dbento_symbology_resolution_destroy(
     DbentoSymbologyResolutionHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<SymbologyResolutionWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<SymbologyResolutionWrapper>(
+            handle, databento_native::HandleType::SymbologyResolution, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup
@@ -648,9 +686,12 @@ DATABENTO_API DbentoUnitPricesHandle dbento_historical_list_unit_prices(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -661,7 +702,8 @@ DATABENTO_API DbentoUnitPricesHandle dbento_historical_list_unit_prices(
 
         auto prices = wrapper->client->MetadataListUnitPrices(dataset);
         auto* prices_wrapper = new UnitPricesWrapper(std::move(prices));
-        return reinterpret_cast<DbentoUnitPricesHandle>(prices_wrapper);
+        return reinterpret_cast<DbentoUnitPricesHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::UnitPrices, prices_wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -673,7 +715,8 @@ DATABENTO_API size_t dbento_unit_prices_get_modes_count(
     DbentoUnitPricesHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<UnitPricesWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<UnitPricesWrapper>(
+            handle, databento_native::HandleType::UnitPrices, nullptr);
         return wrapper ? wrapper->prices.size() : 0;
     }
     catch (...) {
@@ -686,7 +729,8 @@ DATABENTO_API int dbento_unit_prices_get_mode(
     size_t mode_index)
 {
     try {
-        auto* wrapper = reinterpret_cast<UnitPricesWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<UnitPricesWrapper>(
+            handle, databento_native::HandleType::UnitPrices, nullptr);
         if (!wrapper || mode_index >= wrapper->prices.size()) {
             return -1;
         }
@@ -702,7 +746,8 @@ DATABENTO_API size_t dbento_unit_prices_get_schema_count(
     size_t mode_index)
 {
     try {
-        auto* wrapper = reinterpret_cast<UnitPricesWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<UnitPricesWrapper>(
+            handle, databento_native::HandleType::UnitPrices, nullptr);
         if (!wrapper || mode_index >= wrapper->prices.size()) {
             return 0;
         }
@@ -721,7 +766,8 @@ DATABENTO_API int dbento_unit_prices_get_schema_price(
     double* out_price)
 {
     try {
-        auto* wrapper = reinterpret_cast<UnitPricesWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<UnitPricesWrapper>(
+            handle, databento_native::HandleType::UnitPrices, nullptr);
         if (!wrapper || mode_index >= wrapper->prices.size() || !out_schema || !out_price) {
             return -1;
         }
@@ -747,8 +793,12 @@ DATABENTO_API int dbento_unit_prices_get_schema_price(
 DATABENTO_API void dbento_unit_prices_destroy(DbentoUnitPricesHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<UnitPricesWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<UnitPricesWrapper>(
+            handle, databento_native::HandleType::UnitPrices, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup

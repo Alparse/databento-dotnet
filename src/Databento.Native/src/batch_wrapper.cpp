@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/historical.hpp>
 #include <databento/batch.hpp>
 #include <databento/enums.hpp>
@@ -117,9 +118,12 @@ DATABENTO_API const char* dbento_batch_submit_job(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -171,9 +175,12 @@ DATABENTO_API const char* dbento_batch_list_jobs(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -202,9 +209,12 @@ DATABENTO_API const char* dbento_batch_list_files(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -237,9 +247,12 @@ DATABENTO_API const char* dbento_batch_download_all(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -275,9 +288,12 @@ DATABENTO_API const char* dbento_batch_download_file(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<HistoricalClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 

@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/dbn_file_store.hpp>
 #include <databento/enums.hpp>
 #include <databento/datetime.hpp>
@@ -127,7 +128,8 @@ DATABENTO_API DbnFileReaderHandle dbento_dbn_file_open(
         }
 
         auto* wrapper = new DbnFileReaderWrapper(path);
-        return reinterpret_cast<DbnFileReaderHandle>(wrapper);
+        return reinterpret_cast<DbnFileReaderHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::DbnFileReader, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -141,9 +143,12 @@ DATABENTO_API const char* dbento_dbn_file_get_metadata(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<DbnFileReaderWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<DbnFileReaderWrapper>(
+            handle, databento_native::HandleType::DbnFileReader, &validation_error);
         if (!wrapper || !wrapper->file_store) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid file reader handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "File store not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -168,9 +173,12 @@ DATABENTO_API int dbento_dbn_file_next_record(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<DbnFileReaderWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<DbnFileReaderWrapper>(
+            handle, databento_native::HandleType::DbnFileReader, &validation_error);
         if (!wrapper || !wrapper->file_store) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid file reader handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "File store not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -206,8 +214,15 @@ DATABENTO_API int dbento_dbn_file_next_record(
 
 DATABENTO_API void dbento_dbn_file_close(DbnFileReaderHandle handle)
 {
-    if (handle) {
-        auto* wrapper = reinterpret_cast<DbnFileReaderWrapper*>(handle);
-        delete wrapper;
+    try {
+        auto* wrapper = databento_native::ValidateAndCast<DbnFileReaderWrapper>(
+            handle, databento_native::HandleType::DbnFileReader, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
+    }
+    catch (...) {
+        // Swallow exceptions in cleanup
     }
 }

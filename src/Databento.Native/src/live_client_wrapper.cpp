@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/live_threaded.hpp>
 #include <databento/live.hpp>
 #include <databento/record.hpp>
@@ -146,7 +147,8 @@ DATABENTO_API DbentoLiveClientHandle dbento_live_create(
         }
 
         auto* wrapper = new LiveClientWrapper(api_key);
-        return reinterpret_cast<DbentoLiveClientHandle>(wrapper);
+        return reinterpret_cast<DbentoLiveClientHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::LiveClient, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -164,9 +166,12 @@ DATABENTO_API int dbento_live_subscribe(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -214,9 +219,12 @@ DATABENTO_API int dbento_live_start(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -247,7 +255,8 @@ DATABENTO_API int dbento_live_start(
 DATABENTO_API void dbento_live_stop(DbentoLiveClientHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, nullptr);
         if (wrapper) {
             // Atomic store for thread-safe stop
             wrapper->is_running.store(false, std::memory_order_release);
@@ -262,7 +271,8 @@ DATABENTO_API void dbento_live_stop(DbentoLiveClientHandle handle)
 DATABENTO_API void dbento_live_destroy(DbentoLiveClientHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, nullptr);
         if (wrapper) {
             // Signal stop
             wrapper->is_running.store(false, std::memory_order_release);
@@ -273,8 +283,11 @@ DATABENTO_API void dbento_live_destroy(DbentoLiveClientHandle handle)
                 // Callbacks are now blocked or completed
             }
 
-            // Safe to delete now
+            // Safe to delete wrapper now
             delete wrapper;
+
+            // Destroy the validated handle
+            databento_native::DestroyValidatedHandle(handle);
         }
     }
     catch (...) {
@@ -321,7 +334,8 @@ DATABENTO_API DbentoLiveClientHandle dbento_live_create_ex(
             wrapper->EnsureClientCreated();
         }
 
-        return reinterpret_cast<DbentoLiveClientHandle>(wrapper);
+        return reinterpret_cast<DbentoLiveClientHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::LiveClient, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -335,9 +349,12 @@ DATABENTO_API int dbento_live_reconnect(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -364,9 +381,12 @@ DATABENTO_API int dbento_live_resubscribe(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -396,9 +416,12 @@ DATABENTO_API int dbento_live_start_ex(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper || !wrapper->client) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -467,9 +490,12 @@ DATABENTO_API int dbento_live_subscribe_with_snapshot(
     size_t error_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
         if (!wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid client handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return -1;
         }
 
@@ -513,7 +539,8 @@ DATABENTO_API int dbento_live_subscribe_with_snapshot(
 DATABENTO_API int dbento_live_get_connection_state(DbentoLiveClientHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<LiveClientWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, nullptr);
         if (!wrapper) {
             return 0;  // Disconnected
         }

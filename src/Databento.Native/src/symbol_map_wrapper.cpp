@@ -1,5 +1,6 @@
 #include "databento_native.h"
 #include "common_helpers.hpp"
+#include "handle_validation.hpp"
 #include <databento/symbol_map.hpp>
 #include <databento/dbn.hpp>
 #include <databento/record.hpp>
@@ -50,15 +51,19 @@ DATABENTO_API DbentoTsSymbolMapHandle dbento_metadata_create_symbol_map(
     size_t error_buffer_size)
 {
     try {
-        auto* metadata_wrapper = reinterpret_cast<MetadataWrapper*>(metadata_handle);
+        databento_native::ValidationError validation_error;
+        auto* metadata_wrapper = databento_native::ValidateAndCast<MetadataWrapper>(
+            metadata_handle, databento_native::HandleType::Metadata, &validation_error);
         if (!metadata_wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid metadata handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
         auto symbol_map = std::make_unique<db::TsSymbolMap>(metadata_wrapper->metadata);
         auto* wrapper = new TsSymbolMapWrapper(std::move(symbol_map));
-        return reinterpret_cast<DbentoTsSymbolMapHandle>(wrapper);
+        return reinterpret_cast<DbentoTsSymbolMapHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::TsSymbolMap, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -69,7 +74,8 @@ DATABENTO_API DbentoTsSymbolMapHandle dbento_metadata_create_symbol_map(
 DATABENTO_API int dbento_ts_symbol_map_is_empty(DbentoTsSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<TsSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<TsSymbolMapWrapper>(
+            handle, databento_native::HandleType::TsSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return -1;
         }
@@ -83,7 +89,8 @@ DATABENTO_API int dbento_ts_symbol_map_is_empty(DbentoTsSymbolMapHandle handle)
 DATABENTO_API size_t dbento_ts_symbol_map_size(DbentoTsSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<TsSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<TsSymbolMapWrapper>(
+            handle, databento_native::HandleType::TsSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return 0;
         }
@@ -104,7 +111,8 @@ DATABENTO_API int dbento_ts_symbol_map_find(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<TsSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<TsSymbolMapWrapper>(
+            handle, databento_native::HandleType::TsSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return -1;
         }
@@ -132,8 +140,12 @@ DATABENTO_API int dbento_ts_symbol_map_find(
 DATABENTO_API void dbento_ts_symbol_map_destroy(DbentoTsSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<TsSymbolMapWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<TsSymbolMapWrapper>(
+            handle, databento_native::HandleType::TsSymbolMap, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup
@@ -153,9 +165,12 @@ DATABENTO_API DbentoPitSymbolMapHandle dbento_metadata_create_symbol_map_for_dat
     size_t error_buffer_size)
 {
     try {
-        auto* metadata_wrapper = reinterpret_cast<MetadataWrapper*>(metadata_handle);
+        databento_native::ValidationError validation_error;
+        auto* metadata_wrapper = databento_native::ValidateAndCast<MetadataWrapper>(
+            metadata_handle, databento_native::HandleType::Metadata, &validation_error);
         if (!metadata_wrapper) {
-            SafeStrCopy(error_buffer, error_buffer_size, "Invalid metadata handle");
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
             return nullptr;
         }
 
@@ -166,7 +181,8 @@ DATABENTO_API DbentoPitSymbolMapHandle dbento_metadata_create_symbol_map_for_dat
 
         auto symbol_map = std::make_unique<db::PitSymbolMap>(metadata_wrapper->metadata, ymd);
         auto* wrapper = new PitSymbolMapWrapper(std::move(symbol_map));
-        return reinterpret_cast<DbentoPitSymbolMapHandle>(wrapper);
+        return reinterpret_cast<DbentoPitSymbolMapHandle>(
+            databento_native::CreateValidatedHandle(databento_native::HandleType::PitSymbolMap, wrapper));
     }
     catch (const std::exception& e) {
         SafeStrCopy(error_buffer, error_buffer_size, e.what());
@@ -177,7 +193,8 @@ DATABENTO_API DbentoPitSymbolMapHandle dbento_metadata_create_symbol_map_for_dat
 DATABENTO_API int dbento_pit_symbol_map_is_empty(DbentoPitSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<PitSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<PitSymbolMapWrapper>(
+            handle, databento_native::HandleType::PitSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return -1;
         }
@@ -191,7 +208,8 @@ DATABENTO_API int dbento_pit_symbol_map_is_empty(DbentoPitSymbolMapHandle handle
 DATABENTO_API size_t dbento_pit_symbol_map_size(DbentoPitSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<PitSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<PitSymbolMapWrapper>(
+            handle, databento_native::HandleType::PitSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return 0;
         }
@@ -209,7 +227,8 @@ DATABENTO_API int dbento_pit_symbol_map_find(
     size_t symbol_buffer_size)
 {
     try {
-        auto* wrapper = reinterpret_cast<PitSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<PitSymbolMapWrapper>(
+            handle, databento_native::HandleType::PitSymbolMap, nullptr);
         if (!wrapper || !wrapper->map) {
             return -1;
         }
@@ -235,7 +254,8 @@ DATABENTO_API int dbento_pit_symbol_map_on_record(
     size_t record_length)
 {
     try {
-        auto* wrapper = reinterpret_cast<PitSymbolMapWrapper*>(handle);
+        auto* wrapper = databento_native::ValidateAndCast<PitSymbolMapWrapper>(
+            handle, databento_native::HandleType::PitSymbolMap, nullptr);
         if (!wrapper || !wrapper->map || !record_bytes) {
             return -1;
         }
@@ -260,8 +280,12 @@ DATABENTO_API int dbento_pit_symbol_map_on_record(
 DATABENTO_API void dbento_pit_symbol_map_destroy(DbentoPitSymbolMapHandle handle)
 {
     try {
-        auto* wrapper = reinterpret_cast<PitSymbolMapWrapper*>(handle);
-        delete wrapper;
+        auto* wrapper = databento_native::ValidateAndCast<PitSymbolMapWrapper>(
+            handle, databento_native::HandleType::PitSymbolMap, nullptr);
+        if (wrapper) {
+            delete wrapper;
+            databento_native::DestroyValidatedHandle(handle);
+        }
     }
     catch (...) {
         // Swallow exceptions in cleanup
