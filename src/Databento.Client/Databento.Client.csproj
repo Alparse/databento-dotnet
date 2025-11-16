@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.7-beta</Version>
+    <Version>3.0.8-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.7-beta: Fixed package dependency issue - Interop layer now properly embedded without external dependency requirement.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.8-beta: Fixed runtime assembly loading - Interop DLL now properly included in package lib folder.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
@@ -28,8 +28,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Databento.Interop\Databento.Interop.csproj" PrivateAssets="All" />
+    <ProjectReference Include="..\Databento.Interop\Databento.Interop.csproj">
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </ProjectReference>
   </ItemGroup>
+
+  <!-- Explicitly include Interop DLL in package -->
+  <Target Name="IncludeInteropInPackage" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="$(OutputPath)Databento.Interop.dll" Pack="true" PackagePath="lib\$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
