@@ -194,9 +194,13 @@ dotnet build databento-dotnet.sln
 using Databento.Client.Builders;
 using Databento.Client.Models;
 
+// Get API key from environment variable (secure)
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY environment variable not set");
+
 // Create live client
 await using var client = new LiveClientBuilder()
-    .WithApiKey("your-api-key")
+    .WithApiKey(apiKey)
     .Build();
 
 // Subscribe to events
@@ -205,11 +209,11 @@ client.DataReceived += (sender, e) =>
     Console.WriteLine($"Received: {e.Record}");
 };
 
-// Subscribe to ES futures trades
+// Subscribe to NVDA trades
 await client.SubscribeAsync(
-    dataset: "GLBX.MDP3",
+    dataset: "EQUS.MINI",
     schema: Schema.Trades,
-    symbols: new[] { "ES.FUT" }
+    symbols: new[] { "NVDA" }
 );
 
 // Start streaming
