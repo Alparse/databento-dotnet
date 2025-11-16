@@ -56,6 +56,8 @@ public interface ILiveClient : IAsyncDisposable
 Use `LiveClientBuilder` to create instances:
 
 ```csharp
+using Microsoft.Extensions.Logging;
+
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 var logger = loggerFactory.CreateLogger<ILiveClient>();
 
@@ -341,6 +343,8 @@ Builder for creating `ILiveClient` instances.
 
 **Complete Example:**
 ```csharp
+using Microsoft.Extensions.Logging;
+
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 
 var client = new LiveClientBuilder()
@@ -809,6 +813,8 @@ Builder for creating `IHistoricalClient` instances.
 
 **Example:**
 ```csharp
+using Microsoft.Extensions.Logging;
+
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 
 var client = new HistoricalClientBuilder()
@@ -1029,6 +1035,8 @@ Builder for creating `IReferenceClient` instances.
 
 **Example:**
 ```csharp
+using Microsoft.Extensions.Logging;
+
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 
 var client = new ReferenceClientBuilder()
@@ -1948,6 +1956,8 @@ var client = new LiveClientBuilder().WithApiKey(apiKey).Build();
 ### 3. Enable Logging in Production
 
 ```csharp
+using Microsoft.Extensions.Logging;
+
 // ✅ GOOD
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
