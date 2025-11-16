@@ -445,7 +445,7 @@ Task<IReadOnlyList<PublisherDetail>> ListPublishersAsync(
 var publishers = await client.ListPublishersAsync();
 foreach (var pub in publishers)
 {
-    Console.WriteLine($"{pub.PublisherId}: {pub.Publisher} - {pub.Venue}");
+    Console.WriteLine($"{pub.PublisherId}: {pub.Dataset} - {pub.Venue} ({pub.Description})");
 }
 ```
 
