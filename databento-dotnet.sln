@@ -71,7 +71,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveThreaded.ExceptionCallb
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reference.Example", "examples\Reference.Example\Reference.Example.csproj", "{DB666BA2-1464-4C0D-85FD-E55D2FF90C4F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tester2.Example", "examples\Tester2.Example\Tester2.Example.csproj", "{D0283AF8-EFA7-4322-9691-31DF1BF66EFA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Historical.Readme.Example", "examples\Historical.Readme.Example\Historical.Readme.Example.csproj", "{D0283AF8-EFA7-4322-9691-31DF1BF66EFA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
