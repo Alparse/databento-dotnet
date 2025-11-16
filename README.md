@@ -2,6 +2,8 @@
 
 A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.
 
+> ⚠️ **Beta Software**: This is a newly developed client library. While functional and tested, it should be thoroughly validated in your specific use case before production deployment. Please report any issues to the [issue tracker](https://github.com/Alparse/databento-dotnet/issues).
+
 ## Features
 
 - **Live Streaming**: Real-time market data with async/await and IAsyncEnumerable support
