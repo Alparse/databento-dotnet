@@ -7,7 +7,7 @@ namespace SnapshotSubscription.Example;
 /// Demonstrates SubscribeWithSnapshot matching the C++ example:
 ///
 /// auto client = LiveBlocking::Builder()
-///                   .SetKey("db-VnCDCFxRTvUtpns3qX3RRKH9ykQ9H")
+///                   .SetKey("YOUR_API_KEY")
 ///                   .SetDataset("GLBX.MDP3")
 ///                   .BuildBlocking();
 /// client.SubscribeWithSnapshot({"ES.c.0"}, Schema::Mbo, SType::Continuous);

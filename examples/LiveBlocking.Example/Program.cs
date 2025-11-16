@@ -8,7 +8,7 @@ namespace LiveBlocking.Example;
 ///
 /// // Pass API key as an argument (not recommended for production)
 /// auto client1 = LiveBlocking::Builder()
-///                    .SetKey("db-VnCDCFxRTvUtpns3qX3RRKH9ykQ9H")
+///                    .SetKey("YOUR_API_KEY")
 ///                    .SetDataset(Dataset::EqusMini)
 ///                    .BuildBlocking();
 ///
