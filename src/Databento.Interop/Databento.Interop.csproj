@@ -9,12 +9,17 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Interop</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Your Name</Authors>
-    <Description>Low-level P/Invoke layer for Databento native library</Description>
-    <PackageTags>databento;market-data;interop;pinvoke</PackageTags>
+    <Version>3.0.5-beta</Version>
+    <Authors>Alparse</Authors>
+    <Company>Databento</Company>
+    <Product>databento-dotnet</Product>
+    <Description>Low-level P/Invoke layer for Databento native library with cross-platform support (Windows, Linux, macOS)</Description>
+    <PackageTags>databento;market-data;interop;pinvoke;native</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/yourusername/databento-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Alparse/databento-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
+    <PackageReleaseNotes>v3.0.5-beta: Interop layer with native binaries for Windows x64.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

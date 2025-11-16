@@ -9,12 +9,19 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Your Name</Authors>
-    <Description>High-level .NET client for Databento market data (streaming and historical)</Description>
-    <PackageTags>databento;market-data;financial;trading;streaming</PackageTags>
+    <Version>3.0.5-beta</Version>
+    <Authors>Alparse</Authors>
+    <Company>Databento</Company>
+    <Product>databento-dotnet</Product>
+    <Description>High-performance .NET client for Databento market data with live streaming, historical queries, and reference data APIs. Supports all 16 DBN record types with async/await and IAsyncEnumerable.</Description>
+    <PackageTags>databento;market-data;financial;trading;streaming;historical;real-time;dbn;equities;futures;options</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/yourusername/databento-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Alparse/databento-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>v3.0.5-beta: Production-ready beta with complete API coverage, all 16 record types, live streaming, historical queries, and reference data APIs.</PackageReleaseNotes>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -29,6 +36,11 @@
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" />
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Include README in NuGet package -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
