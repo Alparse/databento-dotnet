@@ -70,3 +70,4 @@ tools/diagnostics/
 # Development tracking files (internal use only)
 API_COVERAGE_REPORT.md
 SESSION_STATUS.md
+PERFORMANCE_TEST_REPORT.md
