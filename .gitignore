@@ -66,3 +66,7 @@ Desktop.ini
 
 # Diagnostic tools (development only, not for public repo)
 tools/diagnostics/
+
+# Development tracking files (internal use only)
+API_COVERAGE_REPORT.md
+SESSION_STATUS.md
