@@ -9,7 +9,7 @@
 
     <!-- Not packaged separately - embedded in Databento.Client -->
     <IsPackable>false</IsPackable>
-    <Version>3.0.14-beta</Version>
+    <Version>3.0.16-beta</Version>
   </PropertyGroup>
 
   <ItemGroup>

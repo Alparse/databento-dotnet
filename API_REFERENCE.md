@@ -56,6 +56,9 @@ public interface ILiveClient : IAsyncDisposable
 Use `LiveClientBuilder` to create instances:
 
 ```csharp
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+var logger = loggerFactory.CreateLogger<ILiveClient>();
+
 var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY");
 await using var client = new LiveClientBuilder()
     .WithApiKey(apiKey)
@@ -64,7 +67,13 @@ await using var client = new LiveClientBuilder()
     .WithSendTsOut(false)
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
     .WithLogger(logger)                  // Optional: ILogger<ILiveClient>
-    .WithExceptionHandler(exceptionHandler)  // Optional: ExceptionCallback
+    .WithExceptionHandler(ex =>          // Optional: ExceptionCallback
+    {
+        Console.WriteLine($"Stream exception: {ex.Message}");
+        return ex is OperationCanceledException
+            ? ExceptionAction.Stop
+            : ExceptionAction.Continue;
+    })
     .Build();
 ```
 
@@ -131,7 +140,7 @@ public enum ExceptionAction
 ```csharp
 .WithExceptionHandler(ex =>
 {
-    _logger.LogError(ex, "Stream error occurred");
+    Console.WriteLine($"Stream error occurred: {ex.Message}");
     return ex is OperationCanceledException
         ? ExceptionAction.Stop
         : ExceptionAction.Continue;
@@ -280,7 +289,7 @@ try
 }
 catch (Exception ex)
 {
-    _logger.LogWarning(ex, "Connection lost, reconnecting...");
+    Console.WriteLine($"Connection lost, reconnecting... {ex.Message}");
     await client.ReconnectAsync();
     await client.ResubscribeAsync();
     await client.StartAsync();
@@ -332,6 +341,8 @@ Builder for creating `ILiveClient` instances.
 
 **Complete Example:**
 ```csharp
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
 var client = new LiveClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithDataset("GLBX.MDP3")
@@ -340,8 +351,10 @@ var client = new LiveClientBuilder()
     .WithLogger(loggerFactory.CreateLogger<ILiveClient>())
     .WithExceptionHandler(ex =>
     {
-        _logger.LogError(ex, "Stream exception");
-        return ExceptionAction.Continue;
+        Console.WriteLine($"Stream exception: {ex.Message}");
+        return ex is OperationCanceledException
+            ? ExceptionAction.Stop
+            : ExceptionAction.Continue;
     })
     .Build();
 ```
@@ -796,6 +809,8 @@ Builder for creating `IHistoricalClient` instances.
 
 **Example:**
 ```csharp
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
 var client = new HistoricalClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithGateway(HistoricalGateway.Bo1)
@@ -1014,6 +1029,8 @@ Builder for creating `IReferenceClient` instances.
 
 **Example:**
 ```csharp
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
 var client = new ReferenceClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithGateway(HistoricalGateway.Bo1)
@@ -1979,7 +1996,7 @@ while (shouldReconnect)
     }
     catch (Exception ex)
     {
-        _logger.LogWarning(ex, "Connection lost, reconnecting...");
+        Console.WriteLine($"Connection lost, reconnecting... {ex.Message}");
         await Task.Delay(TimeSpan.FromSeconds(5));
         await client.ReconnectAsync();
         await client.ResubscribeAsync();
