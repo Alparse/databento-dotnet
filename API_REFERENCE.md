@@ -9,6 +9,13 @@ Comprehensive API reference for the databento-dotnet library, a high-performance
 
 ## Table of Contents
 
+- [Working with Dates and Times](#working-with-dates-and-times)
+  - [Date and Time Types](#date-and-time-types)
+  - [Choosing Example Dates](#choosing-example-dates)
+  - [Common Patterns](#common-patterns)
+  - [Time Zones](#time-zones)
+  - [Quick Reference](#quick-reference)
+
 1. [Live Streaming API](#1-live-streaming-api)
    - [LiveClient](#liveclient)
    - [LiveClientBuilder](#liveclientbuilder)
@@ -34,6 +41,414 @@ Comprehensive API reference for the databento-dotnet library, a high-performance
    - [Record Types](#record-types)
    - [Enumerations](#enumerations)
    - [Configuration Types](#configuration-types)
+
+---
+
+## Working with Dates and Times
+
+The databento-dotnet library uses different date and time types depending on the context. Understanding these distinctions is crucial for working with market data effectively.
+
+### Date and Time Types
+
+#### DateTimeOffset (Time-Range Queries)
+
+Used for **Historical** and **Reference** API queries that need precise timestamps.
+
+```csharp
+// Create a specific UTC date and time
+var start = new DateTimeOffset(2025, 11, 3, 9, 30, 0, TimeSpan.Zero);  // Nov 3, 2025 at 9:30 AM UTC
+
+// Relative dates (useful for recent data)
+var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
+var yesterday = DateTimeOffset.UtcNow.AddDays(-1);
+```
+
+**Key Points:**
+- Always use **UTC** timezone (`TimeSpan.Zero`) for consistency
+- Includes both date and time components
+- Used for `GetRangeAsync()`, `GetRangeToFileAsync()`, and Reference API queries
+
+#### DateOnly (Symbology & Daily Boundaries)
+
+Used for **symbology resolution** and operations that work with calendar dates (no time component).
+
+```csharp
+// Specific dates
+var startDate = new DateOnly(2025, 11, 3);  // November 3, 2025
+var endDate = new DateOnly(2025, 11, 7);    // November 7, 2025
+
+// From DateTime
+var today = DateOnly.FromDateTime(DateTime.UtcNow);
+```
+
+**Key Points:**
+- Date only, no time component
+- Used for `SymbologyResolveAsync()`
+- Simpler than DateTimeOffset when you don't need intraday precision
+
+#### Unix Nanosecond Timestamps
+
+Market data records contain timestamps as **nanoseconds since Unix epoch** (January 1, 1970).
+
+```csharp
+// In record types
+public class TradeMessage : Record
+{
+    public long TimestampNs { get; set; }           // Raw: nanoseconds since epoch
+    public DateTimeOffset Timestamp { get; }        // Helper: converted to DateTimeOffset
+}
+
+// Converting Unix nanoseconds to DateTimeOffset
+var nanos = record.TimestampNs;
+var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(nanos / 1_000_000);
+
+// Or use the helper property
+var dateTime = record.Timestamp;  // Already converted
+```
+
+**Key Points:**
+- Records store timestamps as `long TimestampNs` (nanoseconds)
+- Helper properties (e.g., `Timestamp`, `TsRecvTime`) automatically convert to `DateTimeOffset`
+- Nanosecond precision preserves microsecond-level market data timing
+
+---
+
+### Choosing Example Dates
+
+When writing code examples or testing:
+
+#### ✅ Use Trading Days
+
+**Recommended date: November 3, 2025** (Monday - market open)
+
+```csharp
+// Good: November 3, 2025 is a Monday (market open)
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);
+```
+
+#### ❌ Avoid Weekends and Holidays
+
+```csharp
+// Bad: November 1, 2025 is a Saturday (market closed)
+var start = new DateTimeOffset(2025, 11, 1, 0, 0, 0, TimeSpan.Zero);  // ❌ No data
+
+// Bad: November 2, 2025 is a Sunday (market closed)
+var start = new DateTimeOffset(2025, 11, 2, 0, 0, 0, TimeSpan.Zero);  // ❌ No data
+```
+
+#### Check Data Availability
+
+Always verify data exists for your date range:
+
+```csharp
+// Check dataset availability before querying
+var range = await client.GetDatasetRangeAsync("EQUS.MINI");
+Console.WriteLine($"Data available: {range.Start:yyyy-MM-dd} to {range.End:yyyy-MM-dd}");
+
+// Use dates within the available range
+if (queryStart >= range.Start && queryEnd <= range.End)
+{
+    // Safe to query
+}
+```
+
+---
+
+### Common Patterns
+
+#### Intraday Data (Specific Time Range)
+
+```csharp
+// Market hours on November 3, 2025
+var marketOpen = new DateTimeOffset(2025, 11, 3, 14, 30, 0, TimeSpan.Zero);   // 9:30 AM ET = 14:30 UTC
+var marketClose = new DateTimeOffset(2025, 11, 3, 21, 0, 0, TimeSpan.Zero);   // 4:00 PM ET = 21:00 UTC
+
+await foreach (var trade in client.GetRangeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA" },
+    startTime: marketOpen,
+    endTime: marketClose))
+{
+    Console.WriteLine($"Trade at {trade.Timestamp:HH:mm:ss.fff}");
+}
+```
+
+#### Full Trading Day
+
+```csharp
+// Midnight to midnight UTC (captures full day)
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);  // Exclusive end
+```
+
+#### Recent Data (Relative Dates)
+
+```csharp
+// Last 7 days
+var start = DateTimeOffset.UtcNow.AddDays(-7);
+var end = DateTimeOffset.UtcNow;
+
+// Last 2 hours (for replay)
+var replayStart = DateTimeOffset.UtcNow.AddHours(-2);
+```
+
+#### Symbology by Month
+
+```csharp
+// Resolve symbol mappings for November 2025
+var resolution = await client.SymbologyResolveAsync(
+    dataset: "EQUS.MINI",
+    symbols: new[] { "NVDA" },
+    stypeIn: SType.RawSymbol,
+    stypeOut: SType.InstrumentId,
+    startDate: new DateOnly(2025, 11, 1),   // First day of month
+    endDate: new DateOnly(2025, 11, 30)     // Last day of month
+);
+```
+
+---
+
+### Time Zones
+
+**Always use UTC** for Databento APIs:
+
+```csharp
+// ✅ Good: Explicit UTC
+var utcTime = new DateTimeOffset(2025, 11, 3, 14, 30, 0, TimeSpan.Zero);
+
+// ✅ Good: Using UtcNow
+var now = DateTimeOffset.UtcNow;
+
+// ❌ Bad: Local timezone (ambiguous)
+var localTime = new DateTimeOffset(2025, 11, 3, 9, 30, 0, TimeSpan.FromHours(-5));  // Avoid
+
+// Convert local to UTC if needed
+var local = DateTimeOffset.Now;
+var utc = local.ToUniversalTime();
+```
+
+**Why UTC?**
+- Market data is timestamped in UTC
+- Avoids daylight saving time confusion
+- Consistent across all regions
+
+---
+
+### Quick Reference
+
+| Use Case | Type | Example |
+|----------|------|---------|
+| Historical time-range query | `DateTimeOffset` | `new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero)` |
+| Symbology date range | `DateOnly` | `new DateOnly(2025, 11, 3)` |
+| Recent data (relative) | `DateTimeOffset` | `DateTimeOffset.UtcNow.AddDays(-7)` |
+| Record timestamps | `long` (nanoseconds) | Access via `record.Timestamp` helper |
+| Display timestamps | `DateTimeOffset` | Format: `timestamp:yyyy-MM-dd HH:mm:ss.fff` |
+
+---
+
+## Working with Dates and Times
+
+The databento-dotnet library uses different date and time types depending on the context. Understanding these distinctions is crucial for working with market data effectively.
+
+### Date and Time Types
+
+#### DateTimeOffset (Time-Range Queries)
+
+Used for **Historical** and **Reference** API queries that need precise timestamps.
+
+```csharp
+// Create a specific UTC date and time
+var start = new DateTimeOffset(2025, 11, 3, 9, 30, 0, TimeSpan.Zero);  // Nov 3, 2025 at 9:30 AM UTC
+
+// Relative dates (useful for recent data)
+var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
+var yesterday = DateTimeOffset.UtcNow.AddDays(-1);
+```
+
+**Key Points:**
+- Always use **UTC** timezone (`TimeSpan.Zero`) for consistency
+- Includes both date and time components
+- Used for `GetRangeAsync()`, `GetRangeToFileAsync()`, and Reference API queries
+
+#### DateOnly (Symbology & Daily Boundaries)
+
+Used for **symbology resolution** and operations that work with calendar dates (no time component).
+
+```csharp
+// Specific dates
+var startDate = new DateOnly(2025, 11, 3);  // November 3, 2025
+var endDate = new DateOnly(2025, 11, 7);    // November 7, 2025
+
+// From DateTime
+var today = DateOnly.FromDateTime(DateTime.UtcNow);
+```
+
+**Key Points:**
+- Date only, no time component
+- Used for `SymbologyResolveAsync()`
+- Simpler than DateTimeOffset when you don't need intraday precision
+
+#### Unix Nanosecond Timestamps
+
+Market data records contain timestamps as **nanoseconds since Unix epoch** (January 1, 1970).
+
+```csharp
+// In record types
+public class TradeMessage : Record
+{
+    public long TimestampNs { get; set; }           // Raw: nanoseconds since epoch
+    public DateTimeOffset Timestamp { get; }        // Helper: converted to DateTimeOffset
+}
+
+// Converting Unix nanoseconds to DateTimeOffset
+var nanos = record.TimestampNs;
+var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(nanos / 1_000_000);
+
+// Or use the helper property
+var dateTime = record.Timestamp;  // Already converted
+```
+
+**Key Points:**
+- Records store timestamps as `long TimestampNs` (nanoseconds)
+- Helper properties (e.g., `Timestamp`, `TsRecvTime`) automatically convert to `DateTimeOffset`
+- Nanosecond precision preserves microsecond-level market data timing
+
+---
+
+### Choosing Example Dates
+
+When writing code examples or testing:
+
+#### Good: Use Trading Days
+
+**Recommended date: November 3, 2025** (Monday - market open)
+
+```csharp
+// Good: November 3, 2025 is a Monday (market open)
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);
+```
+
+#### Bad: Avoid Weekends and Holidays
+
+```csharp
+// Bad: November 1, 2025 is a Saturday (market closed)
+var start = new DateTimeOffset(2025, 11, 1, 0, 0, 0, TimeSpan.Zero);  // No data
+
+// Bad: November 2, 2025 is a Sunday (market closed)
+var start = new DateTimeOffset(2025, 11, 2, 0, 0, 0, TimeSpan.Zero);  // No data
+```
+
+#### Check Data Availability
+
+Always verify data exists for your date range:
+
+```csharp
+// Check dataset availability before querying
+var range = await client.GetDatasetRangeAsync("EQUS.MINI");
+Console.WriteLine($"Data available: {range.Start:yyyy-MM-dd} to {range.End:yyyy-MM-dd}");
+
+// Use dates within the available range
+if (queryStart >= range.Start && queryEnd <= range.End)
+{
+    // Safe to query
+}
+```
+
+---
+
+### Common Patterns
+
+#### Intraday Data (Specific Time Range)
+
+```csharp
+// Market hours on November 3, 2025
+var marketOpen = new DateTimeOffset(2025, 11, 3, 14, 30, 0, TimeSpan.Zero);   // 9:30 AM ET = 14:30 UTC
+var marketClose = new DateTimeOffset(2025, 11, 3, 21, 0, 0, TimeSpan.Zero);   // 4:00 PM ET = 21:00 UTC
+
+await foreach (var trade in client.GetRangeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA" },
+    startTime: marketOpen,
+    endTime: marketClose))
+{
+    Console.WriteLine($"Trade at {trade.Timestamp:HH:mm:ss.fff}");
+}
+```
+
+#### Full Trading Day
+
+```csharp
+// Midnight to midnight UTC (captures full day)
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);  // Exclusive end
+```
+
+#### Recent Data (Relative Dates)
+
+```csharp
+// Last 7 days
+var start = DateTimeOffset.UtcNow.AddDays(-7);
+var end = DateTimeOffset.UtcNow;
+
+// Last 2 hours (for replay)
+var replayStart = DateTimeOffset.UtcNow.AddHours(-2);
+```
+
+#### Symbology by Month
+
+```csharp
+// Resolve symbol mappings for November 2025
+var resolution = await client.SymbologyResolveAsync(
+    dataset: "EQUS.MINI",
+    symbols: new[] { "NVDA" },
+    stypeIn: SType.RawSymbol,
+    stypeOut: SType.InstrumentId,
+    startDate: new DateOnly(2025, 11, 1),   // First day of month
+    endDate: new DateOnly(2025, 11, 30)     // Last day of month
+);
+```
+
+---
+
+### Time Zones
+
+**Always use UTC** for Databento APIs:
+
+```csharp
+// Good: Explicit UTC
+var utcTime = new DateTimeOffset(2025, 11, 3, 14, 30, 0, TimeSpan.Zero);
+
+// Good: Using UtcNow
+var now = DateTimeOffset.UtcNow;
+
+// Bad: Local timezone (ambiguous)
+var localTime = new DateTimeOffset(2025, 11, 3, 9, 30, 0, TimeSpan.FromHours(-5));  // Avoid
+
+// Convert local to UTC if needed
+var local = DateTimeOffset.Now;
+var utc = local.ToUniversalTime();
+```
+
+**Why UTC?**
+- Market data is timestamped in UTC
+- Avoids daylight saving time confusion
+- Consistent across all regions
+
+---
+
+### Quick Reference
+
+| Use Case | Type | Example |
+|----------|------|---------|
+| Historical time-range query | `DateTimeOffset` | `new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero)` |
+| Symbology date range | `DateOnly` | `new DateOnly(2025, 11, 3)` |
+| Recent data (relative) | `DateTimeOffset` | `DateTimeOffset.UtcNow.AddDays(-7)` |
+| Record timestamps | `long` (nanoseconds) | Access via `record.Timestamp` helper |
+| Display timestamps | `DateTimeOffset` | Format: `timestamp:yyyy-MM-dd HH:mm:ss.fff` |
 
 ---
 
@@ -253,11 +668,16 @@ await client.StopAsync();
 
 #### ReconnectAsync
 
-Reconnect to the gateway after disconnection.
+Reconnect to the gateway after an **unexpected disconnection** (e.g., network failure, gateway timeout).
 
 ```csharp
 Task ReconnectAsync(CancellationToken cancellationToken = default);
 ```
+
+**Important Usage Notes:**
+- This method is designed for reconnecting during active streaming when an unexpected error occurs
+- **Cannot** be used after calling `StopAsync()` - the connection is cleanly closed and cannot be reopened
+- After `StopAsync()`, you must create a new client instance to connect again
 
 #### ResubscribeAsync
 
@@ -267,7 +687,7 @@ Resubscribe to all previous subscriptions after reconnection.
 Task ResubscribeAsync(CancellationToken cancellationToken = default);
 ```
 
-**Example:**
+**Example - Handling Unexpected Disconnections:**
 ```csharp
 try
 {
@@ -276,13 +696,23 @@ try
         // Process records
     }
 }
-catch (Exception ex)
+catch (Exception ex)  // Unexpected disconnection during streaming
 {
     Console.WriteLine($"Connection lost, reconnecting... {ex.Message}");
     await client.ReconnectAsync();
     await client.ResubscribeAsync();
     await client.StartAsync();
 }
+```
+
+**Example - After Clean Stop:**
+```csharp
+await client.StopAsync();
+
+// Cannot reconnect after clean stop - create a new client instead
+await using var newClient = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .Build();
 ```
 
 #### BlockUntilStoppedAsync
@@ -384,8 +814,8 @@ IAsyncEnumerable<Record> GetRangeAsync(
 
 **Example:**
 ```csharp
-var start = new DateTimeOffset(2025, 11, 11, 0, 0, 0, TimeSpan.Zero);
-var end = new DateTimeOffset(2025, 11, 12, 0, 0, 0, TimeSpan.Zero);
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);  // Nov 3, 2025 (Monday)
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);    // Nov 4, 2025 (Tuesday)
 
 await foreach (var record in client.GetRangeAsync(
     dataset: "EQUS.MINI",
@@ -758,8 +1188,8 @@ var resolution = await client.SymbologyResolveAsync(
     symbols: new[] { "NVDA" },
     stypeIn: SType.RawSymbol,
     stypeOut: SType.InstrumentId,
-    startDate: new DateOnly(2025, 11, 1),
-    endDate: new DateOnly(2025, 11, 30)
+    startDate: new DateOnly(2025, 11, 3),   // Nov 3, 2025 (Monday - market open)
+    endDate: new DateOnly(2025, 11, 7)     // Nov 7, 2025 (Friday - market open)
 );
 
 foreach (var mapping in resolution.Mappings)
@@ -1753,8 +2183,8 @@ await using var client = new HistoricalClientBuilder()
     .WithTimeout(TimeSpan.FromMinutes(5))
     .Build();
 
-var start = new DateTimeOffset(2025, 11, 1, 0, 0, 0, TimeSpan.Zero);
-var end = new DateTimeOffset(2025, 11, 2, 0, 0, 0, TimeSpan.Zero);
+var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);  // Nov 3, 2025 (Monday)
+var end = new DateTimeOffset(2025, 11, 4, 0, 0, 0, TimeSpan.Zero);    // Nov 4, 2025 (Tuesday)
 var symbols = new[] { "NVDA", "AAPL", "MSFT" };
 
 // Check cost before querying
