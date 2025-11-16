@@ -88,19 +88,22 @@ Copy-Item "build\native\Release\*.dll" -Destination "src\Databento.Interop\runti
 
 ### 2. Update Version Numbers (Already Done)
 
-The projects are configured with version `3.0.5-beta`. To update for future releases:
+The projects are configured with version `3.0.6-beta`. To update for future releases:
 
 **src/Databento.Client/Databento.Client.csproj:**
 ```xml
-<Version>3.0.5-beta</Version>
-<PackageReleaseNotes>v3.0.5-beta: Description of changes</PackageReleaseNotes>
+<Version>3.0.6-beta</Version>
+<PackageReleaseNotes>v3.0.6-beta: Description of changes</PackageReleaseNotes>
 ```
 
 **src/Databento.Interop/Databento.Interop.csproj:**
 ```xml
-<Version>3.0.5-beta</Version>
-<PackageReleaseNotes>v3.0.5-beta: Description of changes</PackageReleaseNotes>
+<Version>3.0.6-beta</Version>
+<!-- Note: Interop is not packaged separately as of v3.0.6-beta -->
+<IsPackable>false</IsPackable>
 ```
+
+**Important:** As of v3.0.6-beta, `Databento.Interop` is no longer published as a separate package. All native binaries and the Interop layer are embedded in the single `Databento.Client` package for simpler installation.
 
 ### 3. Clean Previous Builds
 
@@ -120,8 +123,7 @@ dotnet pack src/Databento.Client/Databento.Client.csproj -c Release
 ```
 
 This creates:
-- `src/Databento.Client/bin/Release/Databento.Client.3.0.5-beta.nupkg`
-- `src/Databento.Interop/bin/Release/Databento.Interop.3.0.5-beta.nupkg` (via dependency)
+- `src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg` (~3.8 MB, includes all native binaries)
 
 ### Option 2: Build, Then Pack
 
@@ -129,7 +131,7 @@ This creates:
 # 1. Build in Release mode
 dotnet build databento-dotnet.sln -c Release
 
-# 2. Pack the main client (includes Interop automatically)
+# 2. Pack the main client (embeds Interop automatically)
 dotnet pack src/Databento.Client/Databento.Client.csproj -c Release --no-build
 ```
 
@@ -140,7 +142,7 @@ Before publishing, inspect the package:
 ```bash
 # Extract and view contents (requires 7-Zip or similar)
 # On Windows:
-7z x src/Databento.Client/bin/Release/Databento.Client.3.0.5-beta.nupkg -o"temp_package"
+7z x src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg -o"temp_package"
 dir temp_package /s
 
 # Or use NuGet Package Explorer (GUI tool)
@@ -149,18 +151,20 @@ dir temp_package /s
 
 **Expected structure:**
 ```
-Databento.Client.3.0.5-beta.nupkg
+Databento.Client.3.0.6-beta.nupkg (~3.8 MB)
 ├── lib/
 │   └── net8.0/
 │       ├── Databento.Client.dll
 │       ├── Databento.Client.xml (documentation)
-│       └── Databento.Interop.dll
+│       └── Databento.Interop.dll (embedded)
 ├── runtimes/
 │   └── win-x64/
 │       └── native/
-│           ├── databento_native.dll
-│           ├── libcrypto-3-x64.dll
-│           └── ... (other DLLs)
+│           ├── databento_native.dll (807 KB)
+│           ├── libcrypto-3-x64.dll (9 MB)
+│           ├── libssl-3-x64.dll (1.9 MB)
+│           ├── zstd.dll (1.7 MB)
+│           └── zlibd1.dll (210 KB)
 ├── README.md
 ├── [Content_Types].xml
 └── Databento.Client.nuspec
@@ -169,6 +173,8 @@ Databento.Client.3.0.5-beta.nupkg
 ---
 
 ## Publish to NuGet.org
+
+> **Note:** As of v3.0.6-beta, `Databento.Client` is a consolidated package that includes all native binaries and the Interop layer. No separate `Databento.Interop` package is published.
 
 ### 1. Test with Local Feed First (Optional but Recommended)
 
@@ -181,7 +187,7 @@ mkdir C:\LocalNuGet  # Windows
 mkdir ~/LocalNuGet   # Linux/macOS
 
 # Copy package to local feed
-cp src/Databento.Client/bin/Release/Databento.Client.3.0.5-beta.nupkg C:\LocalNuGet\
+cp src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg C:\LocalNuGet\
 
 # Add local source
 dotnet nuget add source C:\LocalNuGet -n "Local Feed"
@@ -189,7 +195,7 @@ dotnet nuget add source C:\LocalNuGet -n "Local Feed"
 # Test installation in a new project
 mkdir test-project && cd test-project
 dotnet new console
-dotnet add package Databento.Client -v 3.0.5-beta -s "Local Feed"
+dotnet add package Databento.Client -v 3.0.6-beta -s "Local Feed"
 dotnet run
 ```
 
@@ -197,20 +203,20 @@ dotnet run
 
 **Using API Key from Environment:**
 ```bash
-dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.5-beta.nupkg \
+dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg \
     --api-key $env:NUGET_API_KEY \
     --source https://api.nuget.org/v3/index.json
 ```
 
 **Using Configured API Key:**
 ```bash
-dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.5-beta.nupkg \
+dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg \
     --source https://api.nuget.org/v3/index.json
 ```
 
 **Expected output:**
 ```
-Pushing Databento.Client.3.0.5-beta.nupkg to 'https://www.nuget.org/api/v2/package'...
+Pushing Databento.Client.3.0.6-beta.nupkg to 'https://www.nuget.org/api/v2/package'...
   PUT https://www.nuget.org/api/v2/package/
   Created https://www.nuget.org/api/v2/package/ 2145ms
 Your package was pushed.
@@ -235,7 +241,7 @@ Once published, users can install your package in several ways:
 ### Method 1: .NET CLI
 
 ```bash
-dotnet add package Databento.Client --version 3.0.5-beta
+dotnet add package Databento.Client --version 3.0.6-beta
 ```
 
 Or for stable releases (when available):
@@ -253,7 +259,7 @@ dotnet add package Databento.Client
 ### Method 3: Package Manager Console (Visual Studio)
 
 ```powershell
-Install-Package Databento.Client -Version 3.0.5-beta
+Install-Package Databento.Client -Version 3.0.6-beta
 ```
 
 ### Method 4: Direct .csproj Reference
@@ -262,7 +268,7 @@ Add to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="3.0.5-beta" />
+  <PackageReference Include="Databento.Client" Version="3.0.6-beta" />
 </ItemGroup>
 ```
 
@@ -299,7 +305,7 @@ export DATABENTO_API_KEY="db-your-api-key-here"
 mkdir my-trading-app
 cd my-trading-app
 dotnet new console
-dotnet add package Databento.Client --version 3.0.5-beta
+dotnet add package Databento.Client --version 3.0.6-beta
 ```
 
 ### 3. Write Code
@@ -416,7 +422,7 @@ Historical: 2025-11-15T10:30:01Z - 144.52
 
 ### Versioning Guidelines
 
-- **Prerelease**: `3.0.5-beta`, `3.1.0-rc.1`
+- **Prerelease**: `3.0.6-beta`, `3.1.0-rc.1`
 - **Stable**: `3.1.0`, `3.1.1`
 - Follow [Semantic Versioning](https://semver.org/):
   - **Major** (3.x.x): Breaking changes
@@ -452,7 +458,7 @@ Add to README.md:
 
 If you try to push the same version twice:
 ```
-error: Response status code does not indicate success: 409 (Conflict - The feed already contains 'Databento.Client 3.0.5-beta'.)
+error: Response status code does not indicate success: 409 (Conflict - The feed already contains 'Databento.Client 3.0.6-beta'.)
 ```
 
 **Solution:** Increment the version number.

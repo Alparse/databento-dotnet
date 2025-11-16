@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.5-beta</Version>
+    <Version>3.0.6-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.5-beta: Production-ready beta with complete API coverage, all 16 record types, live streaming, historical queries, and reference data APIs.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.6-beta: Consolidated package - Interop layer and native binaries now embedded in single package for simpler installation.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
@@ -41,6 +41,9 @@
   <ItemGroup>
     <!-- Include README in NuGet package -->
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+
+    <!-- Include native libraries from Interop project -->
+    <None Include="..\Databento.Interop\runtimes\**\*" Pack="true" PackagePath="runtimes" />
   </ItemGroup>
 
 </Project>
