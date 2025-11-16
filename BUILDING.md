@@ -62,9 +62,8 @@ brew install cmake openssl zstd
 
 This builds:
 1. Native C++ library (databento_native)
-2. All .NET projects
-3. Test projects
-4. Example projects
+2. All .NET projects (Databento.Client, Databento.Interop)
+3. All example projects (26+ examples)
 
 ### Option 2: Step-by-Step Build
 
@@ -129,10 +128,15 @@ You should see:
 - `Databento.Interop.dll`
 - Native library (copied)
 
-### Run Tests
+### Run an Example
 
 ```bash
-dotnet test
+# Set your API key
+export DATABENTO_API_KEY="your-api-key"  # Linux/macOS
+$env:DATABENTO_API_KEY="your-api-key"   # Windows
+
+# Run an example
+dotnet run --project examples/LiveStreaming.Example
 ```
 
 ## Troubleshooting
@@ -289,9 +293,7 @@ The NuGet package will include all native libraries.
 
 ## Continuous Integration
 
-For CI/CD pipelines, see `.github/workflows/` for example GitHub Actions workflows (to be added).
-
-Example CI build:
+Example CI build (GitHub Actions workflows to be added):
 
 ```bash
 # Install dependencies
@@ -303,8 +305,8 @@ dotnet restore
 # Build .NET
 dotnet build --no-restore -c Release
 
-# Test
-dotnet test --no-build -c Release
+# Run examples (optional verification)
+dotnet run --project examples/LiveStreaming.Example
 
 # Pack
 dotnet pack --no-build -c Release
@@ -314,5 +316,5 @@ dotnet pack --no-build -c Release
 
 After successful build:
 1. Run examples: See [README.md](README.md#running-examples)
-2. Run tests: `dotnet test`
-3. Check API documentation: XML docs are generated in `bin/` folders
+2. Check API documentation: XML docs are generated in `bin/` folders
+3. Review [QUICKSTART.md](QUICKSTART.md) for usage examples

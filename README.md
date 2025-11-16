@@ -78,41 +78,46 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### Recent Changes
 
-**Critical Bug Fix** - RType Enum Correction
+**Latest (November 2025)** - Production Readiness & Reference API
+- ✅ **Reference API Implementation**: SecurityMasterApi, AdjustmentFactorsApi, CorporateActionsApi
+  - Corrected endpoint format from `/v1/reference/` to `/v0/` with POST requests
+  - Added disposal checks and retry logic for transient failures
+  - Full telemetry integration with distributed tracing
+- ✅ **Production Improvements**:
+  - Added OpenTelemetry-compatible telemetry (ActivitySource, Meters, Counters, Histograms)
+  - Implemented Polly retry policy with exponential backoff (3 retries: 2s, 4s, 8s)
+  - Added HttpClient DI pattern support for IHttpClientFactory integration
+  - Improved LiveClient thread safety using Interlocked operations
+- ✅ **Code Quality**: Removed empty test projects, comprehensive validation testing
+- ✅ **Security**: API key exposure fixed, proper environment variable handling
+
+**Critical Bug Fix (Phase 6)** - RType Enum Correction
 - **FIXED**: Corrected 13 incorrect RType enum values that were causing all non-trade messages to deserialize as UnknownRecord
 - Fixed: Mbp10 (0x02→0x0A), Status (0x17→0x12), InstrumentDef (0x18→0x13), Imbalance (0x19→0x14), Error (0x1A→0x15), SymbolMapping (0x1B→0x16), System (0x17→0x17), Statistics (0x1D→0x18), all OHLCV variants (0x12-0x16→0x11,0x20-0x24)
-- Added missing OhlcvDeprecated (0x11) case to switch statement
 - All deserializers now work correctly - SystemMessage, StatusMessage, SymbolMappingMessage, etc. properly recognized
-- Root cause: C# RType enum values didn't match databento-cpp enums.hpp specification
 
-**Phase 5 (Current)** - Configuration & Builder Enhancements
+**Phase 5** - Configuration & Builder Enhancements
 - Added 9 configuration enumerations (HistoricalGateway, FeedMode, SplitDuration, Delivery, Encoding, Compression, VersionUpgradePolicy, JobState, DatasetCondition)
-- Enhanced HistoricalClientBuilder with 5 new methods (WithGateway, WithAddress, WithUpgradePolicy, WithUserAgent, WithTimeout)
-- Enhanced LiveClientBuilder with 4 new methods (WithDataset, WithSendTsOut, WithUpgradePolicy, WithHeartbeatInterval)
+- Enhanced builders with advanced configuration methods
 - All enums include string conversion and parsing methods
-- Forward-compatible API for advanced configuration
 
 **Phase 4** - Metadata & Symbol Mapping
 - Created IMetadata interface for instrument information queries
 - Implemented Metadata class for symbol lookups by instrument ID
-- Added GetMetadata method to HistoricalClient
-- Infrastructure ready for metadata queries (pending native layer completion)
+- Infrastructure ready for metadata queries
 
 **Phase 3** - Helper Classes & Utilities
-- Added FlagSet for bit flag manipulation (Last, Tob, Snapshot, Mbp, BadTsRecv, MaybeBadBook, PublisherSpecific)
+- Added FlagSet for bit flag manipulation
 - Added Constants with sentinel values (UndefPrice, UndefTimestamp, FixedPriceScale)
 - Fixed Schema enum to include all OHLCV variants
-- All builds succeed with 0 errors
 
 **Phase 2** - Complete Record Type Implementation
-- Implemented remaining 8 record types (ImbalanceMessage, StatMessage, ErrorMessage, SystemMessage, SymbolMappingMessage, BboMessage, CbboMessage, Cmbp1Message)
-- Updated Record.FromBytes with all RType mappings (0x00, 0x01, 0x0A-0x18, 0x20-0x24, 0xA0, 0xB1, 0xC0-0xC4)
+- Implemented all 16 record types with proper deserialization
 - Added ConsolidatedBidAskPair for multi-venue data
 
 **Phase 1** - Initial Implementation
 - Live streaming client with async/await support
-- TradeMessage, MboMessage, Mbp1/10Message, OhlcvMessage, StatusMessage, InstrumentDefMessage
-- Tested successfully with EQUS.MINI dataset (AAPL trades)
+- Historical data queries with IAsyncEnumerable
 
 ## Architecture
 
@@ -172,8 +177,8 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/databento-dotnet.git
-cd databento-dotnet
+git clone https://github.com/Alparse/databento_client.git
+cd databento_client
 
 # Build native library
 ./build/build-native.ps1     # Windows
@@ -279,7 +284,7 @@ dotnet build Databento.NET.sln -c Release
 ## Project Structure
 
 ```
-Databento.NET/
+databento_client/
 ├── src/
 │   ├── Databento.Native/          # C++ native wrapper
 │   │   ├── include/               # C API headers
@@ -291,14 +296,14 @@ Databento.NET/
 │   └── Databento.Client/          # High-level .NET API
 │       ├── Live/                  # Live streaming
 │       ├── Historical/            # Historical queries
+│       ├── Reference/             # Reference data APIs
 │       ├── Models/                # Data models
 │       └── Builders/              # Builder pattern
-├── tests/
-│   ├── Databento.Client.Tests/
-│   └── Databento.Interop.Tests/
 ├── examples/
 │   ├── LiveStreaming.Example/
-│   └── HistoricalData.Example/
+│   ├── HistoricalData.Example/
+│   ├── Reference.Example/
+│   └── (26+ examples total)
 ├── build/
 │   ├── build-native.ps1           # Native build (Windows)
 │   ├── build-native.sh            # Native build (Linux/macOS)
@@ -318,16 +323,9 @@ dotnet run --project examples/LiveStreaming.Example
 
 # Run historical data example
 dotnet run --project examples/HistoricalData.Example
-```
 
-## Testing
-
-```bash
-# Run all tests
-dotnet test
-
-# Run specific test project
-dotnet test tests/Databento.Client.Tests
+# Run reference data example
+dotnet run --project examples/Reference.Example
 ```
 
 ## Supported Schemas
@@ -377,6 +375,39 @@ await foreach (var record in client.GetRangeAsync(
 {
     // Process records
 }
+```
+
+### ReferenceClient
+
+```csharp
+IReferenceClient client = new ReferenceClientBuilder()
+    .SetApiKey(apiKey)
+    .Build();
+
+// Get latest security master data
+var records = await client.SecurityMaster.GetLastAsync(
+    symbols: new[] { "NVDA" },
+    stypeIn: SType.RawSymbol
+);
+
+// Get security master data for a date range
+var historicalRecords = await client.SecurityMaster.GetRangeAsync(
+    start: DateTimeOffset.UtcNow.AddDays(-30),
+    end: DateTimeOffset.UtcNow,
+    symbols: new[] { "NVDA" }
+);
+
+// Get adjustment factors
+var adjustments = await client.AdjustmentFactors.GetRangeAsync(
+    start: DateTimeOffset.UtcNow.AddDays(-90),
+    symbols: new[] { "NVDA" }
+);
+
+// Get corporate actions
+var corporateActions = await client.CorporateActions.GetRangeAsync(
+    start: DateTimeOffset.UtcNow.AddYears(-1),
+    symbols: new[] { "NVDA" }
+);
 ```
 
 ## Performance Considerations
@@ -442,7 +473,7 @@ Apache 2.0 License. See [LICENSE](LICENSE) for details.
 
 - [Databento Documentation](https://docs.databento.com)
 - [databento-cpp GitHub](https://github.com/databento/databento-cpp)
-- [Issue Tracker](https://github.com/yourusername/databento-dotnet/issues)
+- [Issue Tracker](https://github.com/Alparse/databento_client/issues)
 
 ## Acknowledgments
 

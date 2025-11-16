@@ -236,7 +236,7 @@ See [BUILDING.md](BUILDING.md) for detailed troubleshooting.
 
 ## Getting Help
 
-- GitHub Issues: https://github.com/yourusername/databento-dotnet/issues
+- GitHub Issues: https://github.com/Alparse/databento_client/issues
 - Databento Support: https://databento.com/support
 - Documentation: https://docs.databento.com
 
