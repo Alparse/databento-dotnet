@@ -454,16 +454,6 @@ Verify your API key is correct and has the required permissions:
 curl -H "Authorization: Bearer your-api-key" https://api.databento.com/v1/metadata.list_datasets
 ```
 
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
 ## License
 
 Apache 2.0 License. See [LICENSE](LICENSE) for details.
