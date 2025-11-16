@@ -259,7 +259,7 @@ await foreach (var record in client.GetRangeAsync(
 
 **Try it yourself:** Run the included example with:
 ```bash
-dotnet run --project examples/Tester2.Example/Tester2.Example.csproj
+dotnet run --project examples/Historical.Readme.Example/Historical.Readme.Example.csproj
 ```
 
 
