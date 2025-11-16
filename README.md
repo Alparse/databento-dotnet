@@ -80,46 +80,12 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### Recent Changes
 
-**Latest (November 2025)** - Production Readiness & Reference API
-- ✅ **Reference API Implementation**: SecurityMasterApi, AdjustmentFactorsApi, CorporateActionsApi
-  - Corrected endpoint format from `/v1/reference/` to `/v0/` with POST requests
-  - Added disposal checks and retry logic for transient failures
-  - Full telemetry integration with distributed tracing
-- ✅ **Production Improvements**:
-  - Added OpenTelemetry-compatible telemetry (ActivitySource, Meters, Counters, Histograms)
-  - Implemented Polly retry policy with exponential backoff (3 retries: 2s, 4s, 8s)
-  - Added HttpClient DI pattern support for IHttpClientFactory integration
-  - Improved LiveClient thread safety using Interlocked operations
-- ✅ **Code Quality**: Removed empty test projects, comprehensive validation testing
-- ✅ **Security**: API key exposure fixed, proper environment variable handling
-
-**Critical Bug Fix (Phase 6)** - RType Enum Correction
-- **FIXED**: Corrected 13 incorrect RType enum values that were causing all non-trade messages to deserialize as UnknownRecord
-- Fixed: Mbp10 (0x02→0x0A), Status (0x17→0x12), InstrumentDef (0x18→0x13), Imbalance (0x19→0x14), Error (0x1A→0x15), SymbolMapping (0x1B→0x16), System (0x17→0x17), Statistics (0x1D→0x18), all OHLCV variants (0x12-0x16→0x11,0x20-0x24)
-- All deserializers now work correctly - SystemMessage, StatusMessage, SymbolMappingMessage, etc. properly recognized
-
-**Phase 5** - Configuration & Builder Enhancements
-- Added 9 configuration enumerations (HistoricalGateway, FeedMode, SplitDuration, Delivery, Encoding, Compression, VersionUpgradePolicy, JobState, DatasetCondition)
-- Enhanced builders with advanced configuration methods
-- All enums include string conversion and parsing methods
-
-**Phase 4** - Metadata & Symbol Mapping
-- Created IMetadata interface for instrument information queries
-- Implemented Metadata class for symbol lookups by instrument ID
-- Infrastructure ready for metadata queries
-
-**Phase 3** - Helper Classes & Utilities
-- Added FlagSet for bit flag manipulation
-- Added Constants with sentinel values (UndefPrice, UndefTimestamp, FixedPriceScale)
-- Fixed Schema enum to include all OHLCV variants
-
-**Phase 2** - Complete Record Type Implementation
-- Implemented all 16 record types with proper deserialization
-- Added ConsolidatedBidAskPair for multi-venue data
-
-**Phase 1** - Initial Implementation
-- Live streaming client with async/await support
-- Historical data queries with IAsyncEnumerable
+**Latest (November 2025)** - Production Ready
+- ✅ Reference API implementation (SecurityMaster, AdjustmentFactors, CorporateActions)
+- ✅ OpenTelemetry telemetry with retry policies
+- ✅ Complete metadata & symbol mapping (TsSymbolMap, PitSymbolMap)
+- ✅ All 16 record types with proper deserialization
+- ✅ Thread-safe LiveClient with reconnection support
 
 ## Architecture
 
