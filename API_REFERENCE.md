@@ -56,11 +56,6 @@ public interface ILiveClient : IAsyncDisposable
 Use `LiveClientBuilder` to create instances:
 
 ```csharp
-using Microsoft.Extensions.Logging;
-
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-var logger = loggerFactory.CreateLogger<ILiveClient>();
-
 var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY");
 await using var client = new LiveClientBuilder()
     .WithApiKey(apiKey)
@@ -68,14 +63,6 @@ await using var client = new LiveClientBuilder()
     .WithHeartbeatInterval(TimeSpan.FromSeconds(30))
     .WithSendTsOut(false)
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
-    .WithLogger(logger)                  // Optional: ILogger<ILiveClient>
-    .WithExceptionHandler(ex =>          // Optional: ExceptionCallback
-    {
-        Console.WriteLine($"Stream exception: {ex.Message}");
-        return ex is OperationCanceledException
-            ? ExceptionAction.Stop
-            : ExceptionAction.Continue;
-    })
     .Build();
 ```
 
@@ -343,23 +330,11 @@ Builder for creating `ILiveClient` instances.
 
 **Complete Example:**
 ```csharp
-using Microsoft.Extensions.Logging;
-
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-
 var client = new LiveClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithDataset("GLBX.MDP3")
     .WithHeartbeatInterval(TimeSpan.FromSeconds(15))
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
-    .WithLogger(loggerFactory.CreateLogger<ILiveClient>())
-    .WithExceptionHandler(ex =>
-    {
-        Console.WriteLine($"Stream exception: {ex.Message}");
-        return ex is OperationCanceledException
-            ? ExceptionAction.Stop
-            : ExceptionAction.Continue;
-    })
     .Build();
 ```
 
@@ -388,7 +363,6 @@ await using var client = new HistoricalClientBuilder()
     .WithGateway(HistoricalGateway.Bo1)
     .WithTimeout(TimeSpan.FromSeconds(30))
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
-    .WithLogger(logger)
     .Build();
 ```
 
@@ -813,16 +787,11 @@ Builder for creating `IHistoricalClient` instances.
 
 **Example:**
 ```csharp
-using Microsoft.Extensions.Logging;
-
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-
 var client = new HistoricalClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithGateway(HistoricalGateway.Bo1)
     .WithTimeout(TimeSpan.FromMinutes(5))
     .WithUserAgent("MyApp/1.0")
-    .WithLogger(loggerFactory.CreateLogger<IHistoricalClient>())
     .Build();
 ```
 
@@ -854,7 +823,6 @@ var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY");
 await using var client = new ReferenceClientBuilder()
     .WithApiKey(apiKey)
     .WithGateway(HistoricalGateway.Bo1)
-    .WithLogger(logger)
     .Build();
 ```
 
@@ -1035,14 +1003,9 @@ Builder for creating `IReferenceClient` instances.
 
 **Example:**
 ```csharp
-using Microsoft.Extensions.Logging;
-
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-
 var client = new ReferenceClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
     .WithGateway(HistoricalGateway.Bo1)
-    .WithLogger(loggerFactory.CreateLogger<IReferenceClient>())
     .Build();
 ```
 
@@ -1955,10 +1918,18 @@ var client = new LiveClientBuilder().WithApiKey(apiKey).Build();
 
 ### 3. Enable Logging in Production
 
+Logging is **optional** but highly recommended for production environments to diagnose issues and monitor performance.
+
+**Prerequisites:**
+```bash
+dotnet add package Microsoft.Extensions.Logging --version 8.0.0
+```
+
+**Example:**
 ```csharp
 using Microsoft.Extensions.Logging;
 
-// ✅ GOOD
+// Create logger factory
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder
@@ -1967,11 +1938,18 @@ using var loggerFactory = LoggerFactory.Create(builder =>
         .SetMinimumLevel(LogLevel.Information);
 });
 
-var client = new LiveClientBuilder()
+// Add logger to client
+await using var client = new LiveClientBuilder()
     .WithApiKey(apiKey)
     .WithLogger(loggerFactory.CreateLogger<ILiveClient>())
     .Build();
 ```
+
+**Benefits of logging:**
+- Debug connection issues
+- Monitor stream health and performance
+- Track API requests and responses
+- Diagnose errors in production
 
 ### 4. Check Costs Before Historical Queries
 
