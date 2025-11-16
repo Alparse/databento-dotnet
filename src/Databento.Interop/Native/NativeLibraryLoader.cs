@@ -23,8 +23,41 @@ internal static class NativeLibraryLoader
             if (_initialized)
                 return;
 
+            // Pre-load all dependency DLLs before databento_native is loaded
+            PreloadDependencies();
+
             NativeLibrary.SetDllImportResolver(typeof(NativeMethods).Assembly, DllImportResolver);
             _initialized = true;
+        }
+    }
+
+    private static void PreloadDependencies()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return;
+
+        // Windows dependency order: load these before databento_native.dll
+        var dependencies = new[] { "zlibd1.dll", "zstd.dll", "legacy.dll", "libcrypto-3-x64.dll", "libssl-3-x64.dll" };
+        var locations = GetSearchLocations().ToList();
+
+        foreach (var dep in dependencies)
+        {
+            foreach (var location in locations)
+            {
+                var dllPath = Path.Combine(location, dep);
+                if (File.Exists(dllPath))
+                {
+                    try
+                    {
+                        NativeLibrary.TryLoad(dllPath, out _);
+                        break; // Successfully loaded, move to next dependency
+                    }
+                    catch
+                    {
+                        // Ignore and try next location
+                    }
+                }
+            }
         }
     }
 
