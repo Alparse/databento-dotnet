@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.6-beta</Version>
+    <Version>3.0.7-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.6-beta: Consolidated package - Interop layer and native binaries now embedded in single package for simpler installation.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.7-beta: Fixed package dependency issue - Interop layer now properly embedded without external dependency requirement.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
@@ -28,7 +28,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Databento.Interop\Databento.Interop.csproj" />
+    <ProjectReference Include="..\Databento.Interop\Databento.Interop.csproj" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
