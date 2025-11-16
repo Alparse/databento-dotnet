@@ -59,7 +59,7 @@ Use `LiveClientBuilder` to create instances:
 var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY");
 await using var client = new LiveClientBuilder()
     .WithApiKey(apiKey)
-    .WithDataset("GLBX.MDP3")           // Optional: default dataset
+    .WithDataset("EQUS.MINI")           // Optional: default dataset
     .WithHeartbeatInterval(TimeSpan.FromSeconds(30))
     .WithSendTsOut(false)
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
@@ -152,9 +152,9 @@ Task SubscribeAsync(
 ```
 
 **Parameters:**
-- `dataset` - Dataset name (e.g., "GLBX.MDP3", "XNAS.ITCH", "EQUS.MINI")
+- `dataset` - Dataset name (e.g., "EQUS.MINI", "XNAS.ITCH", "GLBX.MDP3")
 - `schema` - Schema type (e.g., `Schema.Trades`, `Schema.Mbp1`, `Schema.Ohlcv1M`)
-- `symbols` - List of symbols to subscribe to (e.g., `["ESH4", "NQH4"]`)
+- `symbols` - List of symbols to subscribe to (e.g., `["NVDA", "AAPL", "TSLA"]`)
 - `startTime` - Optional start time for intraday replay (null for live data)
 - `cancellationToken` - Cancellation token
 
@@ -169,9 +169,9 @@ await client.SubscribeAsync(
 
 // Intraday replay
 await client.SubscribeAsync(
-    dataset: "GLBX.MDP3",
+    dataset: "EQUS.MINI",
     schema: Schema.Mbp1,
-    symbols: new[] { "ESH4" },
+    symbols: new[] { "NVDA" },
     startTime: DateTimeOffset.UtcNow.AddHours(-2)
 );
 ```
@@ -332,7 +332,7 @@ Builder for creating `ILiveClient` instances.
 ```csharp
 var client = new LiveClientBuilder()
     .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
-    .WithDataset("GLBX.MDP3")
+    .WithDataset("EQUS.MINI")
     .WithHeartbeatInterval(TimeSpan.FromSeconds(15))
     .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
     .Build();
