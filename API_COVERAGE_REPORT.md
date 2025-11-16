@@ -216,7 +216,7 @@ To reach 100% completion:
 
 ## C++ to C# API Differences
 
-This section documents intentional differences between the databento-cpp and Databento.NET APIs due to language idioms and best practices.
+This section documents intentional differences between the databento-cpp and databento-dotnet APIs due to language idioms and best practices.
 
 ### Price Formatting
 

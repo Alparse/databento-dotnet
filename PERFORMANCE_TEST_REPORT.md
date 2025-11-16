@@ -1,4 +1,4 @@
-# Databento.NET Performance and Test Report
+# databento-dotnet Performance and Test Report
 **Date:** November 15, 2025
 **Test Environment:** Windows, .NET 8.0, Release Configuration
 **API Connectivity:** Live (DATABENTO_API_KEY configured)
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Comprehensive testing of the Databento.NET solution covering 12 example projects demonstrated **excellent overall performance and reliability**. All core functionality worked as expected with:
+Comprehensive testing of the databento-dotnet solution covering 12 example projects demonstrated **excellent overall performance and reliability**. All core functionality worked as expected with:
 - ✅ **100% build success rate** (0 errors, 174 documentation warnings)
 - ✅ **10/12 examples fully functional** (83% complete test coverage)
 - ✅ **2/12 examples partially tested** (live streaming, limited by market hours)
@@ -669,7 +669,7 @@ The C# wrapper provides **excellent API coverage** of the C++ databento library:
 
 ## Conclusion
 
-The Databento.NET solution demonstrates **excellent quality and performance** across all tested components:
+The databento-dotnet solution demonstrates **excellent quality and performance** across all tested components:
 
 ### Strengths ✅
 - **Robust API coverage** (100% of documented C++ API)

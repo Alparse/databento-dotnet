@@ -1,6 +1,6 @@
-# Building Databento.NET
+# Building databento-dotnet
 
-This guide covers the complete build process for the Databento.NET project.
+This guide covers the complete build process for the databento-dotnet project.
 
 ## Prerequisites
 
@@ -99,7 +99,7 @@ Where `{RID}` is:
 ```bash
 cd ../../..  # Back to root
 dotnet restore
-dotnet build Databento.NET.sln -c Release
+dotnet build databento-dotnet.sln -c Release
 ```
 
 ## Verifying the Build

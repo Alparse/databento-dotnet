@@ -14,7 +14,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootDir = Split-Path -Parent $scriptDir
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Building Databento.NET Solution" -ForegroundColor Cyan
+Write-Host "Building databento-dotnet Solution" -ForegroundColor Cyan
 Write-Host "Configuration: $Configuration" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
@@ -35,7 +35,7 @@ if (!$SkipNative) {
 Write-Host "`n[2/2] Building .NET solution..." -ForegroundColor Yellow
 Push-Location $rootDir
 try {
-    dotnet build Databento.NET.sln -c $Configuration
+    dotnet build databento-dotnet.sln -c $Configuration
 
     if ($LASTEXITCODE -ne 0) {
         throw ".NET build failed"

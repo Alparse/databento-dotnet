@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with Databento.NET in minutes!
+Get up and running with databento-dotnet in minutes!
 
 ## 1. Build the Project
 

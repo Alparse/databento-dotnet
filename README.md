@@ -1,4 +1,4 @@
-# Databento.NET
+# databento-dotnet
 
 A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.
 
@@ -39,7 +39,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### API Coverage
 
-| Feature | databento-cpp | Databento.NET | Status |
+| Feature | databento-cpp | databento-dotnet | Status |
 |---------|---------------|---------------|--------|
 | **Live Streaming** | ✅ | ✅ | Complete |
 | Subscribe to datasets | ✅ | ✅ | Complete |
@@ -185,7 +185,7 @@ cd databento_client
 ./build/build-native.sh      # Linux/macOS
 
 # Build .NET solution
-dotnet build Databento.NET.sln
+dotnet build databento-dotnet.sln
 ```
 
 ### Live Streaming Example
@@ -278,7 +278,7 @@ await foreach (var record in client.GetRangeAsync(
 ### Build .NET Solution Only
 
 ```bash
-dotnet build Databento.NET.sln -c Release
+dotnet build databento-dotnet.sln -c Release
 ```
 
 ## Project Structure
@@ -308,7 +308,7 @@ databento_client/
 │   ├── build-native.ps1           # Native build (Windows)
 │   ├── build-native.sh            # Native build (Linux/macOS)
 │   └── build-all.ps1              # Full solution build
-└── Databento.NET.sln              # Visual Studio solution
+└── databento-dotnet.sln           # Visual Studio solution
 ```
 
 ## Running Examples
