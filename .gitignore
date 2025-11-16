@@ -62,3 +62,6 @@ Desktop.ini
 *.temp
 *.swp
 *~
+
+# Diagnostic tools (development only, not for public repo)
+tools/diagnostics/
