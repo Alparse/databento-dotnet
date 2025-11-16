@@ -59,9 +59,9 @@ All 16 DBN record types from databento-cpp are fully implemented:
 | **Historical Client** | ✅ | ✅ | Complete (time-range queries) |
 | Time-range queries | ✅ | ✅ | Complete with IAsyncEnumerable |
 | Batch downloads | ✅ | ❌ | Not yet implemented |
-| **Metadata & Symbol Mapping** | ✅ | ⚠️ | Partial (infrastructure ready) |
-| Instrument metadata queries | ✅ | ⚠️ | API ready, native impl pending |
-| Symbol resolution | ✅ | ⚠️ | GetSymbol(instrumentId) implemented |
+| **Metadata & Symbol Mapping** | ✅ | ✅ | Complete |
+| Instrument metadata queries | ✅ | ✅ | 10+ metadata API methods working |
+| Symbol resolution | ✅ | ✅ | Full TsSymbolMap & PitSymbolMap support |
 | **Advanced Features** | | | |
 | Compression (zstd) | ✅ | ✅ | Handled by native layer |
 | SSL/TLS | ✅ | ✅ | Handled by native layer |
