@@ -40,8 +40,11 @@ internal static class NativeLibraryLoader
         var dependencies = new[] { "zlibd1.dll", "zstd.dll", "legacy.dll", "libcrypto-3-x64.dll", "libssl-3-x64.dll" };
         var locations = GetSearchLocations().ToList();
 
+        Console.WriteLine("[NativeLibraryLoader] Starting dependency pre-load...");
+
         foreach (var dep in dependencies)
         {
+            bool loaded = false;
             foreach (var location in locations)
             {
                 var dllPath = Path.Combine(location, dep);
@@ -49,16 +52,26 @@ internal static class NativeLibraryLoader
                 {
                     try
                     {
-                        NativeLibrary.TryLoad(dllPath, out _);
-                        break; // Successfully loaded, move to next dependency
+                        if (NativeLibrary.TryLoad(dllPath, out var handle))
+                        {
+                            Console.WriteLine($"[NativeLibraryLoader] ✓ Loaded {dep} from {location}");
+                            loaded = true;
+                            break;
+                        }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Ignore and try next location
+                        Console.WriteLine($"[NativeLibraryLoader] ✗ Failed to load {dep} from {location}: {ex.Message}");
                     }
                 }
             }
+            if (!loaded)
+            {
+                Console.WriteLine($"[NativeLibraryLoader] ⚠ Could not find or load {dep}");
+            }
         }
+
+        Console.WriteLine("[NativeLibraryLoader] Dependency pre-load complete.");
     }
 
     private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
