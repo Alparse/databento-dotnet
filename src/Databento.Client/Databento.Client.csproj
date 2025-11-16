@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.8-beta</Version>
+    <Version>3.0.9-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.8-beta: Fixed runtime assembly loading - Interop DLL now properly included in package lib folder.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.9-beta: Fixed native DLL loading - Added MSBuild targets to copy native binaries to output directory at build time.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
@@ -54,6 +54,9 @@
 
     <!-- Include native libraries from Interop project -->
     <None Include="..\Databento.Interop\runtimes\**\*" Pack="true" PackagePath="runtimes" />
+
+    <!-- Include build targets to copy native DLLs -->
+    <None Include="build\Databento.Client.targets" Pack="true" PackagePath="build" />
   </ItemGroup>
 
 </Project>
