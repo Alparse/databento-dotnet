@@ -232,8 +232,14 @@ DATABENTO_API DbentoMetadataHandle dbento_historical_get_metadata(
             return nullptr;
         }
 
+        // Mark unused parameters - this is a stub function not yet fully implemented
+        (void)start_time_ns;
+        (void)end_time_ns;
+
         // MEDIUM FIX: Use centralized schema parsing (eliminates code duplication)
+        // Note: schema_enum would be used when metadata-only query is implemented
         db::Schema schema_enum = ParseSchema(schema);
+        (void)schema_enum;  // Mark as intentionally unused until implementation complete
 
         // Note: Getting metadata without full query is not directly supported
         // For now, return nullptr - this feature would need a different API approach
@@ -277,6 +283,11 @@ DATABENTO_API int dbento_metadata_get_symbol_mapping(
         if (!wrapper) {
             return -1;
         }
+
+        // Mark unused parameters - this is a stub function not yet fully implemented
+        (void)instrument_id;
+        (void)symbol_buffer;
+        (void)symbol_buffer_size;
 
         // Get symbol mapping from metadata
         auto symbol_map = wrapper->metadata.CreateSymbolMap();

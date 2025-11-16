@@ -51,8 +51,12 @@ inline bool SafeStrCopy(char* dest, size_t dest_size, const char* src) {
     if (dest_size < MIN_ERROR_BUFFER_SIZE) {
         // Still write what we can, but return false to indicate buffer too small
         if (src && src[0] != '\0') {
-            strncpy(dest, src, dest_size - 1);
-            dest[dest_size - 1] = '\0';
+            #ifdef _WIN32
+                strncpy_s(dest, dest_size, src, dest_size - 1);
+            #else
+                strncpy(dest, src, dest_size - 1);
+                dest[dest_size - 1] = '\0';
+            #endif
         } else {
             dest[0] = '\0';
         }
@@ -76,9 +80,16 @@ inline bool SafeStrCopy(char* dest, size_t dest_size, const char* src) {
         return true;
     }
 
-    // Copy with bounds checking - strncpy ensures we don't exceed safe_size
-    strncpy(dest, src, safe_size - 1);
-    dest[safe_size - 1] = '\0';  // Ensure null termination (defense in depth)
+    // Copy with bounds checking
+    // Use platform-specific safe string functions to avoid security warnings
+    #ifdef _WIN32
+        // Windows: Use strncpy_s which is the secure version
+        strncpy_s(dest, safe_size, src, safe_size - 1);
+    #else
+        // Unix/Linux: Use standard strncpy with manual null termination
+        strncpy(dest, src, safe_size - 1);
+        dest[safe_size - 1] = '\0';  // Ensure null termination (defense in depth)
+    #endif
 
     return true;
 }
