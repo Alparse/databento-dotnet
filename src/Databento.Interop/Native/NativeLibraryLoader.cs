@@ -76,26 +76,53 @@ internal static class NativeLibraryLoader
 
     private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
+        Console.WriteLine($"[NativeLibraryLoader] DllImportResolver called for: {libraryName}");
+
         // Only handle databento_native, let other DLLs load normally
         if (libraryName != "databento_native")
+        {
+            Console.WriteLine($"[NativeLibraryLoader] Not handling {libraryName}, using default resolution");
             return IntPtr.Zero;
+        }
+
+        Console.WriteLine($"[NativeLibraryLoader] Attempting to resolve databento_native.dll...");
 
         // Try to load from multiple locations
-        var locations = GetSearchLocations();
+        var locations = GetSearchLocations().ToList();
+        Console.WriteLine($"[NativeLibraryLoader] Searching {locations.Count} locations...");
 
         foreach (var location in locations)
         {
             var dllPath = Path.Combine(location, GetPlatformLibraryName(libraryName));
+            Console.WriteLine($"[NativeLibraryLoader] Trying: {dllPath}");
 
             if (File.Exists(dllPath))
             {
-                if (NativeLibrary.TryLoad(dllPath, out var handle))
+                Console.WriteLine($"[NativeLibraryLoader] File exists, attempting load...");
+                try
                 {
-                    return handle;
+                    if (NativeLibrary.TryLoad(dllPath, out var handle))
+                    {
+                        Console.WriteLine($"[NativeLibraryLoader] ✓ Successfully loaded databento_native.dll from {location}");
+                        return handle;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[NativeLibraryLoader] ✗ TryLoad returned false for {dllPath}");
+                    }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[NativeLibraryLoader] ✗ Exception loading {dllPath}: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[NativeLibraryLoader] File not found at {dllPath}");
             }
         }
 
+        Console.WriteLine($"[NativeLibraryLoader] Failed to load databento_native.dll from any location");
         // Fallback to default resolution
         return IntPtr.Zero;
     }
