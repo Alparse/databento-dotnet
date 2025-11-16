@@ -3,6 +3,7 @@ using System.Web;
 using Databento.Client.Models;
 using Databento.Client.Models.Reference;
 using Microsoft.Extensions.Logging;
+using Polly;
 
 namespace Databento.Client.Reference;
 
@@ -14,12 +15,16 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly ILogger? _logger;
+    private readonly Func<bool> _isDisposed;
+    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
 
-    public CorporateActionsApi(HttpClient httpClient, string baseUrl, ILogger? logger)
+    public CorporateActionsApi(HttpClient httpClient, string baseUrl, ILogger? logger, Func<bool> isDisposed, IAsyncPolicy<HttpResponseMessage> retryPolicy)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _baseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
         _logger = logger;
+        _isDisposed = isDisposed ?? throw new ArgumentNullException(nameof(isDisposed));
+        _retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
     }
 
     public async Task<List<CorporateActionRecord>> GetRangeAsync(
@@ -36,6 +41,9 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         bool pit = false,
         CancellationToken cancellationToken = default)
     {
+        // HIGH FIX: Check disposal before HTTP operations
+        ObjectDisposedException.ThrowIf(_isDisposed(), typeof(ReferenceClient));
+
         var queryParams = new Dictionary<string, string>
         {
             ["start"] = FormatTimestamp(start),
@@ -105,8 +113,12 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         var url = $"{_baseUrl}/v0/corporate_actions.get_range";
         _logger?.LogDebug("POST {Url}", url);
 
+        // MEDIUM FIX: Execute with retry policy for transient failures
         var content = new FormUrlEncodedContent(queryParams);
-        var response = await _httpClient.PostAsync(url, content, cancellationToken);
+        var response = await _retryPolicy.ExecuteAsync(async () =>
+        {
+            return await _httpClient.PostAsync(url, content, cancellationToken);
+        });
         await EnsureSuccessStatusCode(response);
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken);

@@ -284,7 +284,10 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        if (_streamTask != null)
+        // MEDIUM FIX: Thread-safe check using Interlocked to prevent race conditions
+        // If _streamTask is already set (not null), another thread beat us to starting
+        var existingTask = Interlocked.CompareExchange(ref _streamTask, null, null);
+        if (existingTask != null)
             throw new InvalidOperationException("Client is already started");
 
         _logger?.LogInformation("Starting live stream");
@@ -297,7 +300,8 @@ public sealed class LiveClient : ILiveClient
         _metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>();
 
         // Start receiving on a background thread
-        _streamTask = Task.Run(() =>
+        // MEDIUM FIX: Create task first, then atomically set it
+        var newTask = Task.Run(() =>
         {
             // MEDIUM FIX: Increased from 512 to 2048 for full error context
             byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
@@ -335,6 +339,10 @@ public sealed class LiveClient : ILiveClient
             _logger?.LogDebug("Connection state changed: Connecting → Streaming");
         }, cancellationToken);
 
+        // MEDIUM FIX: Atomically set _streamTask after creating the task
+        // This ensures thread-safe publication of the task
+        Interlocked.Exchange(ref _streamTask, newTask);
+
         // Wait for metadata to be received from callback
         return await _metadataTcs.Task.ConfigureAwait(false);
     }
@@ -371,18 +379,21 @@ public sealed class LiveClient : ILiveClient
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Reconnecting);
 
         // Stop current stream task if running
-        if (_streamTask != null)
+        // MEDIUM FIX: Thread-safe read of _streamTask
+        var currentTask = Interlocked.CompareExchange(ref _streamTask, null, null);
+        if (currentTask != null)
         {
             NativeMethods.dbento_live_stop(_handle);
             try
             {
-                await _streamTask;
+                await currentTask;
             }
             catch
             {
                 // Ignore errors on stop
             }
-            _streamTask = null;
+            // MEDIUM FIX: Thread-safe null assignment
+            Interlocked.Exchange(ref _streamTask, null);
         }
 
         // Use native reconnect (doesn't dispose handle!)
@@ -636,14 +647,16 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        if (_streamTask == null)
+        // MEDIUM FIX: Thread-safe read of _streamTask
+        var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
+        if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
         _logger?.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop...");
 
         try
         {
-            await _streamTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await streamTask.WaitAsync(cancellationToken).ConfigureAwait(false);
             _logger?.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
         }
         catch (OperationCanceledException)
@@ -667,14 +680,16 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        if (_streamTask == null)
+        // MEDIUM FIX: Thread-safe read of _streamTask
+        var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
+        if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
         _logger?.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop (timeout: {Timeout}ms)...", timeout.TotalMilliseconds);
 
         try
         {
-            await _streamTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+            await streamTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
             _logger?.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
             return true;  // Stopped normally
         }
@@ -709,12 +724,14 @@ public sealed class LiveClient : ILiveClient
 
         // Cancel and wait for stream task with timeout
         _cts.Cancel();
-        if (_streamTask != null)
+        // MEDIUM FIX: Thread-safe read of _streamTask during disposal
+        var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
+        if (streamTask != null)
         {
             try
             {
                 // Wait with 5-second timeout to prevent deadlocks
-                await _streamTask.WaitAsync(TimeSpan.FromSeconds(5));
+                await streamTask.WaitAsync(TimeSpan.FromSeconds(5));
             }
             catch (System.TimeoutException)
             {

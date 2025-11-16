@@ -12,6 +12,7 @@ public sealed class ReferenceClientBuilder
     private string? _apiKey;
     private HistoricalGateway _gateway = HistoricalGateway.Bo1;
     private ILogger<IReferenceClient>? _logger;
+    private HttpClient? _httpClient;
 
     /// <summary>
     /// Set the Databento API key
@@ -44,6 +45,22 @@ public sealed class ReferenceClientBuilder
     }
 
     /// <summary>
+    /// Set a pre-configured HttpClient instance (e.g., from IHttpClientFactory)
+    /// </summary>
+    /// <param name="httpClient">Pre-configured HttpClient with authentication and timeout settings</param>
+    /// <remarks>
+    /// When providing an HttpClient, ensure it has:
+    /// - Authorization header set to Basic auth with your API key
+    /// - Appropriate timeout configured
+    /// - Accept header for application/json
+    /// </remarks>
+    public ReferenceClientBuilder WithHttpClient(HttpClient httpClient)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        return this;
+    }
+
+    /// <summary>
     /// Build the ReferenceClient instance
     /// </summary>
     /// <returns>Configured ReferenceClient instance</returns>
@@ -60,6 +77,9 @@ public sealed class ReferenceClientBuilder
             }
         }
 
-        return new ReferenceClient(_apiKey, _gateway, _logger);
+        // HIGH FIX: Pass HttpClient to constructor for proper lifetime management
+        // If user provided HttpClient (e.g., from IHttpClientFactory), use it
+        // Otherwise, ReferenceClient will create its own instance
+        return new ReferenceClient(_apiKey, _gateway, _logger, _httpClient);
     }
 }

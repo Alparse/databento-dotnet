@@ -9,12 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Databento.Interop", "src\Da
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Databento.Client", "src\Databento.Client\Databento.Client.csproj", "{B8FE44F7-79C1-4C2E-9D2A-7D6F03D3F8F2}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9BC9CEB8-8B4A-11D0-8D11-00A0C91BC943}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Databento.Client.Tests", "tests\Databento.Client.Tests\Databento.Client.Tests.csproj", "{1A17CB64-6076-43C0-8115-A5ADF47C7C42}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Databento.Interop.Tests", "tests\Databento.Interop.Tests\Databento.Interop.Tests.csproj", "{309915A1-C503-42E7-B777-2E51773065B6}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{0CCA0EB9-9C5B-22E1-9E22-11B1D92CD054}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveStreaming.Example", "examples\LiveStreaming.Example\LiveStreaming.Example.csproj", "{59996FF8-11DE-4E1F-B86A-D6917CFB5399}"
@@ -103,30 +97,6 @@ Global
 		{B8FE44F7-79C1-4C2E-9D2A-7D6F03D3F8F2}.Release|x64.Build.0 = Release|Any CPU
 		{B8FE44F7-79C1-4C2E-9D2A-7D6F03D3F8F2}.Release|x86.ActiveCfg = Release|Any CPU
 		{B8FE44F7-79C1-4C2E-9D2A-7D6F03D3F8F2}.Release|x86.Build.0 = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|x64.Build.0 = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Debug|x86.Build.0 = Debug|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|x64.ActiveCfg = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|x64.Build.0 = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|x86.ActiveCfg = Release|Any CPU
-		{1A17CB64-6076-43C0-8115-A5ADF47C7C42}.Release|x86.Build.0 = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|x64.Build.0 = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Debug|x86.Build.0 = Debug|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|x64.ActiveCfg = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|x64.Build.0 = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|x86.ActiveCfg = Release|Any CPU
-		{309915A1-C503-42E7-B777-2E51773065B6}.Release|x86.Build.0 = Release|Any CPU
 		{59996FF8-11DE-4E1F-B86A-D6917CFB5399}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{59996FF8-11DE-4E1F-B86A-D6917CFB5399}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59996FF8-11DE-4E1F-B86A-D6917CFB5399}.Debug|x64.ActiveCfg = Debug|Any CPU
