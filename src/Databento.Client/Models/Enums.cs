@@ -75,6 +75,36 @@ public enum SType : byte
 }
 
 /// <summary>
+/// Extension methods for SType enum
+/// </summary>
+public static class STypeExtensions
+{
+    /// <summary>
+    /// Convert SType enum to string representation for API calls
+    /// </summary>
+    public static string ToStypeString(this SType stype)
+    {
+        return stype switch
+        {
+            SType.InstrumentId => "instrument_id",
+            SType.RawSymbol => "raw_symbol",
+            SType.Smart => "smart",
+            SType.Continuous => "continuous",
+            SType.Parent => "parent",
+            SType.NasdaqSymbol => "nasdaq_symbol",
+            SType.CmsSymbol => "cms_symbol",
+            SType.Isin => "isin",
+            SType.UsCode => "us_code",
+            SType.BbgCompId => "bbg_comp_id",
+            SType.BbgCompTicker => "bbg_comp_ticker",
+            SType.Figi => "figi",
+            SType.FigiTicker => "figi_ticker",
+            _ => throw new ArgumentOutOfRangeException(nameof(stype))
+        };
+    }
+}
+
+/// <summary>
 /// Instrument class type
 /// </summary>
 public enum InstrumentClass : byte
@@ -188,4 +218,81 @@ public enum TriState : byte
     NotAvailable = (byte)'~',
     No = (byte)'N',
     Yes = (byte)'Y'
+}
+
+/// <summary>
+/// Error code indicating the type of error message (matches databento-cpp ErrorCode)
+/// </summary>
+public enum ErrorCode : byte
+{
+    /// <summary>
+    /// The authentication step failed
+    /// </summary>
+    AuthFailed = 1,
+
+    /// <summary>
+    /// The user account or API key were deactivated
+    /// </summary>
+    ApiKeyDeactivated = 2,
+
+    /// <summary>
+    /// The user has exceeded their open connection limit
+    /// </summary>
+    ConnectionLimitExceeded = 3,
+
+    /// <summary>
+    /// One or more symbols failed to resolve
+    /// </summary>
+    SymbolResolutionFailed = 4,
+
+    /// <summary>
+    /// There was an issue with a subscription request (other than symbol resolution)
+    /// </summary>
+    InvalidSubscription = 5,
+
+    /// <summary>
+    /// An error occurred in the gateway
+    /// </summary>
+    InternalError = 6,
+
+    /// <summary>
+    /// No error code was specified or this record was upgraded from a version 1 struct where the code field didn't exist
+    /// </summary>
+    Unset = 255
+}
+
+/// <summary>
+/// System message code indicating the type of system message (matches databento-cpp SystemCode)
+/// </summary>
+public enum SystemCode : byte
+{
+    /// <summary>
+    /// A message sent in the absence of other records to indicate the connection remains open
+    /// </summary>
+    Heartbeat = 0,
+
+    /// <summary>
+    /// An acknowledgement of a subscription request
+    /// </summary>
+    SubscriptionAck = 1,
+
+    /// <summary>
+    /// The gateway has detected this session is falling behind real-time
+    /// </summary>
+    SlowReaderWarning = 2,
+
+    /// <summary>
+    /// Indicates a replay subscription has caught up with real-time data
+    /// </summary>
+    ReplayCompleted = 3,
+
+    /// <summary>
+    /// Signals that all records for interval-based schemas have been published for the given timestamp
+    /// </summary>
+    EndOfInterval = 4,
+
+    /// <summary>
+    /// No system code was specified or this record was upgraded from a version 1 struct where the code field didn't exist
+    /// </summary>
+    Unset = 255
 }

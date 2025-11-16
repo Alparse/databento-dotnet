@@ -232,11 +232,203 @@ DATABENTO_API int dbento_live_subscribe_with_snapshot(
 );
 
 /**
+ * Subscribe to data streams with intraday replay from a specific start time
+ * @param handle Live client handle
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (e.g., "trades", "mbp-1", "ohlcv-1s")
+ * @param symbols Array of symbol strings (NULL-terminated)
+ * @param symbol_count Number of symbols in array
+ * @param start_time_ns Start time in nanoseconds since Unix epoch (0 for full replay)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_subscribe_with_replay(
+    DbentoLiveClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
  * Get current connection state (Phase 15)
  * @param handle Live client handle
  * @return Connection state: 0=Disconnected, 1=Connecting, 2=Connected, 3=Streaming
  */
 DATABENTO_API int dbento_live_get_connection_state(DbentoLiveClientHandle handle);
+
+// ============================================================================
+// LiveBlocking Client API (Pull-based)
+// ============================================================================
+
+/**
+ * Create a LiveBlocking client with extended configuration
+ * @param api_key Databento API key (required)
+ * @param dataset Default dataset for subscriptions (required)
+ * @param send_ts_out Include gateway send timestamps (0=false, non-zero=true)
+ * @param upgrade_policy Version upgrade policy (0=AsIs, 1=Upgrade)
+ * @param heartbeat_interval_secs Heartbeat interval in seconds (0 or negative=default 30s)
+ * @param error_buffer Buffer for error messages (can be NULL)
+ * @param error_buffer_size Size of error buffer
+ * @return Handle to LiveBlocking client, or NULL on failure
+ */
+DATABENTO_API DbentoLiveClientHandle dbento_live_blocking_create_ex(
+    const char* api_key,
+    const char* dataset,
+    int send_ts_out,
+    int upgrade_policy,
+    int heartbeat_interval_secs,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Subscribe to data streams (LiveBlocking)
+ * @param handle LiveBlocking client handle
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (e.g., "trades", "mbp-1", "ohlcv-1s")
+ * @param symbols Array of symbol strings
+ * @param symbol_count Number of symbols in array
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_subscribe(
+    DbentoLiveClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Subscribe to data streams with intraday replay (LiveBlocking)
+ * @param handle LiveBlocking client handle
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (e.g., "trades", "mbp-1", "ohlcv-1s")
+ * @param symbols Array of symbol strings
+ * @param symbol_count Number of symbols in array
+ * @param start_time_ns Start time in nanoseconds since Unix epoch (0 for full replay)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_subscribe_with_replay(
+    DbentoLiveClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Subscribe to data streams with initial snapshot (LiveBlocking, MBO only)
+ * @param handle LiveBlocking client handle
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (must be "mbo")
+ * @param symbols Array of symbol strings
+ * @param symbol_count Number of symbols in array
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_subscribe_with_snapshot(
+    DbentoLiveClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Start the LiveBlocking session - blocks until metadata is decoded
+ * Returns DBN metadata as JSON string in metadata_buffer
+ * @param handle LiveBlocking client handle
+ * @param metadata_buffer Buffer to receive JSON metadata
+ * @param metadata_buffer_size Size of metadata buffer (recommend 64KB)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_start(
+    DbentoLiveClientHandle handle,
+    char* metadata_buffer,
+    size_t metadata_buffer_size,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Get next record from LiveBlocking client - blocks until record received or timeout
+ * @param handle LiveBlocking client handle
+ * @param record_buffer Buffer to receive record data
+ * @param record_buffer_size Size of record buffer (recommend 256KB)
+ * @param out_record_length Receives actual record length
+ * @param out_record_type Receives record type (RType)
+ * @param timeout_ms Timeout in milliseconds (-1 for no timeout)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, 1 on timeout, negative on error
+ */
+DATABENTO_API int dbento_live_blocking_next_record(
+    DbentoLiveClientHandle handle,
+    uint8_t* record_buffer,
+    size_t record_buffer_size,
+    size_t* out_record_length,
+    uint8_t* out_record_type,
+    int timeout_ms,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Reconnect LiveBlocking client to the gateway
+ * @param handle LiveBlocking client handle
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_reconnect(
+    DbentoLiveClientHandle handle,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Resubscribe to all stored subscriptions (LiveBlocking)
+ * @param handle LiveBlocking client handle
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_resubscribe(
+    DbentoLiveClientHandle handle,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Stop the LiveBlocking session
+ * @param handle LiveBlocking client handle
+ */
+DATABENTO_API void dbento_live_blocking_stop(DbentoLiveClientHandle handle);
+
+/**
+ * Destroy LiveBlocking client and free resources
+ * @param handle LiveBlocking client handle
+ */
+DATABENTO_API void dbento_live_blocking_destroy(DbentoLiveClientHandle handle);
 
 // ============================================================================
 // Historical Client API

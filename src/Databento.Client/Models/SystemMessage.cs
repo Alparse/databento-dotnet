@@ -12,14 +12,14 @@ public class SystemMessage : Record
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// System message code (0 = Heartbeat, 1 = SubscriptionAck, etc.)
+    /// System message code indicating the type of message
     /// </summary>
-    public byte Code { get; set; }
+    public SystemCode Code { get; set; }
 
     /// <summary>
     /// Check if this is a heartbeat message
     /// </summary>
-    public bool IsHeartbeat => Code == 0;
+    public bool IsHeartbeat => Code == SystemCode.Heartbeat;
 
     public override string ToString()
     {

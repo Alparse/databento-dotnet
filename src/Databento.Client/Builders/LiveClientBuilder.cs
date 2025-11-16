@@ -15,6 +15,7 @@ public sealed class LiveClientBuilder
     private VersionUpgradePolicy _upgradePolicy = VersionUpgradePolicy.Upgrade;
     private TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(30);
     private ILogger<ILiveClient>? _logger;
+    private ExceptionCallback? _exceptionHandler;
 
     /// <summary>
     /// Set the Databento API key
@@ -83,6 +84,22 @@ public sealed class LiveClientBuilder
     }
 
     /// <summary>
+    /// Set the exception handler callback (matches databento-cpp ExceptionCallback)
+    /// </summary>
+    /// <param name="exceptionHandler">Callback to handle exceptions during streaming</param>
+    /// <remarks>
+    /// The exception handler is called when errors occur during streaming. Return ExceptionAction.Continue
+    /// to continue processing, or ExceptionAction.Stop to terminate the stream.
+    /// If no handler is provided, exceptions will only be raised via the ErrorOccurred event.
+    /// Matches C++ API: void Start(metadata_callback, record_callback, exception_callback);
+    /// </remarks>
+    public LiveClientBuilder WithExceptionHandler(ExceptionCallback exceptionHandler)
+    {
+        _exceptionHandler = exceptionHandler;
+        return this;
+    }
+
+    /// <summary>
     /// Build the LiveClient instance
     /// </summary>
     public ILiveClient Build()
@@ -96,6 +113,7 @@ public sealed class LiveClientBuilder
             _sendTsOut,
             _upgradePolicy,
             _heartbeatInterval,
-            _logger);
+            _logger,
+            _exceptionHandler);
     }
 }

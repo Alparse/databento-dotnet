@@ -7,6 +7,7 @@
 #include <databento/enums.hpp>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <cstring>
 #include <exception>
@@ -455,12 +456,68 @@ DATABENTO_API int dbento_live_start_ex(
         // Start the client with metadata and record callbacks
         if (on_metadata) {
             wrapper->client->Start(
-                [wrapper](const db::Metadata& metadata) {
+                [wrapper](db::Metadata&& metadata) {
                     try {
                         if (wrapper->metadata_callback) {
-                            // Serialize metadata to JSON string for C# consumption
-                            // For now, pass empty string (metadata serialization TBD)
-                            wrapper->metadata_callback("", 0, wrapper->user_data);
+                            // Manually serialize metadata to JSON string for C# consumption
+                            std::stringstream json;
+                            json << "{";
+                            json << "\"version\":" << static_cast<int>(metadata.version) << ",";
+                            json << "\"dataset\":\"" << metadata.dataset << "\",";
+
+                            // schema (nullable)
+                            if (metadata.schema.has_value()) {
+                                json << "\"schema\":" << static_cast<int>(metadata.schema.value()) << ",";
+                            } else {
+                                json << "\"schema\":null,";
+                            }
+
+                            json << "\"start\":" << metadata.start.time_since_epoch().count() << ",";
+                            json << "\"end\":" << metadata.end.time_since_epoch().count() << ",";
+                            json << "\"limit\":" << metadata.limit << ",";
+
+                            // stype_in (nullable)
+                            if (metadata.stype_in.has_value()) {
+                                json << "\"stype_in\":" << static_cast<int>(metadata.stype_in.value()) << ",";
+                            } else {
+                                json << "\"stype_in\":null,";
+                            }
+
+                            json << "\"stype_out\":" << static_cast<int>(metadata.stype_out) << ",";
+                            json << "\"ts_out\":" << (metadata.ts_out ? "true" : "false") << ",";
+                            json << "\"symbol_cstr_len\":" << metadata.symbol_cstr_len << ",";
+
+                            // symbols array
+                            json << "\"symbols\":[";
+                            for (size_t i = 0; i < metadata.symbols.size(); ++i) {
+                                if (i > 0) json << ",";
+                                json << "\"" << metadata.symbols[i] << "\"";
+                            }
+                            json << "],";
+
+                            // partial array
+                            json << "\"partial\":[";
+                            for (size_t i = 0; i < metadata.partial.size(); ++i) {
+                                if (i > 0) json << ",";
+                                json << "\"" << metadata.partial[i] << "\"";
+                            }
+                            json << "],";
+
+                            // not_found array
+                            json << "\"not_found\":[";
+                            for (size_t i = 0; i < metadata.not_found.size(); ++i) {
+                                if (i > 0) json << ",";
+                                json << "\"" << metadata.not_found[i] << "\"";
+                            }
+                            json << "],";
+
+                            // mappings array (empty for now as it's complex)
+                            json << "\"mappings\":[]";
+
+                            json << "}";
+
+                            std::string json_str = json.str();
+                            wrapper->metadata_callback(json_str.c_str(), json_str.size(), wrapper->user_data);
                         }
                     }
                     catch (const std::exception& ex) {
@@ -542,6 +599,66 @@ DATABENTO_API int dbento_live_subscribe_with_snapshot(
 
         // Subscribe with snapshot
         wrapper->client->SubscribeWithSnapshot(symbol_vec, schema_enum, db::SType::RawSymbol);
+
+        return 0;
+    }
+    catch (const std::exception& e) {
+        SafeStrCopy(error_buffer, error_buffer_size, e.what());
+        return -1;
+    }
+}
+
+DATABENTO_API int dbento_live_subscribe_with_replay(
+    DbentoLiveClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    char* error_buffer,
+    size_t error_buffer_size)
+{
+    try {
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, &validation_error);
+        if (!wrapper) {
+            SafeStrCopy(error_buffer, error_buffer_size,
+                databento_native::GetValidationErrorMessage(validation_error));
+            return -1;
+        }
+
+        // Validate parameters
+        ValidateNonEmptyString("dataset", dataset);
+        ValidateNonEmptyString("schema", schema);
+        ValidateSymbolArray(symbols, symbol_count);
+
+        // Store dataset if client not yet created
+        if (wrapper->dataset.empty()) {
+            wrapper->dataset = dataset;
+        }
+
+        // Convert symbols to vector
+        std::vector<std::string> symbol_vec;
+        if (symbols && symbol_count > 0) {
+            for (size_t i = 0; i < symbol_count; ++i) {
+                if (symbols[i]) {
+                    symbol_vec.emplace_back(symbols[i]);
+                }
+            }
+        }
+
+        // Parse schema from string to enum (centralized function, throws on error)
+        db::Schema schema_enum = ParseSchema(schema);
+
+        // Ensure client is created (thread-safe)
+        wrapper->EnsureClientCreated();
+
+        // Subscribe with intraday replay from start time
+        // Convert int64_t nanoseconds to UnixNanos
+        // UnixNanos is a time_point<system_clock, duration<uint64_t, nano>>
+        db::UnixNanos start_time{std::chrono::nanoseconds{start_time_ns}};
+        wrapper->client->Subscribe(symbol_vec, schema_enum, db::SType::RawSymbol, start_time);
 
         return 0;
     }

@@ -21,7 +21,8 @@ enum class HandleType : uint32_t {
     Metadata = 7,
     SymbologyResolution = 8,
     UnitPrices = 9,
-    BatchJob = 10
+    BatchJob = 10,
+    LiveBlocking = 11  // Pull-based LiveBlocking client
 };
 
 /**

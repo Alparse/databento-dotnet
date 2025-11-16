@@ -90,8 +90,105 @@ public static partial class NativeMethods
         byte[]? errorBuffer,
         nuint errorBufferSize);
 
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial int dbento_live_subscribe_with_replay(
+        LiveClientHandle handle,
+        string dataset,
+        string schema,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
+        string[] symbols,
+        nuint symbolCount,
+        long startTimeNs,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
     [LibraryImport(LibName)]
     public static partial int dbento_live_get_connection_state(LiveClientHandle handle);
+
+    // ========================================================================
+    // LiveBlocking Client API (Pull-based)
+    // ========================================================================
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr dbento_live_blocking_create_ex(
+        string apiKey,
+        string dataset,
+        int sendTsOut,
+        int upgradePolicy,
+        int heartbeatIntervalSecs,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial int dbento_live_blocking_subscribe(
+        LiveClientHandle handle,
+        string dataset,
+        string schema,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
+        string[] symbols,
+        nuint symbolCount,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial int dbento_live_blocking_subscribe_with_replay(
+        LiveClientHandle handle,
+        string dataset,
+        string schema,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
+        string[] symbols,
+        nuint symbolCount,
+        long startTimeNs,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial int dbento_live_blocking_subscribe_with_snapshot(
+        LiveClientHandle handle,
+        string dataset,
+        string schema,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
+        string[] symbols,
+        nuint symbolCount,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_live_blocking_start(
+        LiveClientHandle handle,
+        byte[]? metadataBuffer,
+        nuint metadataBufferSize,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_live_blocking_next_record(
+        LiveClientHandle handle,
+        byte[]? recordBuffer,
+        nuint recordBufferSize,
+        out nuint outRecordLength,
+        out byte outRecordType,
+        int timeoutMs,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_live_blocking_reconnect(
+        LiveClientHandle handle,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial int dbento_live_blocking_resubscribe(
+        LiveClientHandle handle,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
+    [LibraryImport(LibName)]
+    public static partial void dbento_live_blocking_stop(LiveClientHandle handle);
+
+    [LibraryImport(LibName)]
+    public static partial void dbento_live_blocking_destroy(IntPtr handle);
 
     // ========================================================================
     // Historical Client API

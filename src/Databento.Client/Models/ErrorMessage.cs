@@ -12,9 +12,9 @@ public class ErrorMessage : Record
     public string Error { get; set; } = string.Empty;
 
     /// <summary>
-    /// Error code
+    /// Error code indicating the type of error
     /// </summary>
-    public byte Code { get; set; }
+    public ErrorCode Code { get; set; }
 
     /// <summary>
     /// Whether this is the last error message in a sequence

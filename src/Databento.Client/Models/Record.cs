@@ -532,7 +532,7 @@ public abstract class Record
             InstrumentId = instrumentId,
             TimestampNs = tsEvent,
             Error = error,
-            Code = code,
+            Code = (ErrorCode)code,
             IsLast = isLast
         };
     }
@@ -585,7 +585,7 @@ public abstract class Record
             InstrumentId = instrumentId,
             TimestampNs = tsEvent,
             Message = message,
-            Code = code
+            Code = (SystemCode)code
         };
     }
 
