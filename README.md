@@ -4,6 +4,37 @@ A high-performance .NET client for accessing [Databento](https://databento.com) 
 
 > ⚠️ **Beta Software**: This is a newly developed client library. While functional and tested, it should be thoroughly validated in your specific use case before production deployment. Please report any issues to the [issue tracker](https://github.com/Alparse/databento-dotnet/issues).
 
+## Installation
+
+### NuGet Package (Recommended)
+
+[![NuGet](https://img.shields.io/nuget/v/Databento.Client.svg)](https://www.nuget.org/packages/Databento.Client/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Databento.Client.svg)](https://www.nuget.org/packages/Databento.Client/)
+
+Install via .NET CLI:
+
+```bash
+dotnet add package Databento.Client --version 3.0.5-beta
+```
+
+Or via Package Manager Console:
+
+```powershell
+Install-Package Databento.Client -Version 3.0.5-beta
+```
+
+Or add directly to your `.csproj`:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Databento.Client" Version="3.0.5-beta" />
+</ItemGroup>
+```
+
+### Build from Source
+
+See [Building](#building) section below for instructions on building from source.
+
 ## Features
 
 - **Live Streaming**: Real-time market data with async/await and IAsyncEnumerable support
@@ -141,61 +172,29 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ## Quick Start
 
-### Installation
-
-**Windows (PowerShell):**
-
-```powershell
-# 1. Clone the repository
-git clone https://github.com/Alparse/databento-dotnet.git
-cd databento-dotnet
-
-# 2. Build the native C++ library (from repository root)
-.\build\build-native.ps1 -Configuration Release
-
-# 3. Build the .NET solution (from repository root)
-dotnet build databento-dotnet.sln -c Release
-```
-
-**Linux/macOS (Terminal):**
+### 1. Install Package
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Alparse/databento-dotnet.git
-cd databento-dotnet
-
-# 2. Build the native C++ library (from repository root)
-./build/build-native.sh --configuration Release
-
-# 3. Build the .NET solution (from repository root)
-dotnet build databento-dotnet.sln -c Release
+dotnet add package Databento.Client --version 3.0.5-beta
 ```
 
-**Note**: All build commands should be run from the repository root directory (`databento-dotnet/`).
+### 2. Set API Key
 
-### API Key Setup
+Set your Databento API key as an environment variable:
 
-**IMPORTANT:** This library requires a Databento API key. Set it as an environment variable:
-
-**Windows (PowerShell):**
+**Windows:**
 ```powershell
 $env:DATABENTO_API_KEY="your-api-key-here"
 ```
 
-**Linux/macOS (Terminal):**
+**Linux/macOS:**
 ```bash
 export DATABENTO_API_KEY="your-api-key-here"
 ```
 
-**To make it permanent:**
-- **Windows**: Add to System Environment Variables via Settings
-- **Linux/macOS**: Add the export line to `~/.bashrc` or `~/.zshrc`
+Get your API key at https://databento.com/portal/keys
 
-**Get your API key:** https://databento.com/portal/keys
-
-⚠️ **Security Best Practice:** Always use the `DATABENTO_API_KEY` environment variable. Never hardcode API keys in your source code.
-
-### Live Streaming Example
+### 3. Write Code - Live Streaming Example
 
 ```csharp
 using Databento.Client.Builders;
@@ -237,7 +236,7 @@ await foreach (var record in client.StreamAsync())
 }
 ```
 
-### Historical Data Example
+### 4. Historical Data Example
 
 ```csharp
 using Databento.Client.Builders;
