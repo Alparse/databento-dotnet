@@ -173,6 +173,28 @@ dotnet build databento-dotnet.sln -c Release
 
 **Note**: All build commands should be run from the repository root directory (`databento-dotnet/`).
 
+### API Key Setup
+
+**IMPORTANT:** This library requires a Databento API key. Set it as an environment variable:
+
+**Windows (PowerShell):**
+```powershell
+$env:DATABENTO_API_KEY="your-api-key-here"
+```
+
+**Linux/macOS (Terminal):**
+```bash
+export DATABENTO_API_KEY="your-api-key-here"
+```
+
+**To make it permanent:**
+- **Windows**: Add to System Environment Variables via Settings
+- **Linux/macOS**: Add the export line to `~/.bashrc` or `~/.zshrc`
+
+**Get your API key:** https://databento.com/portal/keys
+
+⚠️ **Security Best Practice:** Always use the `DATABENTO_API_KEY` environment variable. Never hardcode API keys in your source code.
+
 ### Live Streaming Example
 
 ```csharp
@@ -312,11 +334,9 @@ databento_client/
 
 ## Running Examples
 
-```bash
-# Set API key
-export DATABENTO_API_KEY=your-api-key  # Linux/macOS
-$env:DATABENTO_API_KEY="your-api-key"  # Windows PowerShell
+**Prerequisites:** Set the `DATABENTO_API_KEY` environment variable (see [API Key Setup](#api-key-setup) above).
 
+```bash
 # Run live streaming example
 dotnet run --project examples/LiveStreaming.Example
 
