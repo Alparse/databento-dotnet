@@ -177,18 +177,35 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/Alparse/databento_client.git
-cd databento_client
+**Windows (PowerShell):**
 
-# Build native library
-./build/build-native.ps1     # Windows
-./build/build-native.sh      # Linux/macOS
+```powershell
+# 1. Clone the repository
+git clone https://github.com/Alparse/databento-dotnet.git
+cd databento-dotnet
 
-# Build .NET solution
-dotnet build databento-dotnet.sln
+# 2. Build the native C++ library (from repository root)
+.\build\build-native.ps1 -Configuration Release
+
+# 3. Build the .NET solution (from repository root)
+dotnet build databento-dotnet.sln -c Release
 ```
+
+**Linux/macOS (Terminal):**
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Alparse/databento-dotnet.git
+cd databento-dotnet
+
+# 2. Build the native C++ library (from repository root)
+./build/build-native.sh --configuration Release
+
+# 3. Build the .NET solution (from repository root)
+dotnet build databento-dotnet.sln -c Release
+```
+
+**Note**: All build commands should be run from the repository root directory (`databento-dotnet/`).
 
 ### Live Streaming Example
 
