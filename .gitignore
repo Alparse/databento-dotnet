@@ -70,16 +70,6 @@ tools/diagnostics/
 # Internal test suites (development only, not for public repo)
 examples/*.Internal/
 
-# Development tracking files (internal use only)
-API_COVERAGE_REPORT.md
-SESSION_STATUS.md
-PERFORMANCE_TEST_REPORT.md
-CODE_REVIEW.md
-NUGET.md
-NUGET_PUBLISHING_GUIDE.md
-TEST_PROTOCOL.md
-TEST_RESULTS.md
-
 # NuGet packages
 *.nupkg
 *.snupkg
