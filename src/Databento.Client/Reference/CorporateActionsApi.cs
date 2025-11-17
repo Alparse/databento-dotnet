@@ -46,7 +46,7 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
 
         var queryParams = new Dictionary<string, string>
         {
-            ["start"] = FormatTimestamp(start),
+            ["start"] = ReferenceApiHelpers.FormatTimestamp(start),
             ["index"] = index,
             ["flatten"] = flatten.ToString().ToLowerInvariant(),
             ["pit"] = pit.ToString().ToLowerInvariant()
@@ -54,7 +54,7 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
 
         if (end.HasValue)
         {
-            queryParams["end"] = FormatTimestamp(end.Value);
+            queryParams["end"] = ReferenceApiHelpers.FormatTimestamp(end.Value);
         }
 
         // Add symbols parameter
@@ -119,62 +119,11 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         {
             return await _httpClient.PostAsync(url, content, cancellationToken);
         });
-        await EnsureSuccessStatusCode(response);
+        await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        var records = JsonSerializer.Deserialize<List<CorporateActionRecord>>(json, JsonOptions);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var records = JsonSerializer.Deserialize<List<CorporateActionRecord>>(json, ReferenceApiHelpers.JsonOptions);
 
         return records ?? new List<CorporateActionRecord>();
     }
-
-    private static string BuildUrl(string baseUrl, Dictionary<string, string> queryParams)
-    {
-        if (queryParams.Count == 0)
-        {
-            return baseUrl;
-        }
-
-        var query = string.Join("&", queryParams.Select(kvp =>
-            $"{HttpUtility.UrlEncode(kvp.Key)}={HttpUtility.UrlEncode(kvp.Value)}"));
-
-        return $"{baseUrl}?{query}";
-    }
-
-    private static string FormatTimestamp(DateTimeOffset timestamp)
-    {
-        // Format as ISO 8601: yyyy-MM-ddTHH:mm:ss.fffffffZ
-        return timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
-    }
-
-    private static async Task EnsureSuccessStatusCode(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
-            return;
-        }
-
-        var content = await response.Content.ReadAsStringAsync();
-        var statusCode = (int)response.StatusCode;
-
-        var message = $"{statusCode} - {response.ReasonPhrase}\n{content}";
-
-        if (statusCode >= 400 && statusCode < 500)
-        {
-            throw new Databento.Interop.ValidationException(message);
-        }
-        else if (statusCode >= 500)
-        {
-            throw new Databento.Interop.ServerException(message);
-        }
-        else
-        {
-            throw new Databento.Interop.DbentoException(message, statusCode);
-        }
-    }
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-    };
 }

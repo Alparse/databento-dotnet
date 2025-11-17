@@ -38,6 +38,8 @@ public sealed class LiveClient : ILiveClient
     private int _disposeState = 0;
     // MEDIUM FIX: Use atomic operations instead of volatile for consistency
     private int _connectionState = (int)ConnectionState.Disconnected;
+    // CRITICAL FIX: Track active callbacks to prevent race condition on channel completion
+    private int _activeCallbackCount = 0;
     // TaskCompletionSource for capturing metadata from callback
     private TaskCompletionSource<Models.Dbn.DbnMetadata>? _metadataTcs;
 
@@ -284,11 +286,9 @@ public sealed class LiveClient : ILiveClient
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        // MEDIUM FIX: Thread-safe check using Interlocked to prevent race conditions
-        // If _streamTask is already set (not null), another thread beat us to starting
-        var existingTask = Interlocked.CompareExchange(ref _streamTask, null, null);
-        if (existingTask != null)
-            throw new InvalidOperationException("Client is already started");
+        // CRITICAL FIX: Create TaskCompletionSource BEFORE creating task to prevent race condition
+        // This ensures each thread gets its own TCS that won't be overwritten
+        var metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>();
 
         _logger?.LogInformation("Starting live stream");
 
@@ -296,11 +296,8 @@ public sealed class LiveClient : ILiveClient
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Connecting);
         _logger?.LogDebug("Connection state changed: Disconnected → Connecting");
 
-        // Create TaskCompletionSource to capture metadata from callback
-        _metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>();
-
-        // Start receiving on a background thread
-        // MEDIUM FIX: Create task first, then atomically set it
+        // CRITICAL FIX: Create task first, THEN use CompareExchange to atomically set _streamTask
+        // This prevents TOCTOU race condition - only one thread can successfully set _streamTask from null
         var newTask = Task.Run(() =>
         {
             // MEDIUM FIX: Increased from 512 to 2048 for full error context
@@ -327,7 +324,7 @@ public sealed class LiveClient : ILiveClient
 
                 // Set exception on TaskCompletionSource
                 var exception = DbentoException.CreateFromErrorCode($"Start failed: {error}", result);
-                _metadataTcs?.TrySetException(exception);
+                metadataTcs.TrySetException(exception);
 
                 // MEDIUM FIX: Use exception factory method for proper exception type mapping
                 throw exception;
@@ -339,12 +336,23 @@ public sealed class LiveClient : ILiveClient
             _logger?.LogDebug("Connection state changed: Connecting → Streaming");
         }, cancellationToken);
 
-        // MEDIUM FIX: Atomically set _streamTask after creating the task
-        // This ensures thread-safe publication of the task
-        Interlocked.Exchange(ref _streamTask, newTask);
+        // CRITICAL FIX: Use CompareExchange (not Exchange) to atomically set _streamTask
+        // Only succeeds if _streamTask is currently null. Returns the previous value.
+        // If previous value is not null, another thread already started - throw exception.
+        var previousTask = Interlocked.CompareExchange(ref _streamTask, newTask, null);
+        if (previousTask != null)
+        {
+            // Another thread won the race - restore connection state and throw
+            Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
+            _logger?.LogWarning("StartAsync called concurrently - another thread already started");
+            throw new InvalidOperationException("Client is already started");
+        }
+
+        // We won the race - set the instance-level TCS for use by callbacks
+        _metadataTcs = metadataTcs;
 
         // Wait for metadata to be received from callback
-        return await _metadataTcs.Task.ConfigureAwait(false);
+        return await metadataTcs.Task.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -359,10 +367,19 @@ public sealed class LiveClient : ILiveClient
             // MEDIUM FIX: Use Interlocked for consistency
             Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Stopped);
 
-            // MEDIUM FIX: Add small delay before completing channel to prevent race condition
-            // This allows any in-flight callbacks to complete their channel writes
-            // before we mark the channel as complete
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+            // CRITICAL FIX: Wait for all active callbacks to complete before closing channel
+            // This prevents race condition where callbacks try to write to a closed channel
+            int waitCount = 0;
+            while (Interlocked.CompareExchange(ref _activeCallbackCount, 0, 0) > 0)
+            {
+                if (waitCount++ > 1000) // 10 second timeout (10ms * 1000)
+                {
+                    _logger?.LogWarning("Timeout waiting for active callbacks to complete. Count: {Count}", 
+                        Interlocked.CompareExchange(ref _activeCallbackCount, 0, 0));
+                    break;
+                }
+                await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+            }
 
             _recordChannel.Writer.Complete();
         }
@@ -386,7 +403,7 @@ public sealed class LiveClient : ILiveClient
             NativeMethods.dbento_live_stop(_handle);
             try
             {
-                await currentTask;
+                await currentTask.ConfigureAwait(false);
             }
             catch
             {
@@ -452,20 +469,22 @@ public sealed class LiveClient : ILiveClient
 
     private unsafe void OnRecordReceived(byte* recordBytes, nuint recordLength, byte recordType, IntPtr userData)
     {
-        // CRITICAL FIX: Check disposal state atomically before processing
-        if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0)
-        {
-            // Disposing or disposed - ignore callback
-            return;
-        }
-
+        // CRITICAL FIX: Track active callbacks for proper channel completion synchronization
+        Interlocked.Increment(ref _activeCallbackCount);
         try
         {
+            // CRITICAL FIX: Check disposal state atomically before processing
+            if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0)
+            {
+                // Disposing or disposed - ignore callback
+                return;
+            }
+
             // CRITICAL FIX: Validate pointer before dereferencing
             if (recordBytes == null)
             {
                 var ex = new DbentoException("Received null pointer from native code");
-                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
                 return;
             }
 
@@ -473,14 +492,14 @@ public sealed class LiveClient : ILiveClient
             if (recordLength == 0)
             {
                 var ex = new DbentoException("Received zero-length record");
-                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
                 return;
             }
 
             if (recordLength > int.MaxValue)
             {
                 var ex = new DbentoException($"Record too large: {recordLength} bytes exceeds maximum {int.MaxValue}");
-                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
                 return;
             }
 
@@ -488,13 +507,27 @@ public sealed class LiveClient : ILiveClient
             if (recordLength > Utilities.Constants.MaxReasonableRecordSize)
             {
                 var ex = new DbentoException($"Record suspiciously large: {recordLength} bytes");
-                ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+                SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
                 return;
             }
 
             // Copy bytes to managed memory
+            // CRITICAL FIX: Protect Marshal.Copy from corrupted native pointers
             var bytes = new byte[recordLength];
-            Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
+            try
+            {
+                Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
+            }
+            catch (Exception ex) when (ex is AccessViolationException or ArgumentException or ArgumentOutOfRangeException)
+            {
+                _logger?.LogError(ex, "Marshal.Copy failed: corrupted native memory detected. Ptr={Ptr}, Length={Length}",
+                    (IntPtr)recordBytes, recordLength);
+
+                var wrappedException = new DbentoException(
+                    $"Native memory corruption detected: {ex.Message}", ex);
+                SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(wrappedException));
+                return;
+            }
 
             // Deserialize record using the recordType parameter
             var record = Record.FromBytes(bytes, recordType);
@@ -505,13 +538,19 @@ public sealed class LiveClient : ILiveClient
                 // Write to channel
                 _recordChannel.Writer.TryWrite(record);
 
-                // Fire event
-                DataReceived?.Invoke(this, new DataReceivedEventArgs(record));
+                // Fire event - CRITICAL FIX: Use SafeInvokeEvent to prevent subscriber exceptions from crashing app
+                SafeInvokeEvent(DataReceived, new DataReceivedEventArgs(record));
             }
         }
         catch (Exception ex)
         {
-            ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+            // CRITICAL FIX: Use SafeInvokeEvent to prevent subscriber exceptions from crashing app
+            SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
+        }
+        finally
+        {
+            // CRITICAL FIX: Always decrement active callback count on exit
+            Interlocked.Decrement(ref _activeCallbackCount);
         }
     }
 
@@ -519,8 +558,8 @@ public sealed class LiveClient : ILiveClient
     {
         var exception = new DbentoException(errorMessage, errorCode);
 
-        // Fire the ErrorOccurred event (existing behavior)
-        ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(exception, errorCode));
+        // Fire the ErrorOccurred event - CRITICAL FIX: Use SafeInvokeEvent to prevent subscriber exceptions from crashing app
+        SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(exception, errorCode));
 
         // If exception handler is provided, call it and check the action
         if (_exceptionHandler != null)
@@ -539,7 +578,7 @@ public sealed class LiveClient : ILiveClient
                     {
                         try
                         {
-                            await StopAsync();
+                            await StopAsync().ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -631,7 +670,39 @@ public sealed class LiveClient : ILiveClient
         {
             _logger?.LogError(ex, "Error processing metadata callback");
             _metadataTcs?.TrySetException(ex);
-            ErrorOccurred?.Invoke(this, new Events.ErrorEventArgs(ex));
+            SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
+        }
+    }
+
+    /// <summary>
+    /// CRITICAL FIX: Safely invoke event handlers to prevent subscriber exceptions from crashing the application.
+    /// Invokes each subscriber individually and catches any exceptions they throw.
+    /// </summary>
+    /// <typeparam name="TEventArgs">The type of event arguments</typeparam>
+    /// <param name="handler">The event handler to invoke</param>
+    /// <param name="args">The event arguments</param>
+    private void SafeInvokeEvent<TEventArgs>(EventHandler<TEventArgs>? handler, TEventArgs args)
+        where TEventArgs : EventArgs
+    {
+        if (handler == null)
+            return;
+
+        foreach (var subscriber in handler.GetInvocationList())
+        {
+            try
+            {
+                ((EventHandler<TEventArgs>)subscriber)(this, args);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex,
+                    "Event subscriber threw unhandled exception. Event type: {EventType}, Subscriber: {Subscriber}",
+                    typeof(TEventArgs).Name,
+                    subscriber.Method.Name);
+
+                // Don't crash the application - log and continue with next subscriber
+                // This prevents buggy user code from crashing the native callback thread
+            }
         }
     }
 
@@ -715,7 +786,7 @@ public sealed class LiveClient : ILiveClient
         // Stop streaming (this also completes the channel)
         try
         {
-            await StopAsync();
+            await StopAsync().ConfigureAwait(false);
         }
         catch
         {
@@ -731,7 +802,7 @@ public sealed class LiveClient : ILiveClient
             try
             {
                 // Wait with 5-second timeout to prevent deadlocks
-                await streamTask.WaitAsync(TimeSpan.FromSeconds(5));
+                await streamTask.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
             catch (System.TimeoutException)
             {

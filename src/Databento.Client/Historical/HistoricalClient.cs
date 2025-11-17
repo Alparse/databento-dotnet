@@ -170,7 +170,13 @@ public sealed class HistoricalClient : IHistoricalClient
                     }
 
                     var record = Record.FromBytes(bytes, recordType);
-                    channel.Writer.TryWrite(record);
+
+                    // CRITICAL FIX: Check TryWrite return value to prevent silent data loss
+                    if (!channel.Writer.TryWrite(record))
+                    {
+                        throw new InvalidOperationException(
+                            "Failed to write record to channel. Channel may be full or closed.");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -227,7 +233,7 @@ public sealed class HistoricalClient : IHistoricalClient
             yield return record;
         }
 
-        await queryTask;
+        await queryTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -285,7 +291,7 @@ public sealed class HistoricalClient : IHistoricalClient
             }
 
             return filePath;
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -370,7 +376,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -420,7 +426,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -466,7 +472,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -514,7 +520,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -553,7 +559,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -598,7 +604,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -637,7 +643,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -688,7 +694,7 @@ public sealed class HistoricalClient : IHistoricalClient
             }
 
             return count;
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -739,7 +745,7 @@ public sealed class HistoricalClient : IHistoricalClient
             }
 
             return size;
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -791,13 +797,21 @@ public sealed class HistoricalClient : IHistoricalClient
             try
             {
                 var costString = Marshal.PtrToStringUTF8(costPtr) ?? "0";
-                return decimal.Parse(costString);
+
+                // HIGH FIX: Use TryParse to prevent FormatException on malformed native cost string
+                if (!decimal.TryParse(costString, out var cost))
+                {
+                    _logger?.LogWarning("Failed to parse cost string from native code: {CostString}", costString);
+                    throw new DbentoException($"Invalid cost format returned from native code: '{costString}'");
+                }
+
+                return cost;
             }
             finally
             {
                 NativeMethods.dbento_free_string(costPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -856,7 +870,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1006,7 +1020,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1091,7 +1105,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1104,12 +1118,13 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         // For now, get all jobs and filter client-side
         // Native layer would need additional implementation for server-side filtering
-        var allJobs = await BatchListJobsAsync(cancellationToken);
+        var allJobs = await BatchListJobsAsync(cancellationToken).ConfigureAwait(false);
         var stateSet = new HashSet<JobState>(states);
 
+        // HIGH FIX: Use TryParse to prevent FormatException on malformed API timestamps
         return allJobs
             .Where(job => stateSet.Contains(job.State))
-            .Where(job => DateTimeOffset.Parse(job.TsReceived) >= since)
+            .Where(job => DateTimeOffset.TryParse(job.TsReceived, out var ts) && ts >= since)
             .ToList();
     }
 
@@ -1156,7 +1171,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1204,7 +1219,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(jsonPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1245,7 +1260,7 @@ public sealed class HistoricalClient : IHistoricalClient
             {
                 NativeMethods.dbento_free_string(pathPtr);
             }
-        }, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1351,12 +1366,23 @@ public sealed class HistoricalClient : IHistoricalClient
                         string endDateStrInterval = System.Text.Encoding.UTF8.GetString(endDateBuffer).TrimEnd('\0');
                         string symbol = System.Text.Encoding.UTF8.GetString(symbolBuffer).TrimEnd('\0');
 
-                        intervals.Add(new MappingInterval
+                        // HIGH FIX: Use TryParseExact to prevent FormatException on malformed native data
+                        if (DateOnly.TryParseExact(startDateStrInterval, "yyyy-MM-dd", out var startDate) &&
+                            DateOnly.TryParseExact(endDateStrInterval, "yyyy-MM-dd", out var endDate))
                         {
-                            StartDate = DateOnly.ParseExact(startDateStrInterval, "yyyy-MM-dd"),
-                            EndDate = DateOnly.ParseExact(endDateStrInterval, "yyyy-MM-dd"),
-                            Symbol = symbol
-                        });
+                            intervals.Add(new MappingInterval
+                            {
+                                StartDate = startDate,
+                                EndDate = endDate,
+                                Symbol = symbol
+                            });
+                        }
+                        else
+                        {
+                            _logger?.LogWarning(
+                                "Skipping invalid mapping interval: StartDate={StartDate}, EndDate={EndDate}, Symbol={Symbol}",
+                                startDateStrInterval, endDateStrInterval, symbol);
+                        }
                     }
                 }
 
