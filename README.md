@@ -18,20 +18,20 @@ A high-performance .NET client for accessing [Databento](https://databento.com) 
 Install via .NET CLI:
 
 ```bash
-dotnet add package Databento.Client --version 3.0.6-beta
+dotnet add package Databento.Client --version 3.0.17-beta
 ```
 
 Or via Package Manager Console:
 
 ```powershell
-Install-Package Databento.Client -Version 3.0.6-beta
+Install-Package Databento.Client -Version 3.0.17-beta
 ```
 
 Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="3.0.6-beta" />
+  <PackageReference Include="Databento.Client" Version="3.0.17-beta" />
 </ItemGroup>
 ```
 
