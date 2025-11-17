@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.16-beta</Version>
+    <Version>3.0.17-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.16-beta: Removed diagnostic console logging from native library loader for cleaner output.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.17-beta: Critical fixes - Added ConfigureAwait(false) to prevent deadlocks, fixed race condition in LiveClient.StartAsync, added SafeInvokeEvent for subscriber exception isolation, added Marshal.Copy protection, Channel.Writer.TryWrite check, Parse to TryParse conversions, and eliminated code duplication in Reference APIs.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
