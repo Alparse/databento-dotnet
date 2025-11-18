@@ -353,15 +353,37 @@ client.DataReceived += (sender, e) =>
     }
 };
 
-// Subscribe to trades
+// Calculate most recent market open (9:30 AM ET) for replay mode
+var now = DateTimeOffset.UtcNow;
+var et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+var etNow = TimeZoneInfo.ConvertTime(now, et);
+var replayDate = etNow.Date;
+
+// Go back to most recent weekday
+while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+    replayDate = replayDate.AddDays(-1);
+
+if (etNow.TimeOfDay < TimeSpan.FromHours(9.5))
+{
+    replayDate = replayDate.AddDays(-1);
+    while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        replayDate = replayDate.AddDays(-1);
+}
+
+var marketOpen = new DateTimeOffset(
+    replayDate.Year, replayDate.Month, replayDate.Day,
+    9, 30, 0, et.GetUtcOffset(replayDate));
+
+// Subscribe with replay mode (works anytime, no market hours required)
 await client.SubscribeAsync(
     dataset: "EQUS.MINI",
     schema: Schema.Trades,
-    symbols: new[] { "NVDA", "AAPL" }
+    symbols: new[] { "NVDA", "AAPL" },
+    startTime: marketOpen  // Omit this parameter for live mode
 );
 
 await client.StartAsync();
-await client.BlockUntilStoppedAsync();
+await client.BlockUntilStoppedAsync(TimeSpan.FromSeconds(30));
 ```
 
 ### Expected Output
