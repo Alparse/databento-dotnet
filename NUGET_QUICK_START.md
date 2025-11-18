@@ -14,7 +14,7 @@ dotnet nuget setApiKey YOUR_API_KEY -Source https://api.nuget.org/v3/index.json
 ```bash
 # From repository root
 dotnet pack src/Databento.Client/Databento.Client.csproj -c Release
-dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.nupkg --source https://api.nuget.org/v3/index.json
+dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.18-beta.nupkg --source https://api.nuget.org/v3/index.json
 ```
 
 **Note:** As of v3.0.6-beta, all native binaries and the Interop layer are embedded in the single `Databento.Client` package. No separate `Databento.Interop` package is needed.
@@ -31,7 +31,7 @@ dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.6-beta.n
 ```bash
 dotnet new console -n MyTradingApp
 cd MyTradingApp
-dotnet add package Databento.Client --version 3.0.6-beta
+dotnet add package Databento.Client --version 3.0.18-beta
 ```
 
 ### Set API Key
@@ -81,11 +81,11 @@ dotnet run
 dotnet pack src/Databento.Client/Databento.Client.csproj -c Release
 
 # 3. Push
-dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.7-beta.nupkg --source https://api.nuget.org/v3/index.json
+dotnet nuget push src/Databento.Client/bin/Release/Databento.Client.3.0.18-beta.nupkg --source https://api.nuget.org/v3/index.json
 
 # 4. Tag in git
-git tag v3.0.7-beta
-git push origin v3.0.7-beta
+git tag v3.0.18-beta
+git push origin v3.0.18-beta
 ```
 
 ---

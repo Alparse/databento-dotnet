@@ -179,7 +179,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 ### 1. Install Package
 
 ```bash
-dotnet add package Databento.Client --version 3.0.5-beta
+dotnet add package Databento.Client --version 3.0.18-beta
 ```
 
 ### 2. Set API Key
