@@ -380,10 +380,12 @@ Symbol lookups are very fast (~20-50 nanoseconds per lookup using `ConcurrentDic
 ### Complete Example Project
 
 See `examples/LiveSymbolResolution.Example` for a complete, tested example with:
-- Symbol mapping implementation
+- Symbol mapping implementation using replay mode (works anytime, no market hours required)
 - Performance measurement
 - Error handling
 - Validation
+
+The example uses replay mode by default (replaying from most recent market open), with live mode shown as a commented alternative.
 
 ```bash
 dotnet run --project examples/LiveSymbolResolution.Example/LiveSymbolResolution.Example.csproj
