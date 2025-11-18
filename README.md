@@ -383,7 +383,19 @@ await client.SubscribeAsync(
 );
 
 await client.StartAsync();
-await client.BlockUntilStoppedAsync(TimeSpan.FromSeconds(30));
+
+// CRITICAL: Must use StreamAsync() to pump records through the pipeline
+var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+var streamTask = Task.Run(async () =>
+{
+    await foreach (var record in client.StreamAsync())
+    {
+        // Records are handled by DataReceived event
+    }
+});
+
+await Task.WhenAny(streamTask, timeout);
+await client.StopAsync();
 ```
 
 ### Expected Output

@@ -58,7 +58,9 @@ class Program
         // STEP 2: Create Live Client
         // ============================================================================
 
-        await using var client = new LiveClientBuilder()
+        // Note: Using 'var' instead of 'await using' to avoid disposal crash
+        // (known bug in native layer - see devnotes/disposal_crash_bug.md)
+        var client = new LiveClientBuilder()
             .WithApiKey(apiKey)
             .WithDataset("EQUS.MINI")
             .Build();

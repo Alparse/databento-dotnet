@@ -63,7 +63,14 @@ client.DataReceived += (s, e) =>
 
 await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
 await client.StartAsync();
-await client.BlockUntilStoppedAsync(TimeSpan.FromMinutes(1));
+
+// Stream for 1 minute
+var timeout = Task.Delay(TimeSpan.FromMinutes(1));
+var streamTask = Task.Run(async () =>
+{
+    await foreach (var _ in client.StreamAsync()) { }
+});
+await Task.WhenAny(streamTask, timeout);
 ```
 
 ### Run
