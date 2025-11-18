@@ -18,20 +18,20 @@ A high-performance .NET client for accessing [Databento](https://databento.com) 
 Install via .NET CLI:
 
 ```bash
-dotnet add package Databento.Client --version 3.0.18-beta
+dotnet add package Databento.Client --prerelease
 ```
 
 Or via Package Manager Console:
 
 ```powershell
-Install-Package Databento.Client -Version 3.0.18-beta
+Install-Package Databento.Client -Prerelease
 ```
 
 Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="3.0.18-beta" />
+  <PackageReference Include="Databento.Client" Version="3.0.19-beta" />
 </ItemGroup>
 ```
 
@@ -179,7 +179,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 ### 1. Install Package
 
 ```bash
-dotnet add package Databento.Client --version 3.0.18-beta
+dotnet add package Databento.Client --prerelease
 ```
 
 ### 2. Set API Key
