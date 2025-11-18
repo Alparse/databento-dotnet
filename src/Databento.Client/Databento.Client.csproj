@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.19-beta</Version>
+    <Version>3.0.20-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.19-beta: Fixed LiveClient disposal crash by handling SEHException in DisposeAsync(). Added StreamAsync Requirements and Resource Management sections to API_REFERENCE.md. Updated README and examples with correct StreamAsync() usage patterns. Safe for production scalable services with proper resource cleanup.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.20-beta: Updated README.md with --prerelease installation commands for automatic latest version. No code changes - documentation-only release to fix NuGet.org package page installation instructions.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
