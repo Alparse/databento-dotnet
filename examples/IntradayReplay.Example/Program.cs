@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace IntradayReplay.Example;
 
@@ -177,7 +178,7 @@ class Program
             Console.WriteLine("  - After replay, you receive real-time data");
             Console.WriteLine("  - Different start times can be specified for each subscription");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
         }

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Databento.Client\Databento.Client.csproj" />
+    <ProjectReference Include="..\..\src\Databento.Interop\Databento.Interop.csproj" />
   </ItemGroup>
 
 </Project>

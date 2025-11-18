@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace Snapshot.Example;
 
@@ -169,7 +170,7 @@ class Program
             Console.WriteLine("  - MBO schema availability depends on dataset (e.g., GLBX.MDP3 for futures)");
             Console.WriteLine("  - If gateway closes immediately, the dataset may not support MBO or market is closed");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
         }

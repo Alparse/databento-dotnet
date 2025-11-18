@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace StartWithMetadata.Example;
 
@@ -172,7 +173,7 @@ class Program
             Console.WriteLine("✓ Metadata received before data stream begins");
             Console.WriteLine("✓ Pull-based record retrieval via NextRecordAsync()");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
         }

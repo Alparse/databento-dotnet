@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace LiveAuthentication.Example;
 
@@ -113,7 +114,7 @@ class Program
                 Console.WriteLine("  - API key may not have live data access");
             }
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
             Console.WriteLine();

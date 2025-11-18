@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace LiveBlocking.Example;
 
@@ -151,7 +152,7 @@ class Program
             Console.WriteLine("  C++:  LiveBlocking::Builder().SetKeyFromEnv().SetDataset(...).BuildBlocking()");
             Console.WriteLine("  C#:   new LiveClientBuilder().WithApiKey(apiKey).WithDataset(...).Build()");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
             Console.WriteLine("  Please verify your API key is correct.");

@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace MultipleSubscriptions.Example;
 
@@ -221,7 +222,7 @@ class Program
             Console.WriteLine("• No unsubscribe method - subscriptions end when client disconnects");
             Console.WriteLine("• Multiple subscriptions enable rich, mixed data streams");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
         }

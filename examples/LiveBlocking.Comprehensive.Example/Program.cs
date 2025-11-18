@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace LiveBlocking.Comprehensive.Example;
 
@@ -301,11 +302,11 @@ class Program
             Console.WriteLine("  • You prefer imperative over reactive patterns");
             Console.WriteLine();
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"❌ Authentication failed: {ex.Message}");
         }
-        catch (Databento.Interop.DbentoException ex)
+        catch (DbentoException ex)
         {
             Console.WriteLine($"❌ Databento error: {ex.Message}");
         }

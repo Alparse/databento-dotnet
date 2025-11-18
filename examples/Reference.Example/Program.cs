@@ -1,4 +1,5 @@
 using Databento.Client.Builders;
+using Databento.Interop;
 
 namespace Reference.Example;
 
@@ -150,15 +151,15 @@ class Program
             Console.WriteLine("║  Reference API Examples Complete                              ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════╝");
         }
-        catch (Databento.Interop.ValidationException ex)
+        catch (ValidationException ex)
         {
             Console.WriteLine($"❌ Client/Validation error: {ex.Message}");
         }
-        catch (Databento.Interop.ServerException ex)
+        catch (ServerException ex)
         {
             Console.WriteLine($"❌ Server error: {ex.Message}");
         }
-        catch (Databento.Interop.DbentoException ex)
+        catch (DbentoException ex)
         {
             Console.WriteLine($"❌ Databento error: {ex.Message}");
         }

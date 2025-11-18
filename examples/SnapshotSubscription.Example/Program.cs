@@ -1,5 +1,6 @@
 using Databento.Client.Builders;
 using Databento.Client.Models;
+using Databento.Interop;
 
 namespace SnapshotSubscription.Example;
 
@@ -155,7 +156,7 @@ class Program
             Console.WriteLine("  • Supports up to 2,000 symbols per request");
             Console.WriteLine("  • No unsubscribe method - ends when Stop() is called");
         }
-        catch (Databento.Interop.DbentoAuthenticationException ex)
+        catch (DbentoAuthenticationException ex)
         {
             Console.WriteLine($"✗ Authentication failed: {ex.Message}");
         }
