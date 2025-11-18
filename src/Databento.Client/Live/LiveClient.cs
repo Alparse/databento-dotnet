@@ -822,7 +822,24 @@ public sealed class LiveClient : ILiveClient
         // Channel already completed by StopAsync() - no need to complete again
 
         // Dispose handle
-        _handle?.Dispose();
+        // CRITICAL FIX: Catch SEHException from native disposal crash (databento-cpp bug)
+        // Known issue: dbento_live_destroy may crash with STATUS_STACK_BUFFER_OVERRUN
+        // due to race condition between callbacks and resource cleanup.
+        // Catching this prevents process crash while still cleaning up managed resources.
+        try
+        {
+            _handle?.Dispose();
+        }
+        catch (SEHException ex)
+        {
+            // Native disposal crashed - this is a known issue in databento-cpp
+            // The crash occurs when dbento_live_destroy frees resources while callbacks
+            // are still active. Safe to ignore - OS will clean up native resources.
+            _logger?.LogWarning(ex,
+                "Native handle disposal failed with SEH exception (known databento-cpp issue). " +
+                "Managed resources cleaned up successfully. Native resources will be freed by OS.");
+        }
+
         _cts?.Dispose();
 
         // CRITICAL FIX: Mark as fully disposed
