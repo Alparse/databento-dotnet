@@ -9,18 +9,18 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.20-beta</Version>
+    <Version>3.0.21-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
     <Description>High-performance .NET client for Databento market data with live streaming, historical queries, and reference data APIs. Supports all 16 DBN record types with async/await and IAsyncEnumerable.</Description>
     <PackageTags>databento;market-data;financial;trading;streaming;historical;real-time;dbn;equities;futures;options</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/Alparse/databento-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Alparse/databento_client</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Alparse/databento_client</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.20-beta: Updated README.md with --prerelease installation commands for automatic latest version. No code changes - documentation-only release to fix NuGet.org package page installation instructions.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.21-beta: Fixed GitHub Release badge to point to correct repository (databento_client). Updated RepositoryUrl metadata. No code changes - documentation-only release.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
