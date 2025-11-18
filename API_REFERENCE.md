@@ -42,6 +42,16 @@ Comprehensive API reference for the databento-dotnet library, a high-performance
    - [Time Zones](#time-zones)
    - [Quick Reference](#quick-reference)
 
+6. [Symbol Mapping](#6-symbol-mapping)
+   - [Overview](#overview)
+   - [Message Flow](#message-flow)
+   - [SymbolMappingMessage](#symbolmappingmessage)
+   - [STypeIn vs STypeOut](#️-critical-stypein-vs-stypeout)
+   - [Implementation Pattern](#implementation-pattern)
+   - [Performance Considerations](#performance-considerations)
+   - [Common Patterns](#common-patterns-1)
+   - [Troubleshooting](#troubleshooting)
+
 ---
 
 ## 1. Live Streaming API
@@ -2465,6 +2475,311 @@ var utc = local.ToUniversalTime();
 
 ---
 
+## 6. Symbol Mapping
+
+When streaming market data (live or historical), records contain numeric `InstrumentId` values instead of ticker symbols. The `SymbolMappingMessage` record type provides the mapping needed to resolve these IDs to human-readable symbols.
+
+### Overview
+
+**The Problem:**
+```csharp
+// TradeMessage contains only numeric IDs
+trade.InstrumentId = 11667;  // What symbol is this?
+trade.Price = 185970000000;
+```
+
+**The Solution:**
+```csharp
+// SymbolMappingMessage provides the mapping
+mapping.InstrumentId = 11667;
+mapping.STypeOutSymbol = "NVDA";  // ← Use this!
+```
+
+### Message Flow
+
+Symbol mappings are sent at the **start** of a data stream, before any trade/quote records:
+
+```
+1. SymbolMappingMessage: InstrumentId=11667, Symbol="NVDA"
+2. SymbolMappingMessage: InstrumentId=38, Symbol="AAPL"
+3. TradeMessage: InstrumentId=11667, Price=...
+4. TradeMessage: InstrumentId=38, Price=...
+5. TradeMessage: InstrumentId=11667, Price=...
+```
+
+Your application must capture the mappings and use them to resolve symbols in subsequent records.
+
+### SymbolMappingMessage
+
+```csharp
+public class SymbolMappingMessage : Record
+{
+    public SType STypeIn { get; set; }
+    public string STypeInSymbol { get; set; }
+    public SType STypeOut { get; set; }
+    public string STypeOutSymbol { get; set; }
+    public long StartTs { get; set; }
+    public long EndTs { get; set; }
+}
+```
+
+### ⚠️ CRITICAL: STypeIn vs STypeOut
+
+**Always use `STypeOutSymbol` for symbol resolution!**
+
+| Subscription Type | STypeInSymbol | STypeOutSymbol | Which to Use? |
+|------------------|---------------|----------------|---------------|
+| Single symbol: `["NVDA"]` | `"NVDA"` | `"NVDA"` | Either works |
+| Multiple symbols: `["NVDA", "AAPL"]` | `"NVDA"` / `"AAPL"` | `"NVDA"` / `"AAPL"` | Either works |
+| All symbols: `["ALL_SYMBOLS"]` | `"ALL_SYMBOLS"` | `"NVDA"` / `"AAPL"` / ... | ✅ **STypeOutSymbol only!** |
+
+**Why STypeOutSymbol?**
+- `STypeInSymbol` = Your subscription string (what you passed to `SubscribeAsync`)
+- `STypeOutSymbol` = The actual ticker symbol for this specific instrument
+
+For `ALL_SYMBOLS` subscriptions, `STypeInSymbol` is the same for all 12,000+ instruments, making it useless for display.
+
+### Implementation Pattern
+
+The recommended approach uses `ConcurrentDictionary` for thread-safe symbol storage:
+
+```csharp
+using System.Collections.Concurrent;
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+// Create symbol map
+var symbolMap = new ConcurrentDictionary<uint, string>();
+
+// Create client
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+// Handle incoming records
+client.DataReceived += (sender, e) =>
+{
+    // Step 1: Capture symbol mappings
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        // ⚠️ Use STypeOutSymbol for actual ticker!
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+
+        Console.WriteLine($"Mapped: {mapping.InstrumentId} → {mapping.STypeOutSymbol}");
+        return;
+    }
+
+    // Step 2: Resolve symbols in data records
+    if (e.Record is TradeMessage trade)
+    {
+        // Look up symbol, fallback to ID if not found
+        var symbol = symbolMap.GetValueOrDefault(
+            trade.InstrumentId,
+            trade.InstrumentId.ToString());
+
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2} x {trade.Size}");
+    }
+};
+
+// Subscribe and start
+await client.SubscribeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA", "AAPL" }
+);
+
+await client.StartAsync();
+await client.BlockUntilStoppedAsync();
+```
+
+### Output Example
+
+```
+Mapped: 11667 → NVDA
+Mapped: 38 → AAPL
+NVDA: $185.97 x 100
+AAPL: $172.45 x 50
+NVDA: $186.02 x 200
+AAPL: $172.50 x 75
+```
+
+### Historical Data
+
+Symbol mapping works the same way for historical queries:
+
+```csharp
+var symbolMap = new ConcurrentDictionary<uint, string>();
+
+await foreach (var record in client.GetRangeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA" },
+    startTime: startTime,
+    endTime: endTime))
+{
+    if (record is SymbolMappingMessage mapping)
+    {
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+    }
+    else if (record is TradeMessage trade)
+    {
+        var symbol = symbolMap.GetValueOrDefault(
+            trade.InstrumentId,
+            trade.InstrumentId.ToString());
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2}");
+    }
+}
+```
+
+### Performance Considerations
+
+**Symbol Lookup Performance:**
+- `ConcurrentDictionary` lookups: ~20-50 nanoseconds
+- Network I/O latency: ~1-50 milliseconds (1,000,000+ nanoseconds)
+
+**Verdict:** Symbol mapping overhead is **negligible** compared to network latency. No optimization needed for most applications.
+
+**Thread Safety:**
+- `ConcurrentDictionary<uint, string>` is thread-safe for concurrent reads/writes
+- Safe to use with multi-threaded data processing
+- For single-threaded scenarios, `Dictionary<uint, string>` is slightly faster
+
+### Common Patterns
+
+#### Pattern 1: Build Map Before Processing
+
+Collect all mappings first, then process data:
+
+```csharp
+var symbolMap = new Dictionary<uint, string>();
+var dataRecords = new List<Record>();
+
+await foreach (var record in client.GetRangeAsync(...))
+{
+    if (record is SymbolMappingMessage mapping)
+    {
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+    }
+    else
+    {
+        dataRecords.Add(record);
+    }
+}
+
+// Now process with complete symbol map
+foreach (var record in dataRecords)
+{
+    if (record is TradeMessage trade)
+    {
+        var symbol = symbolMap[trade.InstrumentId];
+        Console.WriteLine($"{symbol}: {trade.PriceDecimal}");
+    }
+}
+```
+
+#### Pattern 2: Real-Time Processing
+
+Process records as they arrive (required for live streaming):
+
+```csharp
+client.DataReceived += (sender, e) =>
+{
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+    }
+    else
+    {
+        ProcessDataRecord(e.Record, symbolMap);
+    }
+};
+```
+
+#### Pattern 3: Fallback to InstrumentId
+
+Handle missing mappings gracefully:
+
+```csharp
+var symbol = symbolMap.TryGetValue(trade.InstrumentId, out var sym)
+    ? sym
+    : $"#{trade.InstrumentId}";  // Display as "#11667" if unknown
+
+Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2}");
+```
+
+### Troubleshooting
+
+#### All Trades Show "ALL_SYMBOLS"
+
+**Problem:**
+```csharp
+// ❌ WRONG
+symbolMap[mapping.InstrumentId] = mapping.STypeInSymbol;
+
+// Output: "ALL_SYMBOLS: $185.97"
+```
+
+**Solution:**
+```csharp
+// ✅ CORRECT
+symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+
+// Output: "NVDA: $185.97"
+```
+
+#### Symbol Map is Empty
+
+**Possible causes:**
+1. Market is closed (no mappings sent if no data)
+2. Subscription failed (check for errors in `ErrorOccurred` event)
+3. Processing mappings too late (mappings arrive first, capture them immediately)
+
+**Debug steps:**
+```csharp
+client.DataReceived += (sender, e) =>
+{
+    Console.WriteLine($"Received: {e.Record.GetType().Name}, RType: 0x{e.Record.RType:X2}");
+
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        Console.WriteLine($"  Mapping: {mapping.InstrumentId} → {mapping.STypeOutSymbol}");
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+    }
+};
+```
+
+#### Symbols Not Found for Some Trades
+
+**Possible causes:**
+1. Late subscription: Mappings already sent before you subscribed
+2. Multiple datasets: Ensure you're using the correct dataset
+3. Symbol changed: Check `StartTs` and `EndTs` for time-based mappings
+
+**Mitigation:**
+```csharp
+// Use fallback when symbol not found
+var symbol = symbolMap.GetValueOrDefault(
+    trade.InstrumentId,
+    $"UNKNOWN_{trade.InstrumentId}");
+```
+
+### See Also
+
+- **Live Streaming Example:** `examples/LiveSymbolResolution.Example`
+- **Record Types:** [SymbolMappingMessage](#symbol-mapping-message-rtype-0x16)
+- **Enumerations:** [SType](#stype-symbology-type)
+- **README:** [Symbol Mapping section](README.md#symbol-mapping---resolving-instrumentid-to-ticker-symbols)
+
+### Quick Reference
+
+| Task | Code |
+|------|------|
+| Create symbol map | `var symbolMap = new ConcurrentDictionary<uint, string>();` |
+| Store mapping | `symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;` |
+| Resolve symbol | `var symbol = symbolMap.GetValueOrDefault(id, id.ToString());` |
+| Check if exists | `if (symbolMap.TryGetValue(id, out var symbol)) { ... }` |
+| Get count | `int count = symbolMap.Count;` |
 
 ---
 

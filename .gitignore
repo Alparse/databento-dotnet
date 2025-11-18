@@ -70,6 +70,9 @@ tools/diagnostics/
 # Internal test suites (development only, not for public repo)
 examples/*.Internal/
 
+# Private development notes (not for public repo)
+devnotes/
+
 # NuGet packages
 *.nupkg
 *.snupkg

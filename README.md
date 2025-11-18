@@ -96,7 +96,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 | Batch downloads | ✅ | ❌ | Not yet implemented |
 | **Metadata & Symbol Mapping** | ✅ | ✅ | Complete |
 | Instrument metadata queries | ✅ | ✅ | 10+ metadata API methods working |
-| Symbol resolution | ✅ | ✅ | Full TsSymbolMap & PitSymbolMap support |
+| Symbol resolution | ✅ | ✅ | SymbolMappingMessage support for live/historical |
 | **Advanced Features** | | | |
 | Compression (zstd) | ✅ | ✅ | Handled by native layer |
 | SSL/TLS | ✅ | ✅ | Handled by native layer |
@@ -118,7 +118,7 @@ All 16 DBN record types from databento-cpp are fully implemented:
 **Latest (November 2025)** - Production Ready
 - ✅ Reference API implementation (SecurityMaster, AdjustmentFactors, CorporateActions)
 - ✅ OpenTelemetry telemetry with retry policies
-- ✅ Complete metadata & symbol mapping (TsSymbolMap, PitSymbolMap)
+- ✅ Complete metadata & symbol mapping support (SymbolMappingMessage)
 - ✅ All 16 record types with proper deserialization
 - ✅ Thread-safe LiveClient with reconnection support
 
@@ -275,6 +275,125 @@ await foreach (var record in client.GetRangeAsync(
 ```bash
 dotnet run --project examples/Historical.Readme.Example/Historical.Readme.Example.csproj
 ```
+
+## Symbol Mapping - Resolving InstrumentId to Ticker Symbols
+
+When streaming market data, records contain numeric `InstrumentId` values (e.g., `11667`) instead of ticker symbols (e.g., `"NVDA"`). You must handle `SymbolMappingMessage` records to resolve these IDs to human-readable symbols.
+
+### Why Symbol Mapping is Needed
+
+```csharp
+// What you receive in TradeMessage:
+InstrumentId: 11667
+Price: 185.97
+Size: 100
+
+// What you need to display:
+"NVDA: $185.97 x 100"
+```
+
+### How It Works
+
+1. **SymbolMappingMessage records arrive FIRST** (before trades/quotes)
+2. Build a lookup dictionary: `InstrumentId → Symbol`
+3. Use the dictionary to resolve symbols in subsequent data records
+
+### ⚠️ CRITICAL: Use `STypeOutSymbol`, NOT `STypeInSymbol`
+
+```csharp
+// ✅ CORRECT
+symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+
+// ❌ WRONG - Will show "ALL_SYMBOLS" for every trade!
+symbolMap[mapping.InstrumentId] = mapping.STypeInSymbol;
+```
+
+**Why?** For multi-symbol subscriptions:
+- `STypeInSymbol` = Your subscription string (`"ALL_SYMBOLS"`) - **same for all records**
+- `STypeOutSymbol` = Actual ticker symbol (`"NVDA"`, `"AAPL"`, etc.) - **unique per instrument**
+
+### Complete Working Example
+
+```csharp
+using System.Collections.Concurrent;
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+// Symbol map: InstrumentId → Ticker Symbol
+var symbolMap = new ConcurrentDictionary<uint, string>();
+
+// Create live client
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+// Handle incoming records
+client.DataReceived += (sender, e) =>
+{
+    // Step 1: Capture symbol mappings (arrive first)
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        // ⚠️ Use STypeOutSymbol for the actual ticker symbol!
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+        return;
+    }
+
+    // Step 2: Resolve symbols for data records
+    if (e.Record is TradeMessage trade)
+    {
+        var symbol = symbolMap.GetValueOrDefault(
+            trade.InstrumentId,
+            trade.InstrumentId.ToString());  // Fallback if not found
+
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2} x {trade.Size}");
+    }
+};
+
+// Subscribe to trades
+await client.SubscribeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA", "AAPL" }
+);
+
+await client.StartAsync();
+await client.BlockUntilStoppedAsync();
+```
+
+### Expected Output
+
+```
+NVDA: $185.97 x 100
+AAPL: $172.45 x 50
+NVDA: $186.02 x 200
+...
+```
+
+### Performance
+
+Symbol lookups are very fast (~20-50 nanoseconds per lookup using `ConcurrentDictionary`), negligible compared to network I/O.
+
+### Complete Example Project
+
+See `examples/LiveSymbolResolution.Example` for a complete, tested example with:
+- Symbol mapping implementation
+- Performance measurement
+- Error handling
+- Validation
+
+```bash
+dotnet run --project examples/LiveSymbolResolution.Example/LiveSymbolResolution.Example.csproj
+```
+
+### See Also
+
+- **API Reference**: [Symbol Mapping section](API_REFERENCE.md#6-symbol-mapping) for detailed documentation
+- **IntelliSense**: Hover over `SymbolMappingMessage` in your IDE for inline examples
+- **Example Code**: `examples/LiveSymbolResolution.Example/Program.cs`
 
 
 ## Building
