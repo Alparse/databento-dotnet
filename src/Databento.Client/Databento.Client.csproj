@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.18-beta</Version>
+    <Version>3.0.19-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.18-beta: Fixed NETSDK1022 build error in .NET SDK 8.0+ ASP.NET Core projects by changing native DLL item type from Content to None. Added comprehensive symbol mapping documentation with examples and IntelliSense warnings.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.19-beta: Fixed LiveClient disposal crash by handling SEHException in DisposeAsync(). Added StreamAsync Requirements and Resource Management sections to API_REFERENCE.md. Updated README and examples with correct StreamAsync() usage patterns. Safe for production scalable services with proper resource cleanup.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
