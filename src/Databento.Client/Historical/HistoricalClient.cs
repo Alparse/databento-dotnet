@@ -92,6 +92,21 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Query historical data for a time range
     /// </summary>
+    /// <remarks>
+    /// ⚠️ <b>Known Limitation</b>: This method has a critical bug in the underlying native library (databento-cpp).
+    /// If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range),
+    /// the process will crash with AccessViolationException instead of throwing a catchable exception.
+    /// The crash is isolated to this client instance - your application will continue running,
+    /// but this client will be unusable.
+    /// <para>
+    /// <b>Workaround</b>: Use the Live API (<see cref="Client.Live.LiveClient"/>) which handles
+    /// invalid symbols gracefully via metadata.not_found field, or pre-validate your symbols
+    /// using the symbology API before calling this method.
+    /// </para>
+    /// <para>
+    /// This bug has been reported to the databento-cpp maintainers and will be fixed in a future release.
+    /// </para>
+    /// </remarks>
     public async IAsyncEnumerable<Record> GetRangeAsync(
         string dataset,
         Schema schema,
@@ -239,6 +254,21 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Query historical data and save directly to a DBN file
     /// </summary>
+    /// <remarks>
+    /// ⚠️ <b>Known Limitation</b>: This method has a critical bug in the underlying native library (databento-cpp).
+    /// If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range),
+    /// the process will crash with AccessViolationException instead of throwing a catchable exception.
+    /// The crash is isolated to this client instance - your application will continue running,
+    /// but this client will be unusable.
+    /// <para>
+    /// <b>Workaround</b>: Use the Live API (<see cref="Client.Live.LiveClient"/>) which handles
+    /// invalid symbols gracefully, or pre-validate your symbols using the symbology API before calling this method.
+    /// Alternatively, use <see cref="BatchSubmitJobAsync"/> which does not have this bug.
+    /// </para>
+    /// <para>
+    /// This bug has been reported to the databento-cpp maintainers and will be fixed in a future release.
+    /// </para>
+    /// </remarks>
     public async Task<string> GetRangeToFileAsync(
         string filePath,
         string dataset,
