@@ -630,6 +630,14 @@ IAsyncEnumerable<Record> GetRangeAsync(
     CancellationToken cancellationToken = default);
 ```
 
+> ⚠️ **Known Limitation**: This method has a critical bug in the underlying native library (databento-cpp). If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range), the process will crash with `AccessViolationException` instead of throwing a catchable exception. The crash is isolated to this client instance - your application will continue running, but this client will be unusable.
+>
+> **Workarounds**:
+> - Pre-validate symbols using `SymbologyResolveAsync()` before calling this method
+> - Use `BatchSubmitJobAsync()` for bulk historical downloads (does not have this bug)
+>
+> This bug has been reported to the databento-cpp maintainers. See [Issue #1](https://github.com/Alparse/databento-dotnet/issues/1).
+
 **Example:**
 ```csharp
 var start = new DateTimeOffset(2025, 11, 3, 0, 0, 0, TimeSpan.Zero);  // Nov 3, 2025 (Monday)
@@ -663,6 +671,14 @@ Task<string> GetRangeToFileAsync(
     DateTimeOffset endTime,
     CancellationToken cancellationToken = default);
 ```
+
+> ⚠️ **Known Limitation**: This method has a critical bug in the underlying native library (databento-cpp). If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range), the process will crash with `AccessViolationException` instead of throwing a catchable exception. The crash is isolated to this client instance - your application will continue running, but this client will be unusable.
+>
+> **Workarounds**:
+> - Pre-validate symbols using `SymbologyResolveAsync()` before calling this method
+> - Use `BatchSubmitJobAsync()` for bulk historical downloads (does not have this bug)
+>
+> This bug has been reported to the databento-cpp maintainers. See [Issue #1](https://github.com/Alparse/databento-dotnet/issues/1).
 
 **Example:**
 ```csharp
