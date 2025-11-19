@@ -31,7 +31,7 @@ Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="3.0.19-beta" />
+  <PackageReference Include="Databento.Client" Version="3.0.23-beta" />
 </ItemGroup>
 ```
 
@@ -46,7 +46,7 @@ See [Building](#building) section below for instructions on building from source
 - **Cross-Platform**: Works on Windows, Linux, and macOS
 - **High Performance**: Built on top of Databento's C++ client library
 - **Type-Safe**: Strongly-typed API with full IntelliSense support
-- **.NET 8**: Modern C# with nullable reference types
+- **.NET 8+ Compatible**: Modern C# with nullable reference types (.NET 8, .NET 9+)
 
 ## Implementation Status
 
@@ -172,7 +172,36 @@ All 16 DBN record types from databento-cpp are fully implemented:
 
 ### For Using (NuGet Package)
 
-- .NET 8 Runtime or later
+**Required:**
+- .NET 8 Runtime or later (.NET 8, .NET 9+)
+
+**Compatibility:**
+- ✅ .NET 8.0
+- ✅ .NET 9.0 (tested and confirmed)
+
+**Platform Requirements:**
+
+**Windows:**
+- No additional prerequisites required - the NuGet package includes all necessary dependencies (including Visual C++ runtime DLLs)
+
+<details>
+<summary>⚠️ Troubleshooting: If you see "DllNotFoundException: databento_native"</summary>
+
+This usually means the Visual C++ Runtime failed to load. Try:
+
+1. **Update Windows** - Ensure Windows 10 version 1809+ or Windows 11
+2. **Install VC++ Redistributable** (if issue persists):
+   - Download: [Visual C++ 2022 Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+   - This is typically only needed on older/minimal Windows installations
+
+The library includes runtime DLLs, but in rare cases Windows may require the full redistributable package.
+</details>
+
+**Linux:**
+- glibc 2.31+ (Ubuntu 20.04+, RHEL 8+)
+
+**macOS:**
+- macOS 11.0+ (Big Sur or later)
 
 ## Quick Start
 
@@ -463,7 +492,7 @@ dotnet build databento-dotnet.sln -c Release
 ## Project Structure
 
 ```
-databento_client/
+databento-dotnet/
 ├── src/
 │   ├── Databento.Native/          # C++ native wrapper
 │   │   ├── include/               # C API headers
@@ -640,7 +669,7 @@ Apache 2.0 License. See [LICENSE](LICENSE) for details.
 
 - [Databento Documentation](https://docs.databento.com)
 - [databento-cpp GitHub](https://github.com/databento/databento-cpp)
-- [Issue Tracker](https://github.com/Alparse/databento_client/issues)
+- [Issue Tracker](https://github.com/Alparse/databento-dotnet/issues)
 
 ## Acknowledgments
 
