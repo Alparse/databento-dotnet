@@ -28,10 +28,16 @@ using databento_native::ValidateTimeRange;
 struct HistoricalClientWrapper {
     std::unique_ptr<db::Historical> client;
     std::string api_key;
+    std::unique_ptr<databento_native::StderrLogReceiver> log_receiver;
 
     explicit HistoricalClientWrapper(const std::string& key)
-        : api_key(key) {
-        client = std::make_unique<db::Historical>(nullptr, key, db::HistoricalGateway::Bo1);
+        : api_key(key),
+          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()) {
+        client = std::make_unique<db::Historical>(
+            log_receiver.get(),
+            key,
+            db::HistoricalGateway::Bo1
+        );
     }
 };
 

@@ -78,6 +78,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiTests.Internal", "exampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveSymbolResolution.Example", "examples\LiveSymbolResolution.Example\LiveSymbolResolution.Example.csproj", "{5C2D6E22-D0DC-4A95-A66B-5499B852A4BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Comprehensive.Example", "Comprehensive.Example\Comprehensive.Example.csproj", "{28AF8097-C8C2-4918-B9F5-24AA24126442}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -472,6 +474,18 @@ Global
 		{5C2D6E22-D0DC-4A95-A66B-5499B852A4BB}.Release|x64.Build.0 = Release|Any CPU
 		{5C2D6E22-D0DC-4A95-A66B-5499B852A4BB}.Release|x86.ActiveCfg = Release|Any CPU
 		{5C2D6E22-D0DC-4A95-A66B-5499B852A4BB}.Release|x86.Build.0 = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|x64.Build.0 = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Debug|x86.Build.0 = Debug|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|x64.ActiveCfg = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|x64.Build.0 = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|x86.ActiveCfg = Release|Any CPU
+		{28AF8097-C8C2-4918-B9F5-24AA24126442}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -508,6 +522,7 @@ Global
 		{D0283AF8-EFA7-4322-9691-31DF1BF66EFA} = {0CCA0EB9-9C5B-22E1-9E22-11B1D92CD054}
 		{9A17EFEF-5061-4FF1-B031-5547B4978FD6} = {0CCA0EB9-9C5B-22E1-9E22-11B1D92CD054}
 		{5C2D6E22-D0DC-4A95-A66B-5499B852A4BB} = {0CCA0EB9-9C5B-22E1-9E22-11B1D92CD054}
+		{28AF8097-C8C2-4918-B9F5-24AA24126442} = {0CCA0EB9-9C5B-22E1-9E22-11B1D92CD054}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0CBE475C-0102-41EF-96A2-1DBE0DF6F2E1}

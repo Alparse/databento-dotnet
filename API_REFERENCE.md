@@ -1,7 +1,7 @@
 # databento-dotnet API Reference
 
-**Version:** v3.05-beta
-**Last Updated:** November 2025
+**Version:** v3.0.24-beta
+**Last Updated:** November 20, 2025
 
 Comprehensive API reference for the databento-dotnet library, a high-performance .NET client for accessing Databento market data.
 
@@ -630,13 +630,7 @@ IAsyncEnumerable<Record> GetRangeAsync(
     CancellationToken cancellationToken = default);
 ```
 
-> ⚠️ **Known Limitation**: This method has a critical bug in the underlying native library (databento-cpp). If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range), the process will crash with `AccessViolationException` instead of throwing a catchable exception. The crash is isolated to this client instance - your application will continue running, but this client will be unusable.
->
-> **Workarounds**:
-> - Pre-validate symbols using `SymbologyResolveAsync()` before calling this method
-> - Use `BatchSubmitJobAsync()` for bulk historical downloads (does not have this bug)
->
-> This bug has been reported to the databento-cpp maintainers. See [Issue #1](https://github.com/Alparse/databento-dotnet/issues/1).
+> ℹ️ **Historical Note**: Prior to v3.0.24-beta, this method had a critical bug where server warnings (e.g., future dates with degraded data quality) would cause an `AccessViolationException` crash. This issue was resolved in v3.0.24-beta. Server warnings now appear on stderr and do not affect operation.
 
 **Example:**
 ```csharp
@@ -672,13 +666,7 @@ Task<string> GetRangeToFileAsync(
     CancellationToken cancellationToken = default);
 ```
 
-> ⚠️ **Known Limitation**: This method has a critical bug in the underlying native library (databento-cpp). If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range), the process will crash with `AccessViolationException` instead of throwing a catchable exception. The crash is isolated to this client instance - your application will continue running, but this client will be unusable.
->
-> **Workarounds**:
-> - Pre-validate symbols using `SymbologyResolveAsync()` before calling this method
-> - Use `BatchSubmitJobAsync()` for bulk historical downloads (does not have this bug)
->
-> This bug has been reported to the databento-cpp maintainers. See [Issue #1](https://github.com/Alparse/databento-dotnet/issues/1).
+> ℹ️ **Historical Note**: Prior to v3.0.24-beta, this method had a critical bug where server warnings (e.g., future dates with degraded data quality) would cause an `AccessViolationException` crash. This issue was resolved in v3.0.24-beta. Server warnings now appear on stderr and do not affect operation.
 
 **Example:**
 ```csharp

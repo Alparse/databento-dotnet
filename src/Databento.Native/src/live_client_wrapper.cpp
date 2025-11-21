@@ -27,6 +27,7 @@ using databento_native::ValidateSymbolArray;
 // ============================================================================
 struct LiveClientWrapper {
     std::unique_ptr<db::LiveThreaded> client;
+    std::unique_ptr<databento_native::StderrLogReceiver> log_receiver;
     RecordCallback record_callback = nullptr;
     MetadataCallback metadata_callback = nullptr;
     ErrorCallback error_callback = nullptr;
@@ -41,7 +42,8 @@ struct LiveClientWrapper {
     int heartbeat_interval_secs = 30;
 
     explicit LiveClientWrapper(const std::string& key)
-        : api_key(key) {}
+        : api_key(key),
+          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()) {}
 
     explicit LiveClientWrapper(
         const std::string& key,
@@ -49,11 +51,12 @@ struct LiveClientWrapper {
         bool ts_out,
         db::VersionUpgradePolicy policy,
         int heartbeat_secs)
-        : api_key(key)
-        , dataset(ds)
-        , send_ts_out(ts_out)
-        , upgrade_policy(policy)
-        , heartbeat_interval_secs(heartbeat_secs)
+        : api_key(key),
+          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()),
+          dataset(ds),
+          send_ts_out(ts_out),
+          upgrade_policy(policy),
+          heartbeat_interval_secs(heartbeat_secs)
     {}
 
     ~LiveClientWrapper() {
@@ -67,7 +70,8 @@ struct LiveClientWrapper {
                 .SetKey(api_key)
                 .SetDataset(dataset)
                 .SetSendTsOut(send_ts_out)
-                .SetUpgradePolicy(upgrade_policy);
+                .SetUpgradePolicy(upgrade_policy)
+                .SetLogReceiver(log_receiver.get());
 
             if (heartbeat_interval_secs > 0) {
                 builder.SetHeartbeatInterval(

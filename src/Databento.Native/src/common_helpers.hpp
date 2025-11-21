@@ -4,8 +4,10 @@
 #include <cstring>
 #include <string>
 #include <stdexcept>
+#include <cstdio>
 #include <databento/enums.hpp>
 #include <databento/datetime.hpp>
+#include <databento/log.hpp>
 
 namespace databento_native {
 
@@ -240,5 +242,38 @@ inline void ValidateTimeRange(int64_t start_ns, int64_t end_ns) {
 inline bool IsErrorBufferValid(char* error_buffer, size_t error_buffer_size) {
     return error_buffer != nullptr && error_buffer_size > 0;
 }
+
+// ============================================================================
+// Shared Log Receiver for databento-cpp clients
+// ============================================================================
+
+/**
+ * Simple ILogReceiver implementation that logs to stderr
+ * Used by all wrapper components to prevent NULL pointer dereferences
+ * and provide consistent logging behavior across Historical, Batch, and Live clients.
+ *
+ * Design choices:
+ * - stderr output: Doesn't interfere with application stdout
+ * - Thread-safe: stderr writes are atomic for single fprintf calls
+ * - Explicit flush: Ensures messages are visible immediately
+ * - Consistent format: [Databento LEVEL] prefix for all messages
+ */
+class StderrLogReceiver : public databento::ILogReceiver {
+public:
+    void Receive(databento::LogLevel level, const std::string& message) override {
+        const char* level_str = "INFO";
+        switch (level) {
+            case databento::LogLevel::Error:   level_str = "ERROR";   break;
+            case databento::LogLevel::Warning: level_str = "WARNING"; break;
+            case databento::LogLevel::Info:    level_str = "INFO";    break;
+            case databento::LogLevel::Debug:   level_str = "DEBUG";   break;
+        }
+
+        // Write to stderr with explicit flush for reliability
+        // Format: [Databento LEVEL] message
+        std::fprintf(stderr, "[Databento %s] %s\n", level_str, message.c_str());
+        std::fflush(stderr);
+    }
+};
 
 }  // namespace databento_native

@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.23-beta</Version>
+    <Version>3.0.24-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.23-beta: Fixed DllNotFoundException on systems without Visual C++ Runtime by bundling required runtime DLLs (MSVCP140, VCRUNTIME140, VCRUNTIME140_1) in NuGet package. Closes #2.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.24-beta: CRITICAL FIX - Resolved AccessViolationException crash in Historical and Batch APIs when server returns warnings (e.g., querying future dates with degraded data). Improved logging consistency across all clients. Server warnings now visible on stderr. Zero API changes. See CHANGELOG.md for full details.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
