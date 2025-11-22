@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.24-beta</Version>
+    <Version>3.0.26-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.24-beta: CRITICAL FIX - Resolved AccessViolationException crash in Historical and Batch APIs when server returns warnings (e.g., querying future dates with degraded data). Improved logging consistency across all clients. Server warnings now visible on stderr. Zero API changes. See CHANGELOG.md for full details.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.26-beta: Quality improvements release - Added NuGet quality indicators (Source Link, deterministic builds, symbol packages) for enhanced debugging experience. Verified clean production DLL (no debug logging). All 33 example projects tested and passing. Zero functional changes from v3.0.24-beta.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
