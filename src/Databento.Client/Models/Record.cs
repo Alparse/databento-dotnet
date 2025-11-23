@@ -416,40 +416,12 @@ public abstract class Record
     private static InstrumentDefMessage DeserializeInstrumentDefMsg(ReadOnlySpan<byte> bytes, byte rtype,
         ushort publisherId, uint instrumentId, long tsEvent)
     {
-        // MEDIUM FIX: Exact size check instead of minimum
+        // DBN v2 InstrumentDefMsg: Exactly 520 bytes
+        // Specification: https://docs.rs/dbn/latest/dbn/record/struct.InstrumentDefMsg.html
+        // All offsets verified against databento-cpp record.hpp
         const int ExpectedSize = 520;
         if (bytes.Length != ExpectedSize)
             throw new ArgumentException($"Invalid InstrumentDefMsg size: expected {ExpectedSize}, got {bytes.Length}", nameof(bytes));
-
-        // InstrumentDefMsg layout (520 bytes) - very large, many fields
-        // This is a simplified deserialization of the most important fields
-
-        long tsRecv = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(16, 8));
-        long minPriceIncrement = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(24, 8));
-        long displayFactor = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(32, 8));
-        long expiration = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(40, 8));
-        long activation = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(48, 8));
-        long highLimitPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(56, 8));
-        long lowLimitPrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(64, 8));
-        long maxPriceVariation = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(72, 8));
-        long tradingReferencePrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(80, 8));
-
-        // Read string fields (null-terminated C strings)
-        string currency = ReadCString(bytes.Slice(178, 5));
-        string settlCurrency = ReadCString(bytes.Slice(183, 5));
-        string secSubType = ReadCString(bytes.Slice(188, 6));
-        string rawSymbol = ReadCString(bytes.Slice(194, 22));
-        string group = ReadCString(bytes.Slice(216, 21));
-        string exchange = ReadCString(bytes.Slice(237, 5));
-        string asset = ReadCString(bytes.Slice(242, 7));
-        string cfi = ReadCString(bytes.Slice(249, 7));
-        string securityType = ReadCString(bytes.Slice(256, 7));
-        string unitOfMeasure = ReadCString(bytes.Slice(263, 31));
-        string underlying = ReadCString(bytes.Slice(294, 21));
-
-        InstrumentClass instrumentClass = (InstrumentClass)bytes[319];
-        long strikePrice = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(320, 8));
-        MatchAlgorithm matchAlgorithm = (MatchAlgorithm)bytes[328];
 
         return new InstrumentDefMessage
         {
@@ -457,29 +429,86 @@ public abstract class Record
             PublisherId = publisherId,
             InstrumentId = instrumentId,
             TimestampNs = tsEvent,
-            TsRecv = tsRecv,
-            MinPriceIncrement = minPriceIncrement,
-            DisplayFactor = displayFactor,
-            Expiration = expiration,
-            Activation = activation,
-            HighLimitPrice = highLimitPrice,
-            LowLimitPrice = lowLimitPrice,
-            MaxPriceVariation = maxPriceVariation,
-            TradingReferencePrice = tradingReferencePrice,
-            Currency = currency,
-            SettlCurrency = settlCurrency,
-            SecSubType = secSubType,
-            RawSymbol = rawSymbol,
-            Group = group,
-            Exchange = exchange,
-            Asset = asset,
-            Cfi = cfi,
-            SecurityType = securityType,
-            UnitOfMeasure = unitOfMeasure,
-            Underlying = underlying,
-            InstrumentClass = instrumentClass,
-            StrikePrice = strikePrice,
-            MatchAlgorithm = matchAlgorithm
+
+            // int64 fields (offsets 16-135)
+            TsRecv = ReadInt64(bytes, 16),
+            MinPriceIncrement = ReadInt64(bytes, 24),
+            DisplayFactor = ReadInt64(bytes, 32),
+            Expiration = ReadInt64(bytes, 40),
+            Activation = ReadInt64(bytes, 48),
+            HighLimitPrice = ReadInt64(bytes, 56),
+            LowLimitPrice = ReadInt64(bytes, 64),
+            MaxPriceVariation = ReadInt64(bytes, 72),
+            UnitOfMeasureQty = ReadInt64(bytes, 80),
+            MinPriceIncrementAmount = ReadInt64(bytes, 88),
+            PriceRatio = ReadInt64(bytes, 96),
+            StrikePrice = ReadInt64(bytes, 104),           // FIXED: was at 320!
+            RawInstrumentId = ReadRawInstrumentId(bytes, 112),
+            LegPrice = ReadInt64(bytes, 120),              // NEW: Multi-leg field
+            LegDelta = ReadInt64(bytes, 128),              // NEW: Multi-leg field
+
+            // int32/uint32 fields (offsets 136-211)
+            InstAttribValue = ReadInt32(bytes, 136),
+            UnderlyingId = ReadUInt32(bytes, 140),
+            MarketDepthImplied = ReadInt32(bytes, 144),
+            MarketDepth = ReadInt32(bytes, 148),
+            MarketSegmentId = ReadUInt32(bytes, 152),
+            MaxTradeVol = ReadUInt32(bytes, 156),
+            MinLotSize = ReadInt32(bytes, 160),
+            MinLotSizeBlock = ReadInt32(bytes, 164),
+            MinLotSizeRoundLot = ReadInt32(bytes, 168),
+            MinTradeVol = ReadUInt32(bytes, 172),
+            ContractMultiplier = ReadInt32(bytes, 176),
+            DecayQuantity = ReadInt32(bytes, 180),
+            OriginalContractSize = ReadInt32(bytes, 184),
+            LegInstrumentId = ReadUInt32(bytes, 188),      // NEW: Multi-leg field
+            LegRatioPriceNumerator = ReadInt32(bytes, 192),   // NEW: Multi-leg field
+            LegRatioPriceDenominator = ReadInt32(bytes, 196), // NEW: Multi-leg field
+            LegRatioQtyNumerator = ReadInt32(bytes, 200),     // NEW: Multi-leg field
+            LegRatioQtyDenominator = ReadInt32(bytes, 204),   // NEW: Multi-leg field
+            LegUnderlyingId = ReadUInt32(bytes, 208),      // NEW: Multi-leg field
+
+            // int16/uint16 fields (offsets 212-223)
+            ApplId = ReadInt16(bytes, 212),
+            MaturityYear = ReadUInt16(bytes, 214),
+            DecayStartDate = ReadUInt16(bytes, 216),
+            ChannelId = ReadUInt16(bytes, 218),
+            LegCount = ReadUInt16(bytes, 220),             // NEW: Multi-leg field
+            LegIndex = ReadUInt16(bytes, 222),             // NEW: Multi-leg field
+
+            // String fields (offsets 224-486) - ALL FIXED
+            Currency = ReadCString(bytes.Slice(224, 4)),                 // FIXED: was at 178
+            SettlCurrency = ReadCString(bytes.Slice(228, 4)),            // FIXED: was at 183
+            SecSubType = ReadCString(bytes.Slice(232, 6)),               // FIXED: was at 188
+            RawSymbol = ReadCString(bytes.Slice(238, 71)),               // FIXED: was at 194, len 22!
+            Group = ReadCString(bytes.Slice(309, 21)),                   // FIXED: was at 216
+            Exchange = ReadCString(bytes.Slice(330, 5)),                 // FIXED: was at 237
+            Asset = ReadCString(bytes.Slice(335, 11)),                   // FIXED: was at 242, len 7!
+            Cfi = ReadCString(bytes.Slice(346, 7)),                      // FIXED: was at 249
+            SecurityType = ReadCString(bytes.Slice(353, 7)),             // FIXED: was at 256
+            UnitOfMeasure = ReadCString(bytes.Slice(360, 31)),           // FIXED: was at 263
+            Underlying = ReadCString(bytes.Slice(391, 21)),              // FIXED: was at 294
+            StrikePriceCurrency = ReadCString(bytes.Slice(412, 4)),      // NEW
+            LegRawSymbol = ReadCString(bytes.Slice(416, 71)),            // NEW: Multi-leg field
+
+            // Enum/byte fields (offsets 487-502) - ALL FIXED
+            InstrumentClass = (InstrumentClass)bytes[487],               // FIXED: was at 319!
+            MatchAlgorithm = (MatchAlgorithm)bytes[488],                 // FIXED: was at 328!
+            MainFraction = bytes[489],
+            PriceDisplayFormat = bytes[490],
+            SubFraction = bytes[491],
+            UnderlyingProduct = bytes[492],
+            SecurityUpdateAction = (SecurityUpdateAction)bytes[493],
+            MaturityMonth = bytes[494],
+            MaturityDay = bytes[495],
+            MaturityWeek = bytes[496],
+            UserDefinedInstrument = (UserDefinedInstrument)bytes[497],
+            ContractMultiplierUnit = (sbyte)bytes[498],
+            FlowScheduleType = (sbyte)bytes[499],
+            TickRule = bytes[500],
+            LegInstrumentClass = (InstrumentClass)bytes[501],            // NEW: Multi-leg field
+            LegSide = (Side)bytes[502]                                   // NEW: Multi-leg field
+            // Reserved bytes 503-519 ignored
         };
     }
 
@@ -779,6 +808,59 @@ public abstract class Record
             BidPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(24, 2)),
             AskPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(26, 2))
         };
+    }
+
+    // Helper methods for reading integers from byte arrays
+    private static short ReadInt16(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(offset, 2));
+    }
+
+    private static ushort ReadUInt16(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(offset, 2));
+    }
+
+    private static int ReadInt32(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(offset, 4));
+    }
+
+    private static uint ReadUInt32(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(offset, 4));
+    }
+
+    private static long ReadInt64(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(bytes.Slice(offset, 8));
+    }
+
+    private static ulong ReadUInt64(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(offset, 8));
+    }
+
+    /// <summary>
+    /// Reads RawInstrumentId from bytes with overflow protection.
+    /// DBN spec defines this as 64-bit, but we use 32-bit uint for backward compatibility.
+    /// Throws if the value exceeds uint.MaxValue (4,294,967,295).
+    /// </summary>
+    private static uint ReadRawInstrumentId(ReadOnlySpan<byte> bytes, int offset)
+    {
+        // Read full 64-bit value as per DBN specification
+        ulong rawId64 = ReadUInt64(bytes, offset);
+
+        // Check for overflow
+        if (rawId64 > uint.MaxValue)
+        {
+            throw new OverflowException(
+                $"RawInstrumentId value {rawId64:N0} exceeds uint.MaxValue ({uint.MaxValue:N0}). " +
+                $"This venue requires 64-bit instrument IDs. Please contact support or file an issue at " +
+                $"https://github.com/databento/databento-dotnet/issues to request ulong support.");
+        }
+
+        return (uint)rawId64;
     }
 
     private static string ReadCString(ReadOnlySpan<byte> bytes)

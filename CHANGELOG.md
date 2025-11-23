@@ -5,6 +5,132 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.27-beta] - 2025-11-23
+
+### Fixed
+
+- **CRITICAL**: Fixed AccessViolationException crash in Historical and Batch APIs when server returns warning headers ([#1](https://github.com/Alparse/databento-dotnet/issues/1))
+  - Historical API now correctly handles server warnings for future dates and degraded data quality
+  - Batch API now safely handles submission errors without crashing
+  - Native wrapper now properly passes ILogReceiver to databento-cpp instead of NULL pointer
+  - Server warnings now visible on stderr instead of causing silent crashes
+
+- **CRITICAL**: Fixed InstrumentDefMessage deserialization to match DBN v2 specification ([#4](https://github.com/Alparse/databento-dotnet/issues/4))
+  - `InstrumentClass` now correctly populated (was always returning `0`/`Unknown`)
+  - `StrikePrice` now reading from correct offset 104 (was reading from offset 320)
+  - All string fields now reading from correct offsets with correct lengths
+
+### Added
+
+- **13 new fields** for multi-leg strategy instruments in `InstrumentDefMessage`:
+  - `LegPrice`, `LegDelta`, `LegInstrumentId`, `LegRatioPriceNumerator`, `LegRatioPriceDenominator`
+  - `LegRatioQtyNumerator`, `LegRatioQtyDenominator`, `LegUnderlyingId`, `LegCount`, `LegIndex`
+  - `StrikePriceCurrency`, `LegRawSymbol`, `LegInstrumentClass`, `LegSide`
+
+### Changed
+
+- `RawInstrumentId` now reads from correct offset 112 (was reading from incorrect offset) with validation for 64-bit values
+  - Property type remains `uint` for backward compatibility
+  - Throws `OverflowException` if venue provides ID exceeding uint.MaxValue (4,294,967,295)
+
+---
+
+## [4.0.0-beta] - 2025-11-22
+
+### 🚨 BREAKING CHANGES
+
+This is a **major version release** with breaking changes to `InstrumentDefMessage` deserialization. All applications using instrument definition data from the Historical API must be reviewed and potentially updated.
+
+### Fixed
+
+- **CRITICAL**: Fixed InstrumentDefMessage deserialization to match DBN v2 specification ([#4](https://github.com/Alparse/databento-dotnet/issues/4))
+  - `InstrumentClass` now correctly populated (was always returning `0`/`Unknown`)
+  - `StrikePrice` now reading from correct offset 104 (was reading from offset 320)
+  - All string fields now reading from correct offsets with correct lengths:
+    - `RawSymbol`: Now 71 bytes at offset 238 (was 22 bytes at offset 194)
+    - `Asset`: Now 11 bytes at offset 335 (was 7 bytes at offset 242)
+    - `Currency`: Now at offset 224 (was at offset 178)
+    - `SettlCurrency`: Now at offset 228 (was at offset 183)
+    - `SecSubType`: Now at offset 232 (was at offset 188)
+    - `Group`: Now at offset 309 (was at offset 216)
+    - `Exchange`: Now at offset 330 (was at offset 237)
+    - `Cfi`: Now at offset 346 (was at offset 249)
+    - `SecurityType`: Now at offset 353 (was at offset 256)
+    - `UnitOfMeasure`: Now at offset 360 (was at offset 263)
+    - `Underlying`: Now at offset 391 (was at offset 294)
+
+### Added
+
+- **13 new fields** for multi-leg strategy instruments (spreads, combos):
+  - `LegPrice` (int64): Leg price for multi-leg strategies
+  - `LegDelta` (int64): Leg delta for multi-leg strategies
+  - `LegInstrumentId` (uint32): Leg instrument ID
+  - `LegRatioPriceNumerator` (int32): Leg price ratio numerator
+  - `LegRatioPriceDenominator` (int32): Leg price ratio denominator
+  - `LegRatioQtyNumerator` (int32): Leg quantity ratio numerator
+  - `LegRatioQtyDenominator` (int32): Leg quantity ratio denominator
+  - `LegUnderlyingId` (uint32): Leg underlying instrument ID
+  - `LegCount` (ushort): Number of legs in multi-leg strategies
+  - `LegIndex` (ushort): Leg index (0-based)
+  - `StrikePriceCurrency` (string): Strike price currency
+  - `LegRawSymbol` (string): Raw symbol for leg instrument
+  - `LegInstrumentClass` (InstrumentClass): Instrument class for leg
+  - `LegSide` (Side): Side for leg instrument
+- Added `InstrumentClass.Unknown = 0` enum value as safety net for undefined values
+- Added helper methods for reading integers: `ReadInt16`, `ReadUInt16`, `ReadInt32`, `ReadUInt32`, `ReadInt64`, `ReadUInt64`
+
+### Changed
+
+- **BREAKING**: `RawInstrumentId` type changed from `uint` to `ulong` (correct per DBN spec)
+- **BREAKING**: All existing `InstrumentDefMessage` field values will be different (correct values per DBN spec)
+- **BREAKING**: Removed obsolete `TradingReferencePrice` field (not in DBN v2 specification)
+- **BREAKING**: Removed obsolete `TradingReferenceDate` field (not in DBN v2 specification)
+
+### Impact Assessment
+
+**Who is affected?**
+- Applications querying `schema=Definition` on any dataset
+- Applications using `InstrumentDefMessage` fields for filtering or analysis
+- Applications that cache or persist instrument definition data
+
+**What breaks?**
+- Code filtering by `InstrumentClass == 0` will break (previously all instruments returned 0, now returns correct values)
+- Code comparing `RawInstrumentId` values may need casting from `uint` to `ulong`
+- Code using `TradingReferencePrice` or `TradingReferenceDate` will fail to compile
+- Cached/persisted instrument data will have mismatched values compared to new version
+
+**Migration required:**
+- Review all code using `InstrumentDefMessage` fields
+- Update comparisons for `RawInstrumentId` to use `ulong`
+- Remove references to `TradingReferencePrice` and `TradingReferenceDate`
+- Invalidate cached instrument definition data
+- See [MIGRATION_GUIDE_v4.0.0.md](MIGRATION_GUIDE_v4.0.0.md) for detailed upgrade instructions
+
+### Technical Details
+
+- Completely rewrote `DeserializeInstrumentDefMsg` in `src/Databento.Client/Models/Record.cs` (lines 416-513)
+- Updated `InstrumentDefMessage.cs` to add 13 new properties for multi-leg strategies
+- All byte offsets now verified against databento-cpp `record.hpp` specification
+- Added comprehensive inline documentation of correct DBN v2 offsets
+- Zero changes to native DLL (784KB unchanged)
+- Zero changes to other record types (MBO, MBP, OHLCV, etc.)
+
+### Verification
+
+- ✅ Code compiles successfully
+- ✅ All byte offsets verified against DBN v2 specification
+- ✅ InstrumentClass enum now includes `Unknown = 0` value
+- ✅ All 13 multi-leg fields added with correct types
+- ⏳ Awaiting verification with real GLBX.MDP3 data
+
+### References
+
+- Issue: [#4 InstrumentDefMessage.InstrumentClass is always 0](https://github.com/Alparse/databento-dotnet/issues/4)
+- DBN Specification: https://docs.rs/dbn/latest/dbn/record/struct.InstrumentDefMsg.html
+- Implementation: Based on databento-cpp record.hpp (520-byte struct)
+
+---
+
 ## [3.0.24-beta] - 2025-11-20
 
 ### Fixed

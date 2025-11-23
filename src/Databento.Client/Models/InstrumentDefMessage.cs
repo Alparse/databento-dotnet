@@ -47,11 +47,6 @@ public class InstrumentDefMessage : Record
     public long MaxPriceVariation { get; set; }
 
     /// <summary>
-    /// Trading reference price (fixed-point)
-    /// </summary>
-    public long TradingReferencePrice { get; set; }
-
-    /// <summary>
     /// Unit of measure quantity
     /// </summary>
     public long UnitOfMeasureQty { get; set; }
@@ -72,6 +67,16 @@ public class InstrumentDefMessage : Record
     public long StrikePrice { get; set; }
 
     /// <summary>
+    /// Leg price for multi-leg strategies (fixed-point)
+    /// </summary>
+    public long LegPrice { get; set; }
+
+    /// <summary>
+    /// Leg delta for multi-leg strategies (fixed-point)
+    /// </summary>
+    public long LegDelta { get; set; }
+
+    /// <summary>
     /// Instrument attribute value
     /// </summary>
     public int InstAttribValue { get; set; }
@@ -82,7 +87,10 @@ public class InstrumentDefMessage : Record
     public uint UnderlyingId { get; set; }
 
     /// <summary>
-    /// Raw instrument ID
+    /// Raw instrument ID.
+    /// Note: DBN specification defines this as 64-bit, but this implementation uses 32-bit uint
+    /// for backward compatibility. An exception will be thrown if a venue provides an ID exceeding
+    /// uint.MaxValue (4,294,967,295).
     /// </summary>
     public uint RawInstrumentId { get; set; }
 
@@ -142,9 +150,34 @@ public class InstrumentDefMessage : Record
     public int OriginalContractSize { get; set; }
 
     /// <summary>
-    /// Trading reference date
+    /// Leg instrument ID for multi-leg strategies
     /// </summary>
-    public ushort TradingReferenceDate { get; set; }
+    public uint LegInstrumentId { get; set; }
+
+    /// <summary>
+    /// Leg price ratio numerator for multi-leg strategies
+    /// </summary>
+    public int LegRatioPriceNumerator { get; set; }
+
+    /// <summary>
+    /// Leg price ratio denominator for multi-leg strategies
+    /// </summary>
+    public int LegRatioPriceDenominator { get; set; }
+
+    /// <summary>
+    /// Leg quantity ratio numerator for multi-leg strategies
+    /// </summary>
+    public int LegRatioQtyNumerator { get; set; }
+
+    /// <summary>
+    /// Leg quantity ratio denominator for multi-leg strategies
+    /// </summary>
+    public int LegRatioQtyDenominator { get; set; }
+
+    /// <summary>
+    /// Leg underlying instrument ID for multi-leg strategies
+    /// </summary>
+    public uint LegUnderlyingId { get; set; }
 
     /// <summary>
     /// Application ID
@@ -165,6 +198,16 @@ public class InstrumentDefMessage : Record
     /// Channel ID
     /// </summary>
     public ushort ChannelId { get; set; }
+
+    /// <summary>
+    /// Number of legs in multi-leg strategies (spreads, combos)
+    /// </summary>
+    public ushort LegCount { get; set; }
+
+    /// <summary>
+    /// Leg index for multi-leg strategies (0-based)
+    /// </summary>
+    public ushort LegIndex { get; set; }
 
     /// <summary>
     /// Currency code (e.g., "USD")
@@ -225,6 +268,11 @@ public class InstrumentDefMessage : Record
     /// Strike price currency
     /// </summary>
     public string StrikePriceCurrency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Raw symbol for leg instrument in multi-leg strategies
+    /// </summary>
+    public string LegRawSymbol { get; set; } = string.Empty;
 
     /// <summary>
     /// Instrument class
@@ -305,6 +353,16 @@ public class InstrumentDefMessage : Record
     /// Tick rule
     /// </summary>
     public byte TickRule { get; set; }
+
+    /// <summary>
+    /// Instrument class for leg instrument in multi-leg strategies
+    /// </summary>
+    public InstrumentClass LegInstrumentClass { get; set; }
+
+    /// <summary>
+    /// Side for leg instrument in multi-leg strategies (Ask/Bid/None)
+    /// </summary>
+    public Side LegSide { get; set; }
 
     /// <summary>
     /// Get receive timestamp as DateTimeOffset

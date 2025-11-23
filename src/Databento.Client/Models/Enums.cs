@@ -109,15 +109,49 @@ public static class STypeExtensions
 /// </summary>
 public enum InstrumentClass : byte
 {
+    /// <summary>
+    /// Unknown or undefined instrument class
+    /// </summary>
+    Unknown = 0,
+    /// <summary>
+    /// A bond
+    /// </summary>
     Bond = (byte)'B',
+    /// <summary>
+    /// A call option
+    /// </summary>
     Call = (byte)'C',
+    /// <summary>
+    /// A future
+    /// </summary>
     Future = (byte)'F',
+    /// <summary>
+    /// A stock
+    /// </summary>
     Stock = (byte)'K',
+    /// <summary>
+    /// A spread composed of multiple instrument classes
+    /// </summary>
     MixedSpread = (byte)'M',
+    /// <summary>
+    /// A put option
+    /// </summary>
     Put = (byte)'P',
+    /// <summary>
+    /// A spread composed of futures
+    /// </summary>
     FutureSpread = (byte)'S',
+    /// <summary>
+    /// A spread composed of options
+    /// </summary>
     OptionSpread = (byte)'T',
+    /// <summary>
+    /// A foreign exchange spot
+    /// </summary>
     FxSpot = (byte)'X',
+    /// <summary>
+    /// A commodity being traded for immediate delivery
+    /// </summary>
     CommoditySpot = (byte)'Y'
 }
 
