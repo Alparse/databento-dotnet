@@ -30,6 +30,30 @@ public interface IHistoricalClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Query historical data for a time range with symbology type filtering
+    /// </summary>
+    /// <param name="dataset">Dataset name (e.g., "GLBX.MDP3")</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="stypeIn">Input symbology type (how symbols are interpreted)</param>
+    /// <param name="stypeOut">Output symbology type (how symbols are returned in data)</param>
+    /// <param name="limit">Maximum number of records to return (0 = unlimited)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Async enumerable of records</returns>
+    IAsyncEnumerable<Record> GetRangeAsync(
+        string dataset,
+        Schema schema,
+        IEnumerable<string> symbols,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        SType stypeIn,
+        SType stypeOut,
+        ulong limit = 0,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Query historical data and save directly to a DBN file
     /// </summary>
     /// <param name="filePath">Output file path for DBN file</param>
@@ -47,6 +71,32 @@ public interface IHistoricalClient : IAsyncDisposable
         IEnumerable<string> symbols,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Query historical data with symbology type filtering and save directly to a DBN file
+    /// </summary>
+    /// <param name="filePath">Output file path for DBN file</param>
+    /// <param name="dataset">Dataset name (e.g., "GLBX.MDP3")</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="stypeIn">Input symbology type (how symbols are interpreted)</param>
+    /// <param name="stypeOut">Output symbology type (how symbols are returned in data)</param>
+    /// <param name="limit">Maximum number of records to return (0 = unlimited)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Path to the created DBN file</returns>
+    Task<string> GetRangeToFileAsync(
+        string filePath,
+        string dataset,
+        Schema schema,
+        IEnumerable<string> symbols,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        SType stypeIn,
+        SType stypeOut,
+        ulong limit = 0,
         CancellationToken cancellationToken = default);
 
     /// <summary>

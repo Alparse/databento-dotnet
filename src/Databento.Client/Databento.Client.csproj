@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.28-beta</Version>
+    <Version>3.0.29-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.28-beta: Same fixes as v3.0.27-beta with clean, unmodified databento-cpp v0.44.0 (previous version had debug-modified dependency). Issue #1: Fixed AccessViolationException with future dates. Issue #4: Fixed InstrumentDefMessage.InstrumentClass always returning 0.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.29-beta: Added symbology parameter support (stype_in/stype_out) to GetRangeAsync and GetRangeToFileAsync. Enables filtering by instrument type using parent symbology (e.g., ES.FUT for all E-mini S&amp;P 500 futures, QQQ.OPT for all QQQ options). Non-breaking change - new overloads added.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->

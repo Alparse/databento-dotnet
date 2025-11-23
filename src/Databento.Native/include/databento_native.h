@@ -504,6 +504,74 @@ DATABENTO_API int dbento_historical_get_range_to_file(
 );
 
 /**
+ * Query historical time series data with symbology type filtering
+ * @param handle Historical client handle
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (e.g., "trades", "mbp-1")
+ * @param symbols Array of symbol strings
+ * @param symbol_count Number of symbols
+ * @param start_time_ns Start time (nanoseconds since Unix epoch)
+ * @param end_time_ns End time (nanoseconds since Unix epoch)
+ * @param stype_in Input symbology type (e.g., "parent", "raw_symbol", "instrument_id")
+ * @param stype_out Output symbology type (e.g., "raw_symbol", "instrument_id")
+ * @param limit Maximum number of records to return (0 = unlimited)
+ * @param on_record Callback function for each record
+ * @param user_data User context passed to callback
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_historical_get_range_with_symbology(
+    DbentoHistoricalClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    int64_t end_time_ns,
+    const char* stype_in,
+    const char* stype_out,
+    uint64_t limit,
+    RecordCallback on_record,
+    void* user_data,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
+ * Query historical time series data with symbology type filtering and save to file
+ * @param handle Historical client handle
+ * @param file_path Output file path for DBN file
+ * @param dataset Dataset name (e.g., "GLBX.MDP3")
+ * @param schema Schema name (e.g., "trades", "mbp-1")
+ * @param symbols Array of symbol strings
+ * @param symbol_count Number of symbols
+ * @param start_time_ns Start time (nanoseconds since Unix epoch)
+ * @param end_time_ns End time (nanoseconds since Unix epoch)
+ * @param stype_in Input symbology type (e.g., "parent", "raw_symbol", "instrument_id")
+ * @param stype_out Output symbology type (e.g., "raw_symbol", "instrument_id")
+ * @param limit Maximum number of records to return (0 = unlimited)
+ * @param error_buffer Buffer for error messages
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_historical_get_range_to_file_with_symbology(
+    DbentoHistoricalClientHandle handle,
+    const char* file_path,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    int64_t end_time_ns,
+    const char* stype_in,
+    const char* stype_out,
+    uint64_t limit,
+    char* error_buffer,
+    size_t error_buffer_size
+);
+
+/**
  * Get metadata for a historical query
  * @param handle Historical client handle
  * @param dataset Dataset name

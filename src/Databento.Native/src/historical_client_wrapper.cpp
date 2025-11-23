@@ -214,6 +214,180 @@ DATABENTO_API int dbento_historical_get_range_to_file(
     }
 }
 
+// Helper function to parse SType string to enum (reusable across functions)
+static db::SType ParseSType(const std::string& stype_str) {
+    if (stype_str == "instrument_id") return db::SType::InstrumentId;
+    if (stype_str == "raw_symbol") return db::SType::RawSymbol;
+    if (stype_str == "smart") return db::SType::Smart;
+    if (stype_str == "continuous") return db::SType::Continuous;
+    if (stype_str == "parent") return db::SType::Parent;
+    if (stype_str == "nasdaq_symbol") return db::SType::NasdaqSymbol;
+    if (stype_str == "cms_symbol") return db::SType::CmsSymbol;
+    if (stype_str == "isin") return db::SType::Isin;
+    if (stype_str == "us_code") return db::SType::UsCode;
+    if (stype_str == "bbg_comp_id") return db::SType::BbgCompId;
+    if (stype_str == "bbg_comp_ticker") return db::SType::BbgCompTicker;
+    if (stype_str == "figi") return db::SType::Figi;
+    if (stype_str == "figi_ticker") return db::SType::FigiTicker;
+    throw std::invalid_argument("Unknown SType: " + stype_str);
+}
+
+// Extended version of get_range with stype_in/stype_out support
+DATABENTO_API int dbento_historical_get_range_with_symbology(
+    DbentoHistoricalClientHandle handle,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    int64_t end_time_ns,
+    const char* stype_in,
+    const char* stype_out,
+    uint64_t limit,
+    RecordCallback on_record,
+    void* user_data,
+    char* error_buffer,
+    size_t error_buffer_size)
+{
+    try {
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
+        if (!wrapper || !wrapper->client) {
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
+            return -1;
+        }
+
+        if (!dataset || !schema || !stype_in || !stype_out || !on_record) {
+            SafeStrCopy(error_buffer, error_buffer_size, "Invalid parameters");
+            return -2;
+        }
+
+        // Convert symbols to vector
+        std::vector<std::string> symbol_vec;
+        if (symbols && symbol_count > 0) {
+            for (size_t i = 0; i < symbol_count; ++i) {
+                if (symbols[i]) {
+                    symbol_vec.emplace_back(symbols[i]);
+                }
+            }
+        }
+
+        // Parse schema and stypes
+        db::Schema schema_enum = ParseSchema(schema);
+        db::SType stype_in_enum = ParseSType(stype_in);
+        db::SType stype_out_enum = ParseSType(stype_out);
+
+        // Convert timestamps
+        auto start_unix = NsToUnixNanos(start_time_ns);
+        auto end_unix = NsToUnixNanos(end_time_ns);
+        db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
+
+        // Call extended timeseries API with stype parameters
+        wrapper->client->TimeseriesGetRange(
+            dataset,
+            datetime_range,
+            symbol_vec,
+            schema_enum,
+            stype_in_enum,
+            stype_out_enum,
+            limit,
+            [](const db::Metadata&) {
+                // Metadata callback - currently unused
+                return db::KeepGoing::Continue;
+            },
+            [on_record, user_data](const db::Record& record) {
+                // Get the actual RecordHeader pointer (not the Record wrapper)
+                const auto& header = record.Header();
+                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&header);
+                size_t length = record.Size();
+                uint8_t type = static_cast<uint8_t>(record.RType());
+
+                on_record(bytes, length, type, user_data);
+                return db::KeepGoing::Continue;
+            }
+        );
+
+        return 0;
+    }
+    catch (const std::exception& e) {
+        SafeStrCopy(error_buffer, error_buffer_size, e.what());
+        return -1;
+    }
+}
+
+// Extended version of get_range_to_file with stype_in/stype_out support
+DATABENTO_API int dbento_historical_get_range_to_file_with_symbology(
+    DbentoHistoricalClientHandle handle,
+    const char* file_path,
+    const char* dataset,
+    const char* schema,
+    const char** symbols,
+    size_t symbol_count,
+    int64_t start_time_ns,
+    int64_t end_time_ns,
+    const char* stype_in,
+    const char* stype_out,
+    uint64_t limit,
+    char* error_buffer,
+    size_t error_buffer_size)
+{
+    try {
+        databento_native::ValidationError validation_error;
+        auto* wrapper = databento_native::ValidateAndCast<HistoricalClientWrapper>(
+            handle, databento_native::HandleType::HistoricalClient, &validation_error);
+        if (!wrapper || !wrapper->client) {
+            SafeStrCopy(error_buffer, error_buffer_size,
+                wrapper ? "Client not initialized" : databento_native::GetValidationErrorMessage(validation_error));
+            return -1;
+        }
+
+        if (!file_path || !dataset || !schema || !stype_in || !stype_out) {
+            SafeStrCopy(error_buffer, error_buffer_size, "Invalid parameters");
+            return -2;
+        }
+
+        // Convert symbols to vector
+        std::vector<std::string> symbol_vec;
+        if (symbols && symbol_count > 0) {
+            for (size_t i = 0; i < symbol_count; ++i) {
+                if (symbols[i]) {
+                    symbol_vec.emplace_back(symbols[i]);
+                }
+            }
+        }
+
+        // Parse schema and stypes
+        db::Schema schema_enum = ParseSchema(schema);
+        db::SType stype_in_enum = ParseSType(stype_in);
+        db::SType stype_out_enum = ParseSType(stype_out);
+
+        // Convert timestamps
+        auto start_unix = NsToUnixNanos(start_time_ns);
+        auto end_unix = NsToUnixNanos(end_time_ns);
+        db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
+
+        // Call extended TimeseriesGetRangeToFile with stype parameters
+        wrapper->client->TimeseriesGetRangeToFile(
+            dataset,
+            datetime_range,
+            symbol_vec,
+            schema_enum,
+            stype_in_enum,
+            stype_out_enum,
+            limit,
+            std::filesystem::path{file_path}
+        );
+
+        return 0;
+    }
+    catch (const std::exception& e) {
+        SafeStrCopy(error_buffer, error_buffer_size, e.what());
+        return -1;
+    }
+}
+
 DATABENTO_API DbentoMetadataHandle dbento_historical_get_metadata(
     DbentoHistoricalClientHandle handle,
     const char* dataset,
@@ -370,26 +544,9 @@ DATABENTO_API DbentoSymbologyResolutionHandle dbento_historical_symbology_resolv
             }
         }
 
-        // Parse SType from strings
-        auto parse_stype = [](const std::string& stype_str) -> db::SType {
-            if (stype_str == "instrument_id") return db::SType::InstrumentId;
-            if (stype_str == "raw_symbol") return db::SType::RawSymbol;
-            if (stype_str == "smart") return db::SType::Smart;
-            if (stype_str == "continuous") return db::SType::Continuous;
-            if (stype_str == "parent") return db::SType::Parent;
-            if (stype_str == "nasdaq_symbol") return db::SType::NasdaqSymbol;
-            if (stype_str == "cms_symbol") return db::SType::CmsSymbol;
-            if (stype_str == "isin") return db::SType::Isin;
-            if (stype_str == "us_code") return db::SType::UsCode;
-            if (stype_str == "bbg_comp_id") return db::SType::BbgCompId;
-            if (stype_str == "bbg_comp_ticker") return db::SType::BbgCompTicker;
-            if (stype_str == "figi") return db::SType::Figi;
-            if (stype_str == "figi_ticker") return db::SType::FigiTicker;
-            throw std::invalid_argument("Unknown SType: " + stype_str);
-        };
-
-        db::SType stype_in_enum = parse_stype(stype_in);
-        db::SType stype_out_enum = parse_stype(stype_out);
+        // Parse SType from strings (using shared helper)
+        db::SType stype_in_enum = ParseSType(stype_in);
+        db::SType stype_out_enum = ParseSType(stype_out);
 
         // DateRange uses strings in YYYY-MM-DD format
         db::DateRange date_range{start_date, end_date};

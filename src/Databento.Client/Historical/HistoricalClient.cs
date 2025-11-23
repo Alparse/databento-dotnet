@@ -252,6 +252,165 @@ public sealed class HistoricalClient : IHistoricalClient
     }
 
     /// <summary>
+    /// Query historical data for a time range with symbology type filtering
+    /// </summary>
+    /// <remarks>
+    /// This overload allows you to specify how symbols are interpreted (stypeIn) and how they should be
+    /// represented in the output (stypeOut). For example, you can use SType.Parent with "ES.FUT" to get
+    /// all E-mini S&P 500 futures contracts.
+    /// </remarks>
+    public async IAsyncEnumerable<Record> GetRangeAsync(
+        string dataset,
+        Schema schema,
+        IEnumerable<string> symbols,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        SType stypeIn,
+        SType stypeOut,
+        ulong limit = 0,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
+
+        // Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
+        var channel = Channel.CreateUnbounded<Record>();
+        var symbolArray = symbols.ToArray();
+        Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
+
+        _logger?.LogInformation(
+            "Starting historical query with symbology filtering. Dataset={Dataset}, Schema={Schema}, SymbolCount={SymbolCount}, Start={Start}, End={End}, StypeIn={StypeIn}, StypeOut={StypeOut}, Limit={Limit}",
+            dataset,
+            schema,
+            symbolArray.Length,
+            startTime,
+            endTime,
+            stypeIn,
+            stypeOut,
+            limit);
+
+        // Convert times to nanoseconds since epoch
+        long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
+        long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+
+        // Create callback and store it to prevent GC
+        var callbackId = Guid.NewGuid();
+        RecordCallbackDelegate recordCallback;
+        unsafe
+        {
+            recordCallback = (recordBytes, recordLength, recordType, userData) =>
+            {
+                try
+                {
+                    if (recordBytes == null)
+                    {
+                        var ex = new DbentoException("Received null pointer from native code");
+                        channel.Writer.Complete(ex);
+                        return;
+                    }
+
+                    if (recordLength == 0)
+                    {
+                        var ex = new DbentoException("Received zero-length record");
+                        channel.Writer.Complete(ex);
+                        return;
+                    }
+
+                    if (recordLength > int.MaxValue)
+                    {
+                        var ex = new DbentoException($"Record too large: {recordLength} bytes exceeds maximum {int.MaxValue}");
+                        channel.Writer.Complete(ex);
+                        return;
+                    }
+
+                    if (recordLength > Utilities.Constants.MaxReasonableRecordSize)
+                    {
+                        var ex = new DbentoException($"Record suspiciously large: {recordLength} bytes");
+                        channel.Writer.Complete(ex);
+                        return;
+                    }
+
+                    var bytes = new byte[recordLength];
+                    unsafe
+                    {
+                        Marshal.Copy((IntPtr)recordBytes, bytes, 0, (int)recordLength);
+                    }
+
+                    var record = Record.FromBytes(bytes, recordType);
+
+                    if (!channel.Writer.TryWrite(record))
+                    {
+                        throw new InvalidOperationException(
+                            "Failed to write record to channel. Channel may be full or closed.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    channel.Writer.Complete(ex);
+                    throw;
+                }
+            };
+        }
+
+        // Store callback to prevent GC collection
+        _activeCallbacks[callbackId] = recordCallback;
+
+        // Start query on background thread
+        var queryTask = Task.Run(() =>
+        {
+            try
+            {
+                byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
+
+                var result = NativeMethods.dbento_historical_get_range_with_symbology(
+                    _handle,
+                    dataset,
+                    schema.ToSchemaString(),
+                    symbolArray,
+                    (nuint)symbolArray.Length,
+                    startTimeNs,
+                    endTimeNs,
+                    ConvertStypeToString(stypeIn),
+                    ConvertStypeToString(stypeOut),
+                    limit,
+                    recordCallback,
+                    IntPtr.Zero,
+                    errorBuffer,
+                    (nuint)errorBuffer.Length);
+
+                if (result != 0)
+                {
+                    var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
+                    throw DbentoException.CreateFromErrorCode($"Historical query failed: {error}", result);
+                }
+
+                // Success - mark channel as complete
+                channel.Writer.Complete();
+            }
+            catch (Exception ex)
+            {
+                // Propagate exception to channel so await foreach sees it immediately
+                channel.Writer.Complete(ex);
+                throw;
+            }
+            finally
+            {
+                _activeCallbacks.TryRemove(callbackId, out _);
+            }
+        }, cancellationToken);
+
+        // Stream results
+        await foreach (var record in channel.Reader.ReadAllAsync(cancellationToken))
+        {
+            yield return record;
+        }
+
+        await queryTask.ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Query historical data and save directly to a DBN file
     /// </summary>
     /// <remarks>
@@ -317,6 +476,71 @@ public sealed class HistoricalClient : IHistoricalClient
                 // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
                 // MEDIUM FIX: Use exception factory method for proper exception type mapping
+                throw DbentoException.CreateFromErrorCode($"Failed to save historical data to file: {error}", result);
+            }
+
+            return filePath;
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Query historical data with symbology type filtering and save directly to a DBN file
+    /// </summary>
+    /// <remarks>
+    /// This overload allows you to specify how symbols are interpreted (stypeIn) and how they should be
+    /// represented in the output (stypeOut). For example, you can use SType.Parent with "ES.FUT" to get
+    /// all E-mini S&P 500 futures contracts.
+    /// </remarks>
+    public async Task<string> GetRangeToFileAsync(
+        string filePath,
+        string dataset,
+        Schema schema,
+        IEnumerable<string> symbols,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        SType stypeIn,
+        SType stypeOut,
+        ulong limit = 0,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+
+        // Validate input parameters
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
+        ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
+
+        var symbolArray = symbols.ToArray();
+        Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
+
+        // Convert times to nanoseconds since epoch
+        long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
+        long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+
+        return await Task.Run(() =>
+        {
+            byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
+
+            var result = NativeMethods.dbento_historical_get_range_to_file_with_symbology(
+                _handle,
+                filePath,
+                dataset,
+                schema.ToSchemaString(),
+                symbolArray,
+                (nuint)symbolArray.Length,
+                startTimeNs,
+                endTimeNs,
+                ConvertStypeToString(stypeIn),
+                ConvertStypeToString(stypeOut),
+                limit,
+                errorBuffer,
+                (nuint)errorBuffer.Length);
+
+            if (result != 0)
+            {
+                var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
                 throw DbentoException.CreateFromErrorCode($"Failed to save historical data to file: {error}", result);
             }
 
