@@ -5,6 +5,23 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.28-beta] - 2025-11-23
+
+### Changed
+
+- **Native Library**: Rebuilt with clean, unmodified databento-cpp v0.44.0
+  - Previous v3.0.27-beta inadvertently included debug-modified databento-cpp dependency
+  - All functionality remains identical to v3.0.27-beta
+  - No code changes, only dependency cleanup
+
+### Notes
+
+This is a maintenance release to ensure production packages use official, unmodified upstream dependencies. All fixes from v3.0.27-beta are included and verified:
+- Issue #1: AccessViolationException with future dates - ✅ Working
+- Issue #4: InstrumentDefMessage.InstrumentClass always 0 - ✅ Working
+
+---
+
 ## [3.0.27-beta] - 2025-11-23
 
 ### Fixed

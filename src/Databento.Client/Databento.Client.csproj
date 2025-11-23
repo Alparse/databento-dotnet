@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.27-beta</Version>
+    <Version>3.0.28-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.27-beta: Critical fixes - Issue #1: Fixed AccessViolationException with future dates (NULL ILogReceiver). Issue #4: Fixed InstrumentDefMessage.InstrumentClass always returning 0, corrected all field offsets to DBN v2 spec, added 13 multi-leg strategy fields.</PackageReleaseNotes>
+    <PackageReleaseNotes>v3.0.28-beta: Same fixes as v3.0.27-beta with clean, unmodified databento-cpp v0.44.0 (previous version had debug-modified dependency). Issue #1: Fixed AccessViolationException with future dates. Issue #4: Fixed InstrumentDefMessage.InstrumentClass always returning 0.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->

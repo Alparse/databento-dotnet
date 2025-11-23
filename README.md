@@ -1,6 +1,6 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v3.0.27--beta-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v3.0.28--beta-blue)](https://www.nuget.org/packages/Databento.Client)
 [![Downloads](https://img.shields.io/badge/Downloads-3.5K-blue)](https://www.nuget.org/packages/Databento.Client)
 [![GitHub Release](https://img.shields.io/github/v/release/Alparse/databento-dotnet?include_prereleases&label=Release)](https://github.com/Alparse/databento-dotnet/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
