@@ -55,7 +55,7 @@ try
     await foreach (var record in client.GetRangeAsync(
         dataset: "GLBX.MDP3",
         schema: Schema.Trades,
-        symbols: new[] { "ES.FUT2" }, // Parent symbol for all ES futures
+        symbols: new[] { "CL.FUT" }, // Parent symbol for all ES futures
         startTime: startTime,
         endTime: endTime,
         stypeIn: SType.Parent,        // Interpret "ES.FUT" as parent symbol

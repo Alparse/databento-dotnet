@@ -93,18 +93,12 @@ public sealed class HistoricalClient : IHistoricalClient
     /// Query historical data for a time range
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>Known Limitation</b>: This method has a critical bug in the underlying native library (databento-cpp).
-    /// If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range),
-    /// the process will crash with AccessViolationException instead of throwing a catchable exception.
-    /// The crash is isolated to this client instance - your application will continue running,
-    /// but this client will be unusable.
+    /// ✅ <b>Stability Note</b>: As of v3.0.29-beta, invalid parameters (invalid symbols, wrong dataset, invalid date range)
+    /// now throw proper exceptions (<see cref="ValidationException"/>, <see cref="NotFoundException"/>) instead of crashing.
+    /// Previous versions had a critical bug that caused AccessViolationException crashes - this has been resolved.
     /// <para>
-    /// <b>Workaround</b>: Use the Live API (<see cref="Client.Live.LiveClient"/>) which handles
-    /// invalid symbols gracefully via metadata.not_found field, or pre-validate your symbols
-    /// using the symbology API before calling this method.
-    /// </para>
-    /// <para>
-    /// This bug has been reported to the databento-cpp maintainers and will be fixed in a future release.
+    /// For additional validation, you can use the symbology API to pre-validate symbols before calling this method.
+    /// The Live API (<see cref="Client.Live.LiveClient"/>) also handles invalid symbols gracefully via metadata.not_found field.
     /// </para>
     /// </remarks>
     public async IAsyncEnumerable<Record> GetRangeAsync(
@@ -414,18 +408,12 @@ public sealed class HistoricalClient : IHistoricalClient
     /// Query historical data and save directly to a DBN file
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>Known Limitation</b>: This method has a critical bug in the underlying native library (databento-cpp).
-    /// If you provide invalid parameters (invalid symbols, wrong dataset, invalid date range),
-    /// the process will crash with AccessViolationException instead of throwing a catchable exception.
-    /// The crash is isolated to this client instance - your application will continue running,
-    /// but this client will be unusable.
+    /// ✅ <b>Stability Note</b>: As of v3.0.29-beta, invalid parameters (invalid symbols, wrong dataset, invalid date range)
+    /// now throw proper exceptions (<see cref="ValidationException"/>, <see cref="NotFoundException"/>) instead of crashing.
+    /// Previous versions had a critical bug that caused AccessViolationException crashes - this has been resolved.
     /// <para>
-    /// <b>Workaround</b>: Use the Live API (<see cref="Client.Live.LiveClient"/>) which handles
-    /// invalid symbols gracefully, or pre-validate your symbols using the symbology API before calling this method.
-    /// Alternatively, use <see cref="BatchSubmitJobAsync"/> which does not have this bug.
-    /// </para>
-    /// <para>
-    /// This bug has been reported to the databento-cpp maintainers and will be fixed in a future release.
+    /// For additional validation, you can use the symbology API to pre-validate symbols before calling this method.
+    /// Alternatively, use <see cref="BatchSubmitJobAsync"/> for bulk downloads with additional options.
     /// </para>
     /// </remarks>
     public async Task<string> GetRangeToFileAsync(

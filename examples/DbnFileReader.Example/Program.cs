@@ -161,14 +161,23 @@ try
         {
             totalSize += (long)tradeMsg.Size;
 
-            // Show first 3 trades as examples
-            if (recordCount <= 3)
+            // Show first 10 trades as examples with full details
+            if (recordCount <= 10)
             {
                 Console.WriteLine($"  Trade #{recordCount}:");
-                Console.WriteLine($"    Time: {tradeMsg.Timestamp}");
-                Console.WriteLine($"    Price: {tradeMsg.PriceDecimal:F2}");
-                Console.WriteLine($"    Size: {tradeMsg.Size}");
-                Console.WriteLine($"    Side: {tradeMsg.Side}");
+                Console.WriteLine($"    Timestamp:     {tradeMsg.Timestamp:yyyy-MM-dd HH:mm:ss.ffffff} UTC");
+                Console.WriteLine($"    Instrument ID: {tradeMsg.InstrumentId}");
+                Console.WriteLine($"    Price:         ${tradeMsg.PriceDecimal:F4} (raw: {tradeMsg.Price})");
+                Console.WriteLine($"    Size:          {tradeMsg.Size:N0} shares");
+                Console.WriteLine($"    Side:          {tradeMsg.Side}");
+                Console.WriteLine($"    Action:        {tradeMsg.Action}");
+                Console.WriteLine($"    Flags:         {tradeMsg.Flags}");
+                Console.WriteLine($"    Sequence:      {tradeMsg.Sequence}");
+                Console.WriteLine();
+            }
+            else if (recordCount == 11)
+            {
+                Console.WriteLine($"  ... (showing first 10 trades, continuing to process remaining records)");
                 Console.WriteLine();
             }
         }
@@ -219,11 +228,20 @@ try
         {
             largeTradeCount++;
 
-            if (largeTradeCount <= 5)
+            if (largeTradeCount <= 10)
             {
+                var value = tradeMsg.PriceDecimal * tradeMsg.Size;
                 Console.WriteLine($"  Large Trade #{largeTradeCount}:");
-                Console.WriteLine($"    Size: {tradeMsg.Size} shares");
-                Console.WriteLine($"    Price: ${tradeMsg.PriceDecimal:F2}");
+                Console.WriteLine($"    Time:          {tradeMsg.Timestamp:HH:mm:ss.ffffff}");
+                Console.WriteLine($"    Size:          {tradeMsg.Size:N0} shares");
+                Console.WriteLine($"    Price:         ${tradeMsg.PriceDecimal:F4}");
+                Console.WriteLine($"    Notional:      ${value:N2}");
+                Console.WriteLine($"    Side:          {tradeMsg.Side}");
+                Console.WriteLine();
+            }
+            else if (largeTradeCount == 11)
+            {
+                Console.WriteLine($"  ... (showing first 10 large trades, continuing to count remaining)");
                 Console.WriteLine();
             }
         }
@@ -256,21 +274,31 @@ try
     using var store = new DbnFileStore(sampleFilePath);
 
     int processedCount = 0;
-    const int maxRecords = 10;
+    const int maxRecords = 20;
 
     bool ProcessRecordWithLimit(Record record)
     {
         processedCount++;
 
-        if (processedCount <= 3)
+        if (processedCount <= 10)
         {
             Console.WriteLine($"  Record #{processedCount}: {record.GetType().Name}");
+
+            // Show key details for each record type
+            if (record is TradeMessage trade)
+            {
+                Console.WriteLine($"    → {trade.Timestamp:HH:mm:ss.fff} | ${trade.PriceDecimal:F2} x {trade.Size} | {trade.Side}");
+            }
+        }
+        else if (processedCount == 11)
+        {
+            Console.WriteLine($"  ... (continuing to process up to {maxRecords} records)");
         }
 
         // Stop after processing maxRecords
         if (processedCount >= maxRecords)
         {
-            Console.WriteLine($"  ... (stopping after {maxRecords} records)");
+            Console.WriteLine($"  ... (stopped after {maxRecords} records)");
             return false; // Stop processing
         }
 
@@ -308,6 +336,9 @@ try
     int count = 0;
     decimal minPrice = decimal.MaxValue;
     decimal maxPrice = decimal.MinValue;
+    decimal totalVolume = 0;
+    decimal totalNotional = 0;
+    var priceTimeSeries = new List<(DateTimeOffset Time, decimal Price, uint Size)>();
 
     // Manual iteration
     while (true)
@@ -324,24 +355,61 @@ try
             decimal price = tradeMsg.PriceDecimal;
             minPrice = Math.Min(minPrice, price);
             maxPrice = Math.Max(maxPrice, price);
+            totalVolume += tradeMsg.Size;
+            totalNotional += price * tradeMsg.Size;
+
+            priceTimeSeries.Add((tradeMsg.Timestamp, price, tradeMsg.Size));
         }
 
-        // Show first 3 records
-        if (count <= 3)
+        // Show first 10 records with details
+        if (count <= 10 && record is TradeMessage trade)
         {
             Console.WriteLine($"  Record #{count}: {record.GetType().Name}");
+            Console.WriteLine($"    → {trade.Timestamp:HH:mm:ss.ffffff} | ${trade.PriceDecimal:F4} x {trade.Size} | {trade.Side}");
+        }
+        else if (count == 11)
+        {
+            Console.WriteLine($"  ... (continuing to read remaining records)");
         }
     }
 
-    Console.WriteLine($"  ... (read {count} total records)");
+    Console.WriteLine($"  ... (read {count:N0} total records)");
     Console.WriteLine();
 
     if (minPrice != decimal.MaxValue)
     {
+        var avgPrice = priceTimeSeries.Any()
+            ? priceTimeSeries.Average(x => x.Price)
+            : 0;
+        var vwap = totalVolume > 0
+            ? totalNotional / totalVolume
+            : 0;
+
+        Console.WriteLine("Trade Statistics:");
+        Console.WriteLine($"  Total Trades:      {count:N0}");
+        Console.WriteLine($"  Total Volume:      {totalVolume:N0} shares");
+        Console.WriteLine($"  Total Notional:    ${totalNotional:N2}");
+        Console.WriteLine();
         Console.WriteLine("Price Statistics:");
-        Console.WriteLine($"  Min: ${minPrice:F2}");
-        Console.WriteLine($"  Max: ${maxPrice:F2}");
-        Console.WriteLine($"  Range: ${maxPrice - minPrice:F2}");
+        Console.WriteLine($"  Min Price:         ${minPrice:F4}");
+        Console.WriteLine($"  Max Price:         ${maxPrice:F4}");
+        Console.WriteLine($"  Price Range:       ${maxPrice - minPrice:F4}");
+        Console.WriteLine($"  Average Price:     ${avgPrice:F4}");
+        Console.WriteLine($"  VWAP:              ${vwap:F4}");
+
+        if (priceTimeSeries.Count >= 2)
+        {
+            var firstTrade = priceTimeSeries.First();
+            var lastTrade = priceTimeSeries.Last();
+            var priceChange = lastTrade.Price - firstTrade.Price;
+            var priceChangePct = (priceChange / firstTrade.Price) * 100;
+
+            Console.WriteLine();
+            Console.WriteLine("Time Period:");
+            Console.WriteLine($"  First Trade:       {firstTrade.Time:HH:mm:ss.ffffff} @ ${firstTrade.Price:F4}");
+            Console.WriteLine($"  Last Trade:        {lastTrade.Time:HH:mm:ss.ffffff} @ ${lastTrade.Price:F4}");
+            Console.WriteLine($"  Price Change:      ${priceChange:F4} ({priceChangePct:+0.00;-0.00}%)");
+        }
     }
 
     Console.WriteLine();

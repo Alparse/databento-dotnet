@@ -376,6 +376,69 @@ public class InstrumentDefMessage : Record
     public DateTimeOffset ExpirationTime =>
         DateTimeOffset.FromUnixTimeMilliseconds(Expiration / 1_000_000);
 
+    /// <summary>
+    /// Get strike price as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types (e.g., calendar spreads).
+    /// </summary>
+    public decimal? StrikePriceDecimal => StrikePrice == long.MaxValue ? null : StrikePrice / 1_000_000_000m;
+
+    /// <summary>
+    /// Get high limit price as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? HighLimitPriceDecimal => HighLimitPrice == long.MaxValue ? null : HighLimitPrice / 1_000_000_000m;
+
+    /// <summary>
+    /// Get low limit price as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? LowLimitPriceDecimal => LowLimitPrice == long.MaxValue ? null : LowLimitPrice / 1_000_000_000m;
+
+    /// <summary>
+    /// Get maximum price variation as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? MaxPriceVariationDecimal => MaxPriceVariation == long.MaxValue ? null : MaxPriceVariation / 1_000_000_000m;
+
+    /// <summary>
+    /// Get minimum price increment as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? MinPriceIncrementDecimal => MinPriceIncrement == long.MaxValue ? null : MinPriceIncrement / 1_000_000_000m;
+
+    /// <summary>
+    /// Get minimum price increment amount as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? MinPriceIncrementAmountDecimal => MinPriceIncrementAmount == long.MaxValue ? null : MinPriceIncrementAmount / 1_000_000_000m;
+
+    /// <summary>
+    /// Get price ratio as decimal (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? PriceRatioDecimal => PriceRatio == long.MaxValue ? null : PriceRatio / 1_000_000_000m;
+
+    /// <summary>
+    /// Get leg price as decimal for multi-leg strategies (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative for certain instrument types.
+    /// </summary>
+    public decimal? LegPriceDecimal => LegPrice == long.MaxValue ? null : LegPrice / 1_000_000_000m;
+
+    /// <summary>
+    /// Get leg delta as decimal for multi-leg strategies (fixed-point format with 9 decimal places).
+    /// Returns null if the value is UNDEF_PRICE (long.MaxValue).
+    /// Note: Can be negative (deltas are often negative for puts).
+    /// </summary>
+    public decimal? LegDeltaDecimal => LegDelta == long.MaxValue ? null : LegDelta / 1_000_000_000m;
+
     public override string ToString()
     {
         return $"InstrumentDef: {RawSymbol} ({Exchange}) | {SecurityType} {InstrumentClass} [{Timestamp:O}]";

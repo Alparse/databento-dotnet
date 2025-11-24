@@ -2697,7 +2697,11 @@ var utc = local.ToUniversalTime();
 
 ## 6. Symbol Mapping
 
-When streaming market data (live or historical), records contain numeric `InstrumentId` values instead of ticker symbols. The `SymbolMappingMessage` record type provides the mapping needed to resolve these IDs to human-readable symbols.
+When streaming market data, records contain numeric `InstrumentId` values instead of ticker symbols. You must resolve these IDs to human-readable symbols.
+
+**CRITICAL: Live API vs Historical API behave DIFFERENTLY:**
+- **Live API**: ✅ Automatically sends `SymbolMappingMessage` records in the stream
+- **Historical API**: ❌ NEVER sends `SymbolMappingMessage` - must use `SymbologyResolveAsync()` upfront
 
 ### Overview
 
@@ -2715,9 +2719,9 @@ mapping.InstrumentId = 11667;
 mapping.STypeOutSymbol = "NVDA";  // ← Use this!
 ```
 
-### Message Flow
+### Message Flow (Live API Only)
 
-Symbol mappings are sent at the **start** of a data stream, before any trade/quote records:
+**For Live API**, symbol mappings are sent at the **start** of a data stream, before any trade/quote records:
 
 ```
 1. SymbolMappingMessage: InstrumentId=11667, Symbol="NVDA"
@@ -2728,6 +2732,8 @@ Symbol mappings are sent at the **start** of a data stream, before any trade/quo
 ```
 
 Your application must capture the mappings and use them to resolve symbols in subsequent records.
+
+**For Historical API**, NO SymbolMappingMessage records are sent - you must use `SymbologyResolveAsync()` instead (see [Historical Data section](#historical-data---different-from-live-api)).
 
 ### SymbolMappingMessage
 
@@ -2759,9 +2765,9 @@ public class SymbolMappingMessage : Record
 
 For `ALL_SYMBOLS` subscriptions, `STypeInSymbol` is the same for all 12,000+ instruments, making it useless for display.
 
-### Implementation Pattern
+### Implementation Pattern (Live API)
 
-The recommended approach uses `ConcurrentDictionary` for thread-safe symbol storage:
+The recommended approach for **Live API** uses `ConcurrentDictionary` for thread-safe symbol storage:
 
 ```csharp
 using System.Collections.Concurrent;
@@ -2824,33 +2830,80 @@ NVDA: $186.02 x 200
 AAPL: $172.50 x 75
 ```
 
-### Historical Data
+### Historical Data - DIFFERENT from Live API
 
-Symbol mapping works the same way for historical queries:
+**⚠️ CRITICAL: Historical API NEVER sends SymbolMappingMessage records!**
+
+Unlike Live API, the Historical API does NOT include SymbolMappingMessage in the data stream (regardless of whether you query specific symbols or ALL_SYMBOLS). You must use `SymbologyResolveAsync()` to pre-populate your symbol map **before** streaming data.
+
+#### Required Pattern for Historical API
 
 ```csharp
-var symbolMap = new ConcurrentDictionary<uint, string>();
+using Databento.Client.Builders;
+using Databento.Client.Models;
 
+// Create Historical client
+await using var client = new HistoricalClientBuilder()
+    .WithApiKey(apiKey)
+    .Build();
+
+// Define query parameters
+var startTime = new DateTimeOffset(2024, 11, 18, 9, 30, 0, TimeSpan.FromHours(-5));
+var endTime = startTime.AddMinutes(1);
+var symbols = new[] { "NVDA", "AAPL", "MSFT" };
+
+// STEP 1: Resolve symbols to instrument IDs FIRST
+// This is REQUIRED because Historical API NEVER sends SymbolMappingMessage
+var queryDate = DateOnly.FromDateTime(startTime.Date);
+var resolution = await client.SymbologyResolveAsync(
+    "EQUS.MINI",
+    symbols,
+    SType.RawSymbol,
+    SType.InstrumentId,
+    queryDate,
+    queryDate.AddDays(1));
+
+// Build symbol map (InstrumentId -> Symbol)
+var symbolMap = new Dictionary<uint, string>();
+foreach (var (inputSymbol, intervals) in resolution.Mappings)
+{
+    foreach (var interval in intervals)
+    {
+        if (uint.TryParse(interval.Symbol, out var instrumentId))
+        {
+            symbolMap[instrumentId] = inputSymbol;
+        }
+    }
+}
+
+// STEP 2: Now stream trade data with pre-populated symbol map
 await foreach (var record in client.GetRangeAsync(
     dataset: "EQUS.MINI",
     schema: Schema.Trades,
-    symbols: new[] { "NVDA" },
+    symbols: symbols,
     startTime: startTime,
     endTime: endTime))
 {
-    if (record is SymbolMappingMessage mapping)
+    if (record is TradeMessage trade)
     {
-        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
-    }
-    else if (record is TradeMessage trade)
-    {
+        // Look up symbol from pre-populated map
         var symbol = symbolMap.GetValueOrDefault(
             trade.InstrumentId,
             trade.InstrumentId.ToString());
-        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2}");
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2} x {trade.Size}");
     }
 }
 ```
+
+#### Key Differences: Live vs Historical
+
+| Feature | Live API | Historical API |
+|---------|----------|----------------|
+| **SymbolMappingMessage in stream?** | ✅ YES (always) | ❌ NO (never) |
+| **When to use SymbologyResolveAsync?** | Optional | **Required** |
+| **Symbol map building** | From stream | Pre-populated upfront |
+
+**Complete Working Example:** See `examples/SymbolMapping_Historical.Example` for a full implementation.
 
 ### Performance Considerations
 
@@ -2867,15 +2920,16 @@ await foreach (var record in client.GetRangeAsync(
 
 ### Common Patterns
 
-#### Pattern 1: Build Map Before Processing
+#### Pattern 1: Build Map Before Processing (Live API Only)
 
-Collect all mappings first, then process data:
+**⚠️ Live API only** - Collect all mappings first, then process data:
 
 ```csharp
 var symbolMap = new Dictionary<uint, string>();
 var dataRecords = new List<Record>();
 
-await foreach (var record in client.GetRangeAsync(...))
+// Live API: SymbolMappingMessage records arrive in stream
+await foreach (var record in liveClient.StreamAsync())
 {
     if (record is SymbolMappingMessage mapping)
     {
@@ -2898,9 +2952,11 @@ foreach (var record in dataRecords)
 }
 ```
 
-#### Pattern 2: Real-Time Processing
+**For Historical API**, use `SymbologyResolveAsync()` instead - see [Historical Data section](#historical-data---different-from-live-api).
 
-Process records as they arrive (required for live streaming):
+#### Pattern 2: Real-Time Processing (Live API)
+
+Process records as they arrive:
 
 ```csharp
 client.DataReceived += (sender, e) =>
@@ -2951,11 +3007,12 @@ symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
 #### Symbol Map is Empty
 
 **Possible causes:**
-1. Market is closed (no mappings sent if no data)
-2. Subscription failed (check for errors in `ErrorOccurred` event)
-3. Processing mappings too late (mappings arrive first, capture them immediately)
+1. **Using Historical API** ❌ - Historical API NEVER sends SymbolMappingMessage! Use `SymbologyResolveAsync()` instead (see [Historical Data section](#historical-data---different-from-live-api))
+2. Market is closed (Live API: no mappings sent if no data)
+3. Subscription failed (check for errors in `ErrorOccurred` event)
+4. Processing mappings too late (mappings arrive first, capture them immediately)
 
-**Debug steps:**
+**Debug steps (Live API only):**
 ```csharp
 client.DataReceived += (sender, e) =>
 {
@@ -2968,6 +3025,8 @@ client.DataReceived += (sender, e) =>
     }
 };
 ```
+
+If using `HistoricalClient`, you won't see any SymbolMappingMessage records - this is expected! Use `SymbologyResolveAsync()` instead.
 
 #### Symbols Not Found for Some Trades
 
@@ -2986,7 +3045,9 @@ var symbol = symbolMap.GetValueOrDefault(
 
 ### See Also
 
-- **Live Streaming Example:** `examples/LiveSymbolResolution.Example`
+- **Live API Example:** `examples/SymbolMapping_Live.Example` - Demonstrates automatic symbol mapping in Live API stream
+- **Historical API Example:** `examples/SymbolMapping_Historical.Example` - Shows required SymbologyResolveAsync() pattern
+- **Advanced Example:** `examples/LiveSymbolResolution.Example` - Performance measurement and best practices
 - **Record Types:** [SymbolMappingMessage](#symbol-mapping-message-rtype-0x16)
 - **Enumerations:** [SType](#stype-symbology-type)
 - **README:** [Symbol Mapping section](README.md#symbol-mapping---resolving-instrumentid-to-ticker-symbols)
