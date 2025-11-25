@@ -2,7 +2,7 @@
 
 [![NuGet](https://img.shields.io/badge/NuGet-v4.0.0--beta-blue)](https://www.nuget.org/packages/Databento.Client)
 [![Downloads](https://img.shields.io/badge/Downloads-5.2K-blue)](https://www.nuget.org/packages/Databento.Client)
-[![GitHub Release](https://img.shields.io/github/v/release/Alparse/databento-dotnet?include_prereleases&label=Release)](https://github.com/Alparse/databento-dotnet/releases)
+[![Release](https://img.shields.io/badge/Release-v4.0.0--beta-blue)](https://github.com/Alparse/databento-dotnet/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.

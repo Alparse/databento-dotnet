@@ -1,7 +1,7 @@
 # databento-dotnet API Reference
 
-**Version:** v3.0.24-beta
-**Last Updated:** November 20, 2025
+**Version:** v4.0.0-beta
+**Last Updated:** November 25, 2025
 
 Comprehensive API reference for the databento-dotnet library, a high-performance .NET client for accessing Databento market data.
 
@@ -16,6 +16,7 @@ Comprehensive API reference for the databento-dotnet library, a high-performance
    - [Subscription Methods](#subscription-methods)
    - [Streaming Methods](#streaming-methods)
    - [StreamAsync Requirements](#streamasync-requirements)
+   - [Complete Working Examples](#complete-working-examples)
    - [Connection Management](#connection-management)
    - [Resource Management](#resource-management)
 
@@ -350,6 +351,492 @@ await client.BlockUntilStoppedAsync(TimeSpan.FromMinutes(5));
 ```
 
 **Key Takeaway:** Always use `StreamAsync()` to pump records through the pipeline, even if you're primarily relying on the `DataReceived` event for processing.
+
+### Complete Working Examples
+
+This section provides full, runnable examples based on proven production patterns.
+
+#### Example 1: Minimal Live Streaming with Symbol Mapping
+
+Complete example from `Comprehensive.Example` - demonstrates the minimal viable pattern for live streaming with automatic symbol resolution.
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+using System.Collections.Concurrent;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+// Symbol map: InstrumentId → Ticker Symbol
+var symbolMap = new ConcurrentDictionary<uint, string>();
+
+// Create live client
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+// Handle incoming records
+client.DataReceived += (sender, e) =>
+{
+    // Step 1: Capture symbol mappings (arrive first)
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        // ⚠️ Use STypeOutSymbol for the actual ticker symbol!
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+        return;
+    }
+
+    // Step 2: Resolve symbols for data records
+    if (e.Record is TradeMessage trade)
+    {
+        var symbol = symbolMap.GetValueOrDefault(
+            trade.InstrumentId,
+            trade.InstrumentId.ToString());  // Fallback if not found
+
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2} x {trade.Size}");
+    }
+};
+
+// Calculate most recent market open (9:30 AM ET) for replay mode
+var now = DateTimeOffset.UtcNow;
+var et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+var etNow = TimeZoneInfo.ConvertTime(now, et);
+var replayDate = etNow.Date;
+
+// Go back to most recent weekday
+while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+    replayDate = replayDate.AddDays(-1);
+
+if (etNow.TimeOfDay < TimeSpan.FromHours(9.5))
+{
+    replayDate = replayDate.AddDays(-1);
+    while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        replayDate = replayDate.AddDays(-1);
+}
+
+var marketOpen = new DateTimeOffset(
+    replayDate.Year, replayDate.Month, replayDate.Day,
+    9, 30, 0, et.GetUtcOffset(replayDate));
+
+// Subscribe with replay mode (works anytime, no market hours required)
+await client.SubscribeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA", "AAPL" },
+    startTime: marketOpen  // Omit this parameter for live mode
+);
+
+await client.StartAsync();
+
+// CRITICAL: Must use StreamAsync() to pump records through the pipeline
+var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+var streamTask = Task.Run(async () =>
+{
+    await foreach (var record in client.StreamAsync())
+    {
+        // Records are handled by DataReceived event
+    }
+});
+
+await Task.WhenAny(streamTask, timeout);
+await client.StopAsync();
+```
+
+**Key Features Demonstrated:**
+- Minimal viable live streaming setup
+- Automatic symbol mapping via `SymbolMappingMessage`
+- Market open calculation for replay mode
+- Event-driven record processing with `DataReceived`
+- Proper `StreamAsync()` usage for record pumping
+- Timeout-based termination
+
+#### Example 2: Full Intraday Replay
+
+Complete example from `IntradayReplay.Example` - demonstrates full intraday replay with completion detection.
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+var recordCount = 0;
+var tradeCount = 0;
+var replayCompleteReceived = false;
+
+client.DataReceived += (sender, e) =>
+{
+    recordCount++;
+
+    if (e.Record is SystemMessage sysMsg)
+    {
+        var msgStr = sysMsg.ToString();
+        if (msgStr.Contains("Finished", StringComparison.OrdinalIgnoreCase) &&
+            msgStr.Contains("replay", StringComparison.OrdinalIgnoreCase))
+        {
+            replayCompleteReceived = true;
+            Console.WriteLine($"✓ Replay completed: {recordCount:N0} records, {tradeCount:N0} trades");
+        }
+    }
+    else if (e.Record is TradeMessage trade)
+    {
+        tradeCount++;
+
+        if (tradeCount <= 10)
+        {
+            var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(trade.TimestampNs / 1_000_000);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Trade #{tradeCount}:");
+            Console.WriteLine($"  Timestamp:     {timestamp:yyyy-MM-dd HH:mm:ss.fff} UTC");
+            Console.WriteLine($"  Instrument ID: {trade.InstrumentId}");
+            Console.WriteLine($"  Price:         ${trade.PriceDecimal:F2}");
+            Console.WriteLine($"  Size:          {trade.Size}");
+        }
+    }
+};
+
+// Request all available replay data (last 24 hours)
+await client.SubscribeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA", "AAPL" },
+    startTime: DateTimeOffset.MinValue  // Gets all available intraday data
+);
+
+Console.WriteLine("Starting live stream with replay...");
+await client.StartAsync();
+
+// Wait for replay to complete (with timeout)
+var startWallTime = DateTime.Now;
+var maxWaitTime = TimeSpan.FromMinutes(10);
+
+while (DateTime.Now - startWallTime < maxWaitTime)
+{
+    await Task.Delay(100);
+
+    if (replayCompleteReceived)
+    {
+        // Wait a bit longer to receive a few real-time records
+        Console.WriteLine("Collecting 5 seconds of real-time data after replay...");
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        break;
+    }
+}
+
+if (!replayCompleteReceived)
+{
+    Console.WriteLine("⚠ Warning: Timeout reached without receiving replay completion signal.");
+}
+
+await client.StopAsync();
+
+Console.WriteLine($"Total records: {recordCount:N0}");
+Console.WriteLine($"Trade messages: {tradeCount:N0}");
+Console.WriteLine($"Other messages: {(recordCount - tradeCount):N0}");
+```
+
+**Key Features Demonstrated:**
+- Full intraday replay (last 24 hours)
+- Replay completion detection via `SystemMessage`
+- Progress tracking and counters
+- Automatic transition to real-time data after replay
+- Timeout-based completion with graceful fallback
+
+#### Example 3: Symbol Mapping with Live API
+
+Complete example from `SymbolMapping_Live.Example` - demonstrates symbol mapping patterns specific to Live API.
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+// Symbol map built from SymbolMappingMessage records in the stream
+var symbolMap = new Dictionary<uint, string>();
+var mappingCount = 0;
+var tradeCount = 0;
+const int displayLimit = 20;
+
+// Subscribe to data events
+client.DataReceived += (sender, e) =>
+{
+    if (e.Record is SymbolMappingMessage mapping)
+    {
+        mappingCount++;
+
+        // CRITICAL: Use STypeOutSymbol (NOT STypeInSymbol)
+        // STypeOutSymbol = actual ticker ("NVDA", "AAPL", etc.)
+        // STypeInSymbol = subscription string (would be "NVDA" for single symbols)
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+
+        Console.WriteLine($"[MAPPING #{mappingCount}] InstrumentId {mapping.InstrumentId,5} → {mapping.STypeOutSymbol}");
+    }
+    else if (e.Record is TradeMessage trade)
+    {
+        tradeCount++;
+
+        // Look up ticker symbol from instrument ID
+        var symbol = symbolMap.GetValueOrDefault(
+            trade.InstrumentId,
+            $"ID:{trade.InstrumentId}"); // Fallback if not mapped yet
+
+        if (tradeCount <= displayLimit)
+        {
+            Console.WriteLine($"[TRADE #{tradeCount,3}] {symbol,-6} @ ${trade.PriceDecimal,8:F2} x {trade.Size,5} shares");
+        }
+        else if (tradeCount == displayLimit + 1)
+        {
+            Console.WriteLine("... (suppressing further output, continuing to count)");
+        }
+    }
+};
+
+// Subscribe to symbols in REPLAY mode
+var replayStart = DateTimeOffset.MinValue; // Get all available replay data
+var symbols = new[] { "NVDA", "AAPL", "MSFT" };
+
+Console.WriteLine("Subscription Parameters:");
+Console.WriteLine($"  Dataset:      EQUS.MINI");
+Console.WriteLine($"  Symbols:      {string.Join(", ", symbols)}");
+Console.WriteLine($"  Schema:       Trades");
+Console.WriteLine($"  Mode:         REPLAY (all available intraday data)");
+Console.WriteLine();
+
+await client.SubscribeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: symbols,
+    startTime: replayStart);
+
+Console.WriteLine("✓ Subscribed");
+
+await client.StartAsync();
+Console.WriteLine("✓ Stream started");
+Console.WriteLine();
+
+const int runDurationSeconds = 10;
+Console.WriteLine($"Receiving data (will run for {runDurationSeconds} seconds)...");
+
+// Let it run for a bit to collect data
+await Task.Delay(TimeSpan.FromSeconds(runDurationSeconds));
+
+await client.StopAsync();
+
+Console.WriteLine();
+Console.WriteLine("SUMMARY");
+Console.WriteLine("================================================================================");
+Console.WriteLine($"SymbolMappingMessages received: {mappingCount}");
+Console.WriteLine($"Trade messages received:        {tradeCount}");
+Console.WriteLine($"Symbol map size:                {symbolMap.Count} instruments");
+Console.WriteLine();
+
+if (symbolMap.Count > 0)
+{
+    Console.WriteLine("Mapped instruments:");
+    foreach (var (id, symbol) in symbolMap)
+    {
+        Console.WriteLine($"  {symbol,-6} → Instrument ID {id}");
+    }
+}
+```
+
+**Key Features Demonstrated:**
+- Automatic symbol mapping via Live API (no `SymbologyResolveAsync` needed)
+- STypeOutSymbol vs STypeInSymbol distinction
+- Dictionary-based symbol map building
+- Replay mode for guaranteed data availability
+- Progress tracking with display limits
+
+#### Example 4: Basic Historical Data Query
+
+Complete example from `HistoricalData.Example` - demonstrates simple historical query pattern.
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+// Create historical client
+await using var client = new HistoricalClientBuilder()
+    .WithApiKey(apiKey)
+    .Build();
+
+Console.WriteLine("✓ Created historical client");
+
+// Define time range (January 2, 2024 - one trading day)
+var startTime = new DateTimeOffset(2024, 1, 2, 0, 0, 0, TimeSpan.Zero);
+var endTime = new DateTimeOffset(2024, 1, 2, 23, 59, 59, TimeSpan.Zero);
+
+Console.WriteLine($"✓ Querying data from {startTime:yyyy-MM-dd} to {endTime:yyyy-MM-dd}");
+Console.WriteLine($"✓ Symbol: NVDA");
+Console.WriteLine($"✓ Schema: Trades");
+Console.WriteLine();
+
+// Query historical trades
+var count = 0;
+await foreach (var record in client.GetRangeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Trades,
+    symbols: new[] { "NVDA" },
+    startTime: startTime,
+    endTime: endTime))
+{
+    count++;
+
+    // Print first few records
+    if (count <= 10)
+    {
+        Console.WriteLine($"[{count}] {record}");
+    }
+    else if (count == 11)
+    {
+        Console.WriteLine("...");
+    }
+
+    // Limit for demo purposes
+    if (count >= 1000)
+    {
+        break;
+    }
+}
+
+Console.WriteLine($"\n✓ Processed {count} historical records");
+```
+
+**Key Features Demonstrated:**
+- Simple historical client creation
+- Time range query with `GetRangeAsync`
+- IAsyncEnumerable iteration pattern
+- Record limiting for demo purposes
+- DateTimeOffset for UTC time ranges
+
+#### Example 5: OHLCV Bar Decoding
+
+Complete example from `InstrumentDefinitionDecoder.Example` (renamed to OHLCV Bar Decoder) - demonstrates OHLCV data processing.
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
+
+// Create Historical client
+await using var client = new HistoricalClientBuilder()
+    .WithApiKey(apiKey)
+    .Build();
+
+Console.WriteLine("✓ Created HistoricalClient");
+Console.WriteLine();
+
+// Query parameters - OHLCV 1-second bars
+var start = DateTimeOffset.Parse("2024-01-02T09:30:00-05:00");  // Market open
+var end = DateTimeOffset.Parse("2024-01-02T09:35:00-05:00");    // 5 minutes of data
+
+Console.WriteLine("Query Parameters:");
+Console.WriteLine($"  Dataset:  EQUS.MINI");
+Console.WriteLine($"  Symbols:  NVDA, TSLA, GE, MSFT");
+Console.WriteLine($"  Schema:   OHLCV-1S (1-second bars)");
+Console.WriteLine($"  Time:     {start:yyyy-MM-dd HH:mm:ss} to {end:yyyy-MM-dd HH:mm:ss} EST");
+Console.WriteLine($"  Duration: 5 minutes");
+Console.WriteLine();
+
+Console.WriteLine("Decoding OHLCV bars...");
+Console.WriteLine();
+
+var count = 0;
+var symbolCounts = new Dictionary<string, int>();
+
+await foreach (var record in client.GetRangeAsync(
+    dataset: "EQUS.MINI",
+    schema: Schema.Ohlcv1S,
+    symbols: new[] { "NVDA", "TSLA", "GE", "MSFT" },
+    startTime: start,
+    endTime: end))
+{
+    if (record is OhlcvMessage bar)
+    {
+        count++;
+
+        // Track per-symbol counts
+        var symbol = $"ID:{bar.InstrumentId}";  // Would need symbol mapping for actual symbol
+        if (!symbolCounts.ContainsKey(symbol))
+        {
+            symbolCounts[symbol] = 0;
+        }
+        symbolCounts[symbol]++;
+
+        // Display first 20 bars
+        if (count <= 20)
+        {
+            var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bar.TimestampNs / 1_000_000);
+            Console.WriteLine($"[{count,3}] InstrumentId: {bar.InstrumentId,5} @ {timestamp:HH:mm:ss}");
+            Console.WriteLine($"     Open:   ${bar.OpenDecimal,8:F2}");
+            Console.WriteLine($"     High:   ${bar.HighDecimal,8:F2}");
+            Console.WriteLine($"     Low:    ${bar.LowDecimal,8:F2}");
+            Console.WriteLine($"     Close:  ${bar.CloseDecimal,8:F2}");
+            Console.WriteLine($"     Volume: {bar.Volume,8}");
+            Console.WriteLine();
+        }
+        else if (count == 21)
+        {
+            Console.WriteLine("... (processing remaining bars, will show summary)");
+            Console.WriteLine();
+        }
+    }
+}
+
+Console.WriteLine();
+Console.WriteLine("================================================================================");
+Console.WriteLine("SUMMARY");
+Console.WriteLine("================================================================================");
+Console.WriteLine($"Total OHLCV bars decoded: {count}");
+Console.WriteLine();
+
+if (symbolCounts.Count > 0)
+{
+    Console.WriteLine("Bars per instrument:");
+    foreach (var kvp in symbolCounts.OrderByDescending(x => x.Value))
+    {
+        Console.WriteLine($"  {kvp.Key}: {kvp.Value} bars");
+    }
+    Console.WriteLine();
+}
+
+Console.WriteLine("Key Features Demonstrated:");
+Console.WriteLine("  1. OHLCV-1S schema provides 1-second candlestick bars");
+Console.WriteLine("  2. Each bar contains Open, High, Low, Close prices and Volume");
+Console.WriteLine("  3. Decimal properties automatically convert fixed-point prices");
+Console.WriteLine("  4. Timestamps use nanosecond precision");
+Console.WriteLine("  5. Multiple symbols can be queried simultaneously");
+```
+
+**Key Features Demonstrated:**
+- OHLCV schema (1-second bars)
+- Decimal price conversion (OpenDecimal, HighDecimal, etc.)
+- Timestamp conversion from nanoseconds
+- Multi-symbol queries
+- Per-symbol statistics tracking
+- Record type pattern matching
 
 ### Connection Management
 
