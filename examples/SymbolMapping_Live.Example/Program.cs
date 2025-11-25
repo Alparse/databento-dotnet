@@ -78,15 +78,19 @@ client.DataReceived += (sender, e) =>
 };
 
 // Subscribe to symbols in REPLAY mode
-var replayStart = new DateTimeOffset(2024, 11, 18, 9, 30, 0, TimeSpan.FromHours(-5)); // Market open
+var replayStart = DateTimeOffset.MinValue; // Get all available replay data (last 24 hours)
 var symbols = new[] { "NVDA", "AAPL", "MSFT" };
 
 Console.WriteLine("Subscription Parameters:");
 Console.WriteLine($"  Dataset:      EQUS.MINI");
 Console.WriteLine($"  Symbols:      {string.Join(", ", symbols)}");
 Console.WriteLine($"  Schema:       Trades");
-Console.WriteLine($"  Mode:         REPLAY (historical data playback)");
-Console.WriteLine($"  Replay Start: {replayStart:yyyy-MM-dd HH:mm:ss zzz}");
+Console.WriteLine($"  Mode:         REPLAY (all available intraday data from last 24 hours)");
+Console.WriteLine();
+Console.WriteLine("Benefits of REPLAY mode:");
+Console.WriteLine("  √ Works anytime (doesn't require market to be open)");
+Console.WriteLine("  √ Guaranteed to have data");
+Console.WriteLine("  √ Perfect for testing and development");
 Console.WriteLine();
 
 await client.SubscribeAsync(

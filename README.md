@@ -1,7 +1,7 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v3.0.29--beta-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Downloads](https://img.shields.io/badge/Downloads-4.5K-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v4.0.0--beta-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Downloads](https://img.shields.io/badge/Downloads-5.2K-blue)](https://www.nuget.org/packages/Databento.Client)
 [![GitHub Release](https://img.shields.io/github/v/release/Alparse/databento-dotnet?include_prereleases&label=Release)](https://github.com/Alparse/databento-dotnet/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -31,7 +31,7 @@ Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="3.0.29-beta" />
+  <PackageReference Include="Databento.Client" Version="4.0.0-beta" />
 </ItemGroup>
 ```
 

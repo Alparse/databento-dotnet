@@ -5,6 +5,32 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0-beta] - 2025-11-25
+
+### Changed (BREAKING)
+
+- **InstrumentDefMessage.RawInstrumentId**: Changed from `uint` to `ulong` to support venues with 64-bit instrument IDs
+  - Some venues like Eurex (XEUR.EOBI) encode venue/type information in the upper 32 bits for complex instruments (spreads)
+  - Example: Eurex spread IDs like `0x010002B100000060` (72,060,553,270,394,976) exceed `uint.MaxValue` (4,294,967,295)
+  - **Migration**: Change any explicit `uint` declarations to `ulong`. Code using `var` or implicit conversions should work unchanged.
+  - **Impact**: May affect serialization, database schemas (INT → BIGINT), or API contracts expecting 32-bit values
+  - **See**: [MIGRATION_GUIDE_v4.md](./MIGRATION_GUIDE_v4.md) for detailed migration instructions
+
+### Added
+
+- **New Examples**:
+  - `IntradayReplay2.Example` - Demonstrates LiveClient streaming with replay mode
+  - `Get_Most_Recent_Market_Open.Example` - Market open time calculation and querying
+  - `List_Available_Schemas.Example` - Schema discovery via MetadataListSchemas
+
+### Fixed
+
+- **InstrumentDefinitionDecoder.Example** - Renamed to "OHLCV Bar Decoder" and rewritten to use OHLCV-1S schema (Definition schema has no time-series data)
+- **TestsScratchpad.Internal** - Fixed stream lifetime management (added StreamAsync loop to keep program alive)
+- Improved documentation distinguishing LiveClient (streaming/push) vs LiveBlockingClient (pull)
+
+---
+
 ## [3.0.28-beta] - 2025-11-23
 
 ### Changed
@@ -46,9 +72,8 @@ This is a maintenance release to ensure production packages use official, unmodi
 
 ### Changed
 
-- `RawInstrumentId` now reads from correct offset 112 (was reading from incorrect offset) with validation for 64-bit values
-  - Property type remains `uint` for backward compatibility
-  - Throws `OverflowException` if venue provides ID exceeding uint.MaxValue (4,294,967,295)
+- `RawInstrumentId` now reads from correct offset 112 (was reading from incorrect offset)
+  - ⚠️  **Note**: Property type changed to `ulong` in later version (see Unreleased section above)
 
 ---
 

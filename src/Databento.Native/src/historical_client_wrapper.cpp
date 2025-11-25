@@ -30,13 +30,11 @@ using databento_native::ValidateTimeRange;
 struct HistoricalClientWrapper {
     std::unique_ptr<db::Historical> client;
     std::string api_key;
-    std::unique_ptr<databento_native::StderrLogReceiver> log_receiver;
 
     explicit HistoricalClientWrapper(const std::string& key)
-        : api_key(key),
-          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()) {
+        : api_key(key) {
         client = std::make_unique<db::Historical>(
-            log_receiver.get(),
+            nullptr,
             key,
             db::HistoricalGateway::Bo1
         );
@@ -133,13 +131,21 @@ DATABENTO_API int dbento_historical_get_range(
             symbol_vec,
             schema_enum,
             [on_record, user_data](const db::Record& record) {
-                // Get the actual RecordHeader pointer (not the Record wrapper)
-                const auto& header = record.Header();
-                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&header);
+                // CRITICAL FIX: Copy record data as required by databento-cpp API
+                // databento-cpp documentation: "The reference passed to record_callback is only valid
+                // during the callback. Copy the record or particular fields to persist data between calls."
                 size_t length = record.Size();
                 uint8_t type = static_cast<uint8_t>(record.RType());
 
-                on_record(bytes, length, type, user_data);
+                // Use thread-local buffer pool to avoid repeated allocations
+                thread_local std::vector<uint8_t> buffer;
+                if (buffer.size() < length) {
+                    buffer.resize(length * 2);  // Over-allocate to reduce future resizes
+                }
+                std::memcpy(buffer.data(), &record.Header(), length);
+
+                // Pass the copied data to .NET callback
+                on_record(buffer.data(), length, type, user_data);
                 return db::KeepGoing::Continue;
             }
         );
@@ -298,13 +304,21 @@ DATABENTO_API int dbento_historical_get_range_with_symbology(
                 return db::KeepGoing::Continue;
             },
             [on_record, user_data](const db::Record& record) {
-                // Get the actual RecordHeader pointer (not the Record wrapper)
-                const auto& header = record.Header();
-                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&header);
+                // CRITICAL FIX: Copy record data as required by databento-cpp API
+                // databento-cpp documentation: "The reference passed to record_callback is only valid
+                // during the callback. Copy the record or particular fields to persist data between calls."
                 size_t length = record.Size();
                 uint8_t type = static_cast<uint8_t>(record.RType());
 
-                on_record(bytes, length, type, user_data);
+                // Use thread-local buffer pool to avoid repeated allocations
+                thread_local std::vector<uint8_t> buffer;
+                if (buffer.size() < length) {
+                    buffer.resize(length * 2);  // Over-allocate to reduce future resizes
+                }
+                std::memcpy(buffer.data(), &record.Header(), length);
+
+                // Pass the copied data to .NET callback
+                on_record(buffer.data(), length, type, user_data);
                 return db::KeepGoing::Continue;
             }
         );

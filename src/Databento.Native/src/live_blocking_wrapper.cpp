@@ -23,7 +23,6 @@ using databento_native::ValidateNonEmptyString;
 // ============================================================================
 struct LiveBlockingWrapper {
     std::unique_ptr<db::LiveBlocking> client;
-    std::unique_ptr<databento_native::StderrLogReceiver> log_receiver;
     std::string dataset;
     std::string api_key;
     bool send_ts_out = false;
@@ -31,8 +30,7 @@ struct LiveBlockingWrapper {
     int heartbeat_interval_secs = 30;
 
     explicit LiveBlockingWrapper(const std::string& key)
-        : api_key(key),
-          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()) {}
+        : api_key(key) {}
 
     explicit LiveBlockingWrapper(
         const std::string& key,
@@ -41,7 +39,6 @@ struct LiveBlockingWrapper {
         db::VersionUpgradePolicy policy,
         int heartbeat_secs)
         : api_key(key),
-          log_receiver(std::make_unique<databento_native::StderrLogReceiver>()),
           dataset(ds),
           send_ts_out(ts_out),
           upgrade_policy(policy),
@@ -54,8 +51,7 @@ struct LiveBlockingWrapper {
                 .SetKey(api_key)
                 .SetDataset(dataset)
                 .SetSendTsOut(send_ts_out)
-                .SetUpgradePolicy(upgrade_policy)
-                .SetLogReceiver(log_receiver.get());
+                .SetUpgradePolicy(upgrade_policy);
 
             if (heartbeat_interval_secs > 0) {
                 builder.SetHeartbeatInterval(std::chrono::seconds(heartbeat_interval_secs));

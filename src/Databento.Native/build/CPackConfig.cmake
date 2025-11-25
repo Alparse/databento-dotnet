@@ -26,7 +26,7 @@ set(CPACK_DEFAULT_PACKAGE_DESCRIPTION_SUMMARY "Databento.Native built using CMak
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_INNOSETUP_ARCHITECTURE "x64")
 set(CPACK_INSTALL_CMAKE_PROJECTS "C:/Users/serha/source/repos/databento-dotnet/src/Databento.Native/build;Databento.Native;ALL;/")
-set(CPACK_INSTALL_PREFIX "C:/Program Files/Databento.Native")
+set(CPACK_INSTALL_PREFIX "C:/Program Files (x86)/Databento.Native")
 set(CPACK_MODULE_PATH "C:/Users/serha/source/repos/databento-dotnet/src/Databento.Native/build/_deps/databento-cpp-src/cmake;C:/Users/serha/source/repos/databento-dotnet/src/Databento.Native/build/_deps/httplib-src/cmake")
 set(CPACK_NSIS_DISPLAY_NAME "Databento.Native 1.0.0")
 set(CPACK_NSIS_INSTALLER_ICON_CODE "")

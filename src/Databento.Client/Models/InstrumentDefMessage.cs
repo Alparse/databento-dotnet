@@ -87,12 +87,10 @@ public class InstrumentDefMessage : Record
     public uint UnderlyingId { get; set; }
 
     /// <summary>
-    /// Raw instrument ID.
-    /// Note: DBN specification defines this as 64-bit, but this implementation uses 32-bit uint
-    /// for backward compatibility. An exception will be thrown if a venue provides an ID exceeding
-    /// uint.MaxValue (4,294,967,295).
+    /// Raw instrument ID (64-bit as per DBN specification).
+    /// Some venues like Eurex (XEUR.EOBI) require the full 64-bit range.
     /// </summary>
-    public uint RawInstrumentId { get; set; }
+    public ulong RawInstrumentId { get; set; }
 
     /// <summary>
     /// Market depth (implied)

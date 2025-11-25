@@ -73,6 +73,9 @@ examples/*.Internal/
 # Private development notes (not for public repo)
 devnotes/
 
+# Production tests (local testing only, not for public repo)
+production_tests/
+
 # NuGet packages
 *.nupkg
 *.snupkg

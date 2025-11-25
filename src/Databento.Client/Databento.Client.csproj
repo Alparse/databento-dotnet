@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>3.0.29-beta</Version>
+    <Version>4.0.0-beta</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v3.0.29-beta: Added symbology parameter support (stype_in/stype_out) to GetRangeAsync and GetRangeToFileAsync. Enables filtering by instrument type using parent symbology (e.g., ES.FUT for all E-mini S&amp;P 500 futures, QQQ.OPT for all QQQ options). Non-breaking change - new overloads added.</PackageReleaseNotes>
+    <PackageReleaseNotes>v4.0.0-beta: BREAKING CHANGE - RawInstrumentId changed from uint to ulong for 64-bit venue support (Eurex, etc.). Change uint to ulong in your code. New examples: IntradayReplay2, Get_Most_Recent_Market_Open, List_Available_Schemas. See MIGRATION_GUIDE_v4.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->

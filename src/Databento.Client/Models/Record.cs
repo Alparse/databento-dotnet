@@ -842,25 +842,12 @@ public abstract class Record
     }
 
     /// <summary>
-    /// Reads RawInstrumentId from bytes with overflow protection.
-    /// DBN spec defines this as 64-bit, but we use 32-bit uint for backward compatibility.
-    /// Throws if the value exceeds uint.MaxValue (4,294,967,295).
+    /// Reads RawInstrumentId from bytes as 64-bit value per DBN specification.
+    /// Some venues like Eurex (XEUR.EOBI) require the full 64-bit range.
     /// </summary>
-    private static uint ReadRawInstrumentId(ReadOnlySpan<byte> bytes, int offset)
+    private static ulong ReadRawInstrumentId(ReadOnlySpan<byte> bytes, int offset)
     {
-        // Read full 64-bit value as per DBN specification
-        ulong rawId64 = ReadUInt64(bytes, offset);
-
-        // Check for overflow
-        if (rawId64 > uint.MaxValue)
-        {
-            throw new OverflowException(
-                $"RawInstrumentId value {rawId64:N0} exceeds uint.MaxValue ({uint.MaxValue:N0}). " +
-                $"This venue requires 64-bit instrument IDs. Please contact support or file an issue at " +
-                $"https://github.com/databento/databento-dotnet/issues to request ulong support.");
-        }
-
-        return (uint)rawId64;
+        return ReadUInt64(bytes, offset);
     }
 
     private static string ReadCString(ReadOnlySpan<byte> bytes)

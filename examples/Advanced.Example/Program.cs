@@ -27,24 +27,119 @@ class Program
 
         try
         {
-            // Demonstrate live streaming with multiple record types
-            Console.WriteLine("=== Live Streaming with Multiple Schemas ===\n");
-            await DemonstrateLiveStreaming(apiKey);
+            // Demonstrate intraday replay (works anytime - doesn't require market to be open)
+            Console.WriteLine("=== Intraday Replay (Starting at Market Open) ===\n");
+            await DemonstrateIntradayReplay(apiKey);
 
             Console.WriteLine("\n\n=== Historical Data Queries ===\n");
             await DemonstrateHistoricalQueries(apiKey);
 
             Console.WriteLine("\n\n=== Record Type Handling ===\n");
             await DemonstrateRecordTypeHandling(apiKey);
+
+            // Demonstrate live streaming with multiple record types
+            Console.WriteLine("\n\n=== Live Streaming with Multiple Schemas ===\n");
+            await DemonstrateLiveStreaming(apiKey);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
+    }
 
-        Console.WriteLine("\nPress any key to exit...");
-        Console.ReadKey();
+    static async Task DemonstrateIntradayReplay(string apiKey)
+    {
+        // Use REPLAY mode to stream historical data as if it were live
+        // This works anytime - doesn't require market to be open!
+        // Use DateTimeOffset.MinValue to get all available intraday replay data (last 24 hours)
+        var replayStart = DateTimeOffset.MinValue;
+
+        await using var client = new LiveClientBuilder()
+            .WithApiKey(apiKey)
+            .WithDataset("EQUS.MINI")
+            .Build();
+
+        Console.WriteLine("✓ Created live client in REPLAY mode");
+        Console.WriteLine("  Replay: All available intraday data (last 24 hours)");
+        Console.WriteLine();
+
+        // Subscribe with replay start time
+        await client.SubscribeAsync(
+            dataset: "EQUS.MINI",
+            schema: Schema.Trades,
+            symbols: new[] { "NVDA", "AAPL" },
+            startTime: replayStart
+        );
+
+        Console.WriteLine("✓ Subscribed to NVDA, AAPL trades in REPLAY mode");
+        Console.WriteLine("  Benefits of Replay:");
+        Console.WriteLine("    √ Works anytime (doesn't require market to be open)");
+        Console.WriteLine("    √ Guaranteed to have data");
+        Console.WriteLine("    √ Perfect for testing and development");
+        Console.WriteLine();
+
+        _ = client.StartAsync();
+        Console.WriteLine("✓ Stream started");
+        Console.WriteLine();
+
+        var count = 0;
+        var tradeCount = 0;
+        var startTime = DateTimeOffset.UtcNow;
+
+        await foreach (var record in client.StreamAsync())
+        {
+            count++;
+
+            switch (record)
+            {
+                case TradeMessage trade:
+                    tradeCount++;
+                    if (tradeCount <= 10)
+                    {
+                        var symbol = trade.InstrumentId == 11667 ? "NVDA" : "AAPL";
+                        Console.WriteLine($"  Trade #{tradeCount}: {symbol,-6} @ ${trade.PriceDecimal,8:F2} x {trade.Size,6:N0} [{trade.Timestamp:HH:mm:ss.fff}]");
+                    }
+                    break;
+
+                case SymbolMappingMessage mapping:
+                    Console.WriteLine($"  Mapping: {mapping.STypeInSymbol} → {mapping.STypeOutSymbol} (InstrumentId: {mapping.InstrumentId})");
+                    break;
+
+                case SystemMessage system when count == 1:
+                    Console.WriteLine($"  System: {system.Message}");
+                    break;
+            }
+
+            if (tradeCount == 10)
+            {
+                Console.WriteLine("  ... (suppressing further output, continuing to collect data) ...");
+            }
+
+            // Stop after getting enough data (20-30 trades is sufficient)
+            if (tradeCount >= 30)
+            {
+                break;
+            }
+
+            // Safety timeout
+            var elapsed = DateTimeOffset.UtcNow - startTime;
+            if (elapsed.TotalSeconds >= 10)
+            {
+                break;
+            }
+        }
+
+        await client.StopAsync();
+
+        Console.WriteLine();
+        Console.WriteLine($"✓ Replay complete!");
+        Console.WriteLine($"  Total records:  {count:N0}");
+        Console.WriteLine($"  Trade messages: {tradeCount:N0}");
+        Console.WriteLine($"  Elapsed time:   {(DateTimeOffset.UtcNow - startTime).TotalSeconds:F1}s");
+        Console.WriteLine();
+        Console.WriteLine("Key Takeaway: REPLAY mode lets you stream historical data as if it were live,");
+        Console.WriteLine("              perfect for testing when markets are closed!");
     }
 
     static async Task DemonstrateLiveStreaming(string apiKey)
@@ -55,17 +150,18 @@ class Program
 
         Console.WriteLine("✓ Created live client");
 
-        // Subscribe to Market By Price Level 1 (best bid/offer)
+        // Use REPLAY mode - works anytime (doesn't require market to be open)
         await client.SubscribeAsync(
             dataset: "EQUS.MINI",
             schema: Schema.Mbp1,
-            symbols: new[] { "QQQ" }
+            symbols: new[] { "QQQ" },
+            startTime: DateTimeOffset.MinValue  // REPLAY mode
         );
 
-        Console.WriteLine("✓ Subscribed to QQQ MBP-1 (best bid/offer)");
+        Console.WriteLine("✓ Subscribed to QQQ MBP-1 (best bid/offer) in REPLAY mode");
         Console.WriteLine("✓ Starting stream (will show first 20 records)...\n");
 
-        var startTask = client.StartAsync();
+        _ = client.StartAsync();
 
         var count = 0;
         await foreach (var record in client.StreamAsync())
@@ -204,13 +300,15 @@ class Program
             .WithApiKey(apiKey)
             .Build();
 
+        // Use REPLAY mode - works anytime (doesn't require market to be open)
         await client.SubscribeAsync(
             dataset: "EQUS.MINI",
             schema: Schema.Trades,
-            symbols: new[] { "QQQ" }
+            symbols: new[] { "QQQ" },
+            startTime: DateTimeOffset.MinValue  // REPLAY mode
         );
 
-        var startTask = client.StartAsync();
+        _ = client.StartAsync();
 
         var recordTypesSeen = new HashSet<string>();
         var count = 0;

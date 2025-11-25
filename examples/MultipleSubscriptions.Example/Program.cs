@@ -53,8 +53,8 @@ class Program
             // Track different message types
             var recordCount = 0;
             var tradeCount = 0;
-            var definitionCount = 0;
-            var statusCount = 0;
+            var mbp1Count = 0;
+            var ohlcvCount = 0;
             var systemCount = 0;
 
             // Subscribe to data events
@@ -67,7 +67,7 @@ class Program
                 {
                     case TradeMessage trade:
                         tradeCount++;
-                        if (tradeCount <= 3)
+                        if (tradeCount <= 5)
                         {
                             var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(trade.TimestampNs / 1_000_000);
                             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Trade #{tradeCount}:");
@@ -79,25 +79,29 @@ class Program
                         }
                         break;
 
-                    case InstrumentDefMessage def:
-                        definitionCount++;
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] InstrumentDef #{definitionCount}:");
-                        Console.WriteLine($"  Raw Symbol:    {def.RawSymbol}");
-                        Console.WriteLine($"  Instrument ID: {def.InstrumentId}");
-                        Console.WriteLine($"  Exchange:      {def.Exchange}");
-                        Console.WriteLine($"  Security Type: {def.SecurityType}");
-                        Console.WriteLine($"  Currency:      {def.Currency}");
-                        Console.WriteLine();
+                    case Mbp1Message mbp:
+                        mbp1Count++;
+                        if (mbp1Count <= 3)
+                        {
+                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] MBP-1 #{mbp1Count}:");
+                            Console.WriteLine($"  Instrument ID: {mbp.InstrumentId}");
+                            Console.WriteLine($"  Bid:           ${Constants.PriceToDecimal(mbp.Level.BidPrice):F2} x {mbp.Level.BidSize}");
+                            Console.WriteLine($"  Ask:           ${Constants.PriceToDecimal(mbp.Level.AskPrice):F2} x {mbp.Level.AskSize}");
+                            Console.WriteLine();
+                        }
                         break;
 
-                    case StatusMessage status:
-                        statusCount++;
-                        if (statusCount <= 5)
+                    case OhlcvMessage ohlcv:
+                        ohlcvCount++;
+                        if (ohlcvCount <= 3)
                         {
-                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Status #{statusCount}:");
-                            Console.WriteLine($"  Instrument ID: {status.InstrumentId}");
-                            Console.WriteLine($"  Action:        {status.Action}");
-                            Console.WriteLine($"  Reason:        {status.Reason}");
+                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] OHLCV #{ohlcvCount}:");
+                            Console.WriteLine($"  Instrument ID: {ohlcv.InstrumentId}");
+                            Console.WriteLine($"  Open:          ${ohlcv.OpenDecimal:F2}");
+                            Console.WriteLine($"  High:          ${ohlcv.HighDecimal:F2}");
+                            Console.WriteLine($"  Low:           ${ohlcv.LowDecimal:F2}");
+                            Console.WriteLine($"  Close:         ${ohlcv.CloseDecimal:F2}");
+                            Console.WriteLine($"  Volume:        {ohlcv.Volume}");
                             Console.WriteLine();
                         }
                         break;
@@ -124,47 +128,53 @@ class Program
             // ===================================================================
 
             Console.WriteLine("Creating multiple subscriptions for NVDA:");
-            Console.WriteLine("  1. Trades schema     - Real-time trade data");
-            Console.WriteLine("  2. Definition schema - Instrument definitions");
-            Console.WriteLine("  3. Status schema     - Trading status updates");
+            Console.WriteLine("  1. Trades schema    - Trade execution data (REPLAY mode)");
+            Console.WriteLine("  2. MBP-1 schema     - Best bid/offer prices (REPLAY mode)");
+            Console.WriteLine("  3. OHLCV-1S schema  - 1-second OHLCV bars (REPLAY mode)");
             Console.WriteLine();
 
             // Subscription 1: Trades
             await client.SubscribeAsync(
                 dataset: "EQUS.MINI",
                 schema: Schema.Trades,
-                symbols: new[] { "NVDA" }
-                // No startTime = real-time only (no replay)
+                symbols: new[] { "NVDA" },
+                startTime: DateTimeOffset.MinValue  // REPLAY mode - last 24 hours
             );
-            Console.WriteLine("✓ Subscription 1: NVDA Trades (real-time)");
+            Console.WriteLine("✓ Subscription 1: NVDA Trades (REPLAY mode)");
 
-            // Subscription 2: Instrument Definitions
+            // Subscription 2: Market by Price Level 1 (best bid/offer)
             await client.SubscribeAsync(
                 dataset: "EQUS.MINI",
-                schema: Schema.Definition,
-                symbols: new[] { "NVDA" }
+                schema: Schema.Mbp1,
+                symbols: new[] { "NVDA" },
+                startTime: DateTimeOffset.MinValue  // REPLAY mode - last 24 hours
             );
-            Console.WriteLine("✓ Subscription 2: NVDA Definitions");
+            Console.WriteLine("✓ Subscription 2: NVDA MBP-1 (REPLAY mode)");
 
-            // Subscription 3: Trading Status
+            // Subscription 3: 1-second OHLCV bars
             await client.SubscribeAsync(
                 dataset: "EQUS.MINI",
-                schema: Schema.Status,
-                symbols: new[] { "NVDA" }
+                schema: Schema.Ohlcv1S,
+                symbols: new[] { "NVDA" },
+                startTime: DateTimeOffset.MinValue  // REPLAY mode - last 24 hours
             );
-            Console.WriteLine("✓ Subscription 3: NVDA Trading Status");
+            Console.WriteLine("✓ Subscription 3: NVDA OHLCV-1S (REPLAY mode)");
             Console.WriteLine();
 
             Console.WriteLine("All subscriptions created successfully!");
             Console.WriteLine("The data stream will now contain mixed record types:");
-            Console.WriteLine("  • TradeMessage");
-            Console.WriteLine("  • InstrumentDefMessage");
-            Console.WriteLine("  • StatusMessage");
+            Console.WriteLine("  • TradeMessage (from Trades schema)");
+            Console.WriteLine("  • Mbp1Message (from MBP-1 schema)");
+            Console.WriteLine("  • OhlcvMessage (from OHLCV-1S schema)");
             Console.WriteLine();
 
             // Start streaming
-            Console.WriteLine("Starting live stream...");
+            Console.WriteLine("Starting stream in REPLAY mode...");
             Console.WriteLine("(Receiving mixed record types for 10 seconds)");
+            Console.WriteLine("Benefits of REPLAY mode:");
+            Console.WriteLine("  √ Works anytime (doesn't require market to be open)");
+            Console.WriteLine("  √ Guaranteed to have data");
+            Console.WriteLine("  √ Perfect for testing and development");
             Console.WriteLine();
 
             _ = await client.StartAsync();
@@ -188,10 +198,10 @@ class Program
             Console.WriteLine("Summary:");
             Console.WriteLine($"  Total records received:     {recordCount}");
             Console.WriteLine($"  TradeMessage:               {tradeCount}");
-            Console.WriteLine($"  InstrumentDefMessage:       {definitionCount}");
-            Console.WriteLine($"  StatusMessage:              {statusCount}");
+            Console.WriteLine($"  Mbp1Message:                {mbp1Count}");
+            Console.WriteLine($"  OhlcvMessage:               {ohlcvCount}");
             Console.WriteLine($"  SystemMessage:              {systemCount}");
-            Console.WriteLine($"  Other:                      {recordCount - tradeCount - definitionCount - statusCount - systemCount}");
+            Console.WriteLine($"  Other:                      {recordCount - tradeCount - mbp1Count - ohlcvCount - systemCount}");
             Console.WriteLine();
 
             Console.WriteLine("Key Features Demonstrated:");
@@ -202,15 +212,11 @@ class Program
             Console.WriteLine("✓ No unsubscribe method - ended by Stop()");
             Console.WriteLine();
 
-            Console.WriteLine("Example with Intraday Replay (commented out):");
-            Console.WriteLine("// Subscribe with replay from 1 hour ago:");
-            Console.WriteLine("// var oneHourAgo = DateTimeOffset.UtcNow.AddHours(-1);");
-            Console.WriteLine("// await client.SubscribeAsync(");
-            Console.WriteLine("//     dataset: \"EQUS.MINI\",");
-            Console.WriteLine("//     schema: Schema.Trades,");
-            Console.WriteLine("//     symbols: new[] { \"NVDA\" },");
-            Console.WriteLine("//     startTime: oneHourAgo  // Intraday replay parameter");
-            Console.WriteLine("// );");
+            Console.WriteLine("REPLAY Mode Options:");
+            Console.WriteLine("--------------------");
+            Console.WriteLine("• DateTimeOffset.MinValue = All available replay data (last 24 hours)");
+            Console.WriteLine("• Specific timestamp      = Replay from that point forward");
+            Console.WriteLine("  Example: DateTimeOffset.UtcNow.AddHours(-1) for last hour");
             Console.WriteLine();
 
             Console.WriteLine("Notes:");
