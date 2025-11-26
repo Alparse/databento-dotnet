@@ -75,6 +75,14 @@ ReproduceCrash.Test/
 
 # Private development notes (not for public repo)
 devnotes/
+Storage/
+CLAUDE.md
+*_PLAN*.md
+code_review_*.md
+session_status*.md
+DEPLOYMENT_PLAN*.md
+RELEASE_SUMMARY*.md
+NUGET_QUICK_START.md
 
 # Production tests (local testing only, not for public repo)
 production_tests/

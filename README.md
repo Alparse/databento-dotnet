@@ -1,8 +1,8 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v4.0.0--beta-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Downloads](https://img.shields.io/badge/Downloads-5.2K-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Release](https://img.shields.io/badge/Release-v4.0.0--beta-blue)](https://github.com/Alparse/databento-dotnet/releases)
+[![NuGet](https://img.shields.io/badge/NuGet-v4.0.1--beta-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Downloads](https://img.shields.io/badge/Downloads-5.4K-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Release](https://img.shields.io/badge/Release-v4.0.1--beta-blue)](https://github.com/Alparse/databento-dotnet/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.
@@ -31,7 +31,7 @@ Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="4.0.0-beta" />
+  <PackageReference Include="Databento.Client" Version="4.0.1-beta" />
 </ItemGroup>
 ```
 
