@@ -5,6 +5,20 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1-beta] - 2025-11-25
+
+### Fixed
+
+- **CRITICAL**: Fixed `AccessViolationException` crash in Historical, Live, and LiveBlocking clients
+  - **Root Cause**: v4.0.0-beta removed logger from native client wrappers, passing `nullptr` to databento-cpp
+  - **Symptoms**: Fatal crashes when databento-cpp tried to log messages (particularly on empty query results or warnings)
+  - **Impact**: Affected ALL Historical API queries, Live subscriptions, and LiveBlocking operations in v4.0.0-beta
+  - **Fix**: Restored `StderrLogReceiver` logger in all three client wrapper implementations
+  - **User Reports**: Multiple users reported crashes immediately after upgrading to v4.0.0-beta
+  - **Recommendation**: All users on v4.0.0-beta should upgrade to v4.0.1-beta immediately
+
+---
+
 ## [4.0.0-beta] - 2025-11-25
 
 ### Changed (BREAKING)
