@@ -354,10 +354,8 @@ var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
 // Symbol map: InstrumentId → Ticker Symbol
 var symbolMap = new ConcurrentDictionary<uint, string>();
 
-// Create live client
 await using var client = new LiveClientBuilder()
     .WithApiKey(apiKey)
-    .WithDataset("EQUS.MINI")
     .Build();
 
 // Handle incoming records
@@ -382,50 +380,23 @@ client.DataReceived += (sender, e) =>
     }
 };
 
-// Calculate most recent market open (9:30 AM ET) for replay mode
-var now = DateTimeOffset.UtcNow;
-var et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-var etNow = TimeZoneInfo.ConvertTime(now, et);
-var replayDate = etNow.Date;
-
-// Go back to most recent weekday
-while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-    replayDate = replayDate.AddDays(-1);
-
-if (etNow.TimeOfDay < TimeSpan.FromHours(9.5))
-{
-    replayDate = replayDate.AddDays(-1);
-    while (replayDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-        replayDate = replayDate.AddDays(-1);
-}
-
-var marketOpen = new DateTimeOffset(
-    replayDate.Year, replayDate.Month, replayDate.Day,
-    9, 30, 0, et.GetUtcOffset(replayDate));
-
-// Subscribe with replay mode (works anytime, no market hours required)
+// Subscribe to live data
 await client.SubscribeAsync(
     dataset: "EQUS.MINI",
     schema: Schema.Trades,
-    symbols: new[] { "NVDA", "AAPL" },
-    startTime: marketOpen  // Omit this parameter for live mode
+    symbols: new[] { "NVDA", "AAPL" }
 );
 
 await client.StartAsync();
 
-// CRITICAL: Must use StreamAsync() to pump records through the pipeline
-var timeout = Task.Delay(TimeSpan.FromSeconds(30));
-var streamTask = Task.Run(async () =>
+// Stream records
+await foreach (var record in client.StreamAsync())
 {
-    await foreach (var record in client.StreamAsync())
-    {
-        // Records are handled by DataReceived event
-    }
-});
-
-await Task.WhenAny(streamTask, timeout);
-await client.StopAsync();
+    // Records handled by DataReceived event
+}
 ```
+
+> 💡 **Testing outside market hours?** Use replay mode by adding a `startTime` parameter to `SubscribeAsync()` (e.g., `startTime: DateTimeOffset.UtcNow.AddHours(-1)`). See `examples/LiveSymbolResolution.Example` for a complete replay mode implementation.
 
 ### Expected Output
 
