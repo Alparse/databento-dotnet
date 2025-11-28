@@ -17,7 +17,7 @@ var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
     ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
 
 // Calculate most recent market open
-var replayStartTime = GetMostRecentMarketOpen();
+var replayStartTime = new DateTimeOffset(2025, 11, 26, 14, 30, 0, TimeSpan.Zero);
 
 Console.WriteLine($"Replay Configuration:");
 Console.WriteLine($"  Start Time:  {replayStartTime:yyyy-MM-dd HH:mm:ss zzz}");

@@ -220,7 +220,7 @@ if (allSchemas.Count > 0)
     Console.WriteLine();
 }
 
-Console.WriteLine("Example complete!");
+Console.WriteLine("=== List Available Schemas Example Complete ===");
 Console.WriteLine();
 
 return 0;

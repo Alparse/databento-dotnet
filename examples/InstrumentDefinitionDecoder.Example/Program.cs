@@ -112,4 +112,7 @@ Console.WriteLine("  - OpenDecimal/HighDecimal/LowDecimal/CloseDecimal: Converte
 Console.WriteLine("  - Volume: Trading volume for the bar period");
 Console.WriteLine();
 
+Console.WriteLine("=== OHLCV Bar Decoder Example Complete ===");
+Console.WriteLine();
+
 return 0;

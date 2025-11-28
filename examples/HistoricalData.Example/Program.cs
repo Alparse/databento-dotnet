@@ -75,7 +75,11 @@ class Program
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
 
-        Console.WriteLine("\nPress any key to exit...");
-        Console.ReadKey();
+        // Only wait for key press if running interactively (not in automation)
+        if (Environment.UserInteractive && !Console.IsInputRedirected)
+        {
+            Console.WriteLine("\nPress any key to exit...");
+            Console.ReadKey();
+        }
     }
 }

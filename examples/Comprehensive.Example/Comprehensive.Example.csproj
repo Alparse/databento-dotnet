@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Databento.Client\Databento.Client.csproj" />
+    <ProjectReference Include="..\..\src\Databento.Client\Databento.Client.csproj" />
   </ItemGroup>
 
 </Project>

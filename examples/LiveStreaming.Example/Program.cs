@@ -126,7 +126,11 @@ class Program
             }
         }
 
-        Console.WriteLine("\nPress any key to exit...");
-        Console.ReadKey();
+        // Only wait for key press if running interactively (not in automation)
+        if (Environment.UserInteractive && !Console.IsInputRedirected)
+        {
+            Console.WriteLine("\nPress any key to exit...");
+            Console.ReadKey();
+        }
     }
 }

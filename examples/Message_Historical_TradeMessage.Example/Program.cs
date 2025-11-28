@@ -153,4 +153,7 @@ else
     Console.WriteLine("Try a different date/time during market hours.");
 }
 
+Console.WriteLine();
+Console.WriteLine("=== Historical Trade Messages Example Complete ===");
+
 return 0;

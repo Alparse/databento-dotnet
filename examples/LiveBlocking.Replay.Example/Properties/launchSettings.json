@@ -1,8 +1,10 @@
 {
   "profiles": {
-    "WSL": {
-      "commandName": "WSL2",
-      "distributionName": ""
+    "LiveBlocking.Replay.Example": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
     }
   }
 }
