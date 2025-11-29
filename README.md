@@ -31,7 +31,7 @@ Or add directly to your `.csproj`:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Databento.Client" Version="4.0.1-beta" />
+  <PackageReference Include="Databento.Client" Version="4.1.0" />
 </ItemGroup>
 ```
 
