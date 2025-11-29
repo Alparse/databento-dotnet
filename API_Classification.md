@@ -931,11 +931,14 @@ Critical enum for DBN binary protocol message routing. Values match databento-cp
 
 | Method | Parameter | Type | Required | Default | Description |
 |--------|-----------|------|----------|---------|-------------|
-| `WithApiKey` | `apiKey` | `string` | No* | - | Databento API key (*falls back to `DATABENTO_API_KEY` env var) |
+| `WithApiKey` | `apiKey` | `string` | **Yes*** | - | Databento API key |
+| `WithKeyFromEnv` | - | - | **Yes*** | - | Set API key from DATABENTO_API_KEY env var |
 | `WithGateway` | `gateway` | `HistoricalGateway` | No | `Bo1` | API gateway selection |
 | `WithLogger` | `logger` | `ILogger<IReferenceClient>` | No | - | Logger for diagnostics |
 | `WithHttpClient` | `httpClient` | `HttpClient` | No | - | Pre-configured HttpClient (e.g., from IHttpClientFactory) |
 | `Build` | - | - | - | - | Returns `IReferenceClient` |
+
+*One of `WithApiKey` or `WithKeyFromEnv` is required (or the `DATABENTO_API_KEY` env var must be set).
 
 ---
 
@@ -950,7 +953,7 @@ Critical enum for DBN binary protocol message routing. Values match databento-cp
 
 ```csharp
 var client = new ReferenceClientBuilder()
-    .WithApiKey(apiKey)           // Optional - falls back to DATABENTO_API_KEY env var
+    .WithKeyFromEnv()             // Or .WithApiKey(apiKey)
     .WithGateway(gateway)         // Optional - Bo1 (default), Bo2, Custom
     .WithLogger(logger)           // Optional - ILogger<IReferenceClient>
     .WithHttpClient(httpClient)   // Optional - Pre-configured HttpClient

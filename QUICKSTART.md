@@ -79,10 +79,8 @@ Edit `Program.cs`:
 using Databento.Client.Builders;
 using Databento.Client.Models;
 
-var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")!;
-
 await using var client = new LiveClientBuilder()
-    .WithApiKey(apiKey)
+    .WithKeyFromEnv()  // Reads from DATABENTO_API_KEY environment variable
     .Build();
 
 client.DataReceived += (_, e) => Console.WriteLine(e.Record);

@@ -286,7 +286,7 @@ await foreach (var record in client.GetRangeAsync(
 
 ```csharp
 var client = new ReferenceClientBuilder()
-    .SetApiKey(apiKey)
+    .WithKeyFromEnv()  // Or .WithApiKey(apiKey)
     .Build();
 
 // Security master
