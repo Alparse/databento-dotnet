@@ -1,647 +1,416 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v4.1.0-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v4.1.1-blue)](https://www.nuget.org/packages/Databento.Client)
 [![Downloads](https://img.shields.io/badge/Downloads-6.4K-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Release](https://img.shields.io/badge/Release-v4.1.0-blue)](https://github.com/Alparse/databento-dotnet/releases)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.
+A high-performance .NET client for [Databento](https://databento.com) market data. Stream real-time data or query historical records with async/await and IAsyncEnumerable.
 
-> 📢 **Production Ready**: v4.1.0 is the first stable production release with .NET 8 and .NET 9 support. Please report any issues to the [issue tracker](https://github.com/Alparse/databento-dotnet/issues).
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Symbol Mapping](#symbol-mapping)
+- [API Reference](#api-reference)
+- [Building from Source](#building-from-source)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ## Installation
 
-### NuGet Package (Recommended)
-
-📦 **Package:** [Databento.Client on NuGet.org](https://www.nuget.org/packages/Databento.Client/)
-
-Install via .NET CLI:
-
 ```bash
 dotnet add package Databento.Client
 ```
 
-Or via Package Manager Console:
+**Requirements:** .NET 8.0 or .NET 9.0
 
-```powershell
-Install-Package Databento.Client -Prerelease
-```
-
-Or add directly to your `.csproj`:
-
-```xml
-<ItemGroup>
-  <PackageReference Include="Databento.Client" Version="4.1.0" />
-</ItemGroup>
-```
-
-### Build from Source
-
-See [Building](#building) section below for instructions on building from source.
-
-## Features
-
-- **Live Streaming**: Real-time market data with async/await and IAsyncEnumerable support
-- **Historical Data**: Query past market data with time-range filtering
-- **Cross-Platform**: Works on Windows, Linux, and macOS
-- **High Performance**: Built on top of Databento's C++ client library
-- **Type-Safe**: Strongly-typed API with full IntelliSense support
-- **.NET 8+ Compatible**: Modern C# with nullable reference types (.NET 8, .NET 9+)
-
-## Implementation Status
-
-### Record Type Coverage: 100% ✅
-
-All 16 DBN record types from databento-cpp are fully implemented:
-
-| Record Type | Status | Size | Description |
-|------------|--------|------|-------------|
-| TradeMessage | ✅ | 48 bytes | Trades (RType 0x00) |
-| MboMessage | ✅ | 56 bytes | Market by Order (RType 0xA0) |
-| Mbp1Message | ✅ | 80 bytes | Market by Price Level 1 (RType 0x01) |
-| Mbp10Message | ✅ | 368 bytes | Market by Price Level 10 (RType 0x0A) |
-| OhlcvMessage | ✅ | 56 bytes | OHLCV bars - deprecated, 1s, 1m, 1h, 1d, EOD (RType 0x11, 0x20-0x24) |
-| StatusMessage | ✅ | 40 bytes | Trading status (RType 0x12) |
-| InstrumentDefMessage | ✅ | 520 bytes | Instrument definitions (RType 0x13) |
-| ImbalanceMessage | ✅ | 112 bytes | Order imbalances (RType 0x14) |
-| ErrorMessage | ✅ | 320 bytes | Error messages (RType 0x15) |
-| SymbolMappingMessage | ✅ | 176 bytes | Symbol mappings (RType 0x16) |
-| SystemMessage | ✅ | 320 bytes | System messages & heartbeats (RType 0x17) |
-| StatMessage | ✅ | 80 bytes | Market statistics (RType 0x18) |
-| BboMessage | ✅ | 80 bytes | Best Bid/Offer - 1s, 1m (RType 0xC3-0xC4) |
-| CbboMessage | ✅ | 80 bytes | Consolidated BBO - 1s, 1m (RType 0xC0-0xC1) |
-| Cmbp1Message | ✅ | 80 bytes | Consolidated Market by Price (RType 0xB1) |
-| TcbboMessage | ✅ | 80 bytes | Trade with Consolidated BBO (RType 0xC2) |
-| UnknownRecord | ✅ | Variable | Fallback for unrecognized types |
-
-### API Coverage
-
-| Feature | databento-cpp | databento-dotnet | Status |
-|---------|---------------|---------------|--------|
-| **Live Streaming** | ✅ | ✅ | Complete |
-| Subscribe to datasets | ✅ | ✅ | Complete |
-| Multiple symbol subscription | ✅ | ✅ | Complete |
-| Schema filtering | ✅ | ✅ | Complete |
-| Start/Stop streaming | ✅ | ✅ | Complete |
-| **Record Deserialization** | ✅ | ✅ | Complete |
-| All 16 record types | ✅ | ✅ | Complete |
-| Fixed-point price conversion | ✅ | ✅ | Complete |
-| Timestamp handling | ✅ | ✅ | Complete |
-| **Helper Utilities** | ✅ | ✅ | Complete |
-| FlagSet (bit flags) | ✅ | ✅ | Complete |
-| Constants & sentinel values | ✅ | ✅ | Complete |
-| Schema enums | ✅ | ✅ | Complete |
-| **Historical Client** | ✅ | ✅ | Complete (time-range queries) |
-| Time-range queries | ✅ | ✅ | Complete with IAsyncEnumerable |
-| Batch downloads | ✅ | ❌ | Not yet implemented |
-| **Metadata & Symbol Mapping** | ✅ | ✅ | Complete |
-| Instrument metadata queries | ✅ | ✅ | 10+ metadata API methods working |
-| Symbol resolution | ✅ | ✅ | SymbolMappingMessage support for live/historical |
-| **Advanced Features** | | | |
-| Compression (zstd) | ✅ | ✅ | Handled by native layer |
-| SSL/TLS | ✅ | ✅ | Handled by native layer |
-| Reconnection logic | ✅ | ⚠️ | Delegated to databento-cpp |
-
-### Implementation Statistics
-
-- **Total Record Types**: 16/16 (100%)
-- **Enumerations**: 11/11 (100%)
-  - Schema, RType, Action, Side, InstrumentClass, MatchAlgorithm, UserDefinedInstrument, SecurityUpdateAction, StatType, StatUpdateAction, SType
-- **Helper Classes**: 3/3 (100%)
-  - FlagSet, Constants, BidAskPair/ConsolidatedBidAskPair
-- **Live Streaming**: Fully functional
-- **Binary Deserialization**: All DBN formats supported
-- **Lines of Code**: ~2,500 in high-level API, ~500 in P/Invoke layer, ~800 in native wrapper
-
-### Recent Changes
-
-**Latest (November 2025)** - Production Ready
-- ✅ Reference API implementation (SecurityMaster, AdjustmentFactors, CorporateActions)
-- ✅ OpenTelemetry telemetry with retry policies
-- ✅ Complete metadata & symbol mapping support (SymbolMappingMessage)
-- ✅ All 16 record types with proper deserialization
-- ✅ Thread-safe LiveClient with reconnection support
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Your .NET Application                     │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│           Databento.Client (High-Level API)                  │
-│   • LiveClient, HistoricalClient                            │
-│   • Async/await, IAsyncEnumerable, Events                   │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│        Databento.Interop (P/Invoke Layer)                   │
-│   • SafeHandles, Marshaling                                 │
-└────────────────────────┬────────────────────────────────────┘
-                         │ P/Invoke
-┌────────────────────────▼────────────────────────────────────┐
-│      Databento.Native (C Wrapper - CMake)                   │
-│   • C exports wrapping databento-cpp                        │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│            databento-cpp (Git Submodule)                    │
-│   • Live streaming, Historical queries                      │
-│   • DBN encoding/decoding                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Prerequisites
-
-### For Building
-
-**Required:**
-- .NET 8 SDK or later
-- CMake 3.24 or later
-- C++17 compatible compiler:
-  - Windows: Visual Studio 2019 or later
-  - Linux: GCC 9+ or Clang 10+
-  - macOS: Xcode 11+
-
-**Automatically fetched by CMake:**
-- databento-cpp (via FetchContent)
-- OpenSSL 3.0+
-- Zstandard (zstd)
-- nlohmann_json
-
-### For Using (NuGet Package)
-
-**Required:**
-- .NET 8 Runtime or later (.NET 8, .NET 9+)
-
-**Compatibility:**
-- ✅ .NET 8.0
-- ✅ .NET 9.0 (tested and confirmed)
-
-**Platform Requirements:**
-
-**Windows:**
-- No additional prerequisites required - the NuGet package includes all necessary dependencies (including Visual C++ runtime DLLs)
-
-<details>
-<summary>⚠️ Troubleshooting: If you see "DllNotFoundException: databento_native"</summary>
-
-This usually means the Visual C++ Runtime failed to load. Try:
-
-1. **Update Windows** - Ensure Windows 10 version 1809+ or Windows 11
-2. **Install VC++ Redistributable** (if issue persists):
-   - Download: [Visual C++ 2022 Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
-   - This is typically only needed on older/minimal Windows installations
-
-The library includes runtime DLLs, but in rare cases Windows may require the full redistributable package.
-</details>
-
-**Linux:**
-- glibc 2.31+ (Ubuntu 20.04+, RHEL 8+)
-
-**macOS:**
-- macOS 11.0+ (Big Sur or later)
+**Platforms:** Windows (x64), Linux (x64), macOS (x64/ARM64)
 
 ## Quick Start
 
-### 1. Install Package
+### 1. Set Your API Key
 
 ```bash
-dotnet add package Databento.Client
+# Windows
+$env:DATABENTO_API_KEY="your-api-key"
+
+# Linux/macOS
+export DATABENTO_API_KEY="your-api-key"
 ```
 
-### 2. Set API Key
+Get your API key at [databento.com/portal/keys](https://databento.com/portal/keys)
 
-Set your Databento API key as an environment variable:
-
-**Windows:**
-```powershell
-$env:DATABENTO_API_KEY="your-api-key-here"
-```
-
-**Linux/macOS:**
-```bash
-export DATABENTO_API_KEY="your-api-key-here"
-```
-
-Get your API key at https://databento.com/portal/keys
-
-### 3. Write Code - Live Streaming Example
+### 2. Live Streaming
 
 ```csharp
 using Databento.Client.Builders;
 using Databento.Client.Models;
 
-// Get API key from environment variable (secure)
-var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
-    ?? throw new InvalidOperationException("DATABENTO_API_KEY environment variable not set");
-
-// Create live client
 await using var client = new LiveClientBuilder()
-    .WithApiKey(apiKey)
+    .WithKeyFromEnv()
+    .WithAutoReconnect()  // Auto-reconnect on failure
     .Build();
 
-// Subscribe to events
-client.DataReceived += (sender, e) =>
-{
-    Console.WriteLine($"Received: {e.Record}");
-};
+// Live mode (requires market hours)
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
 
-// Subscribe to NVDA trades
-await client.SubscribeAsync(
-    dataset: "EQUS.MINI",
-    schema: Schema.Trades,
-    symbols: new[] { "NVDA" }
-);
+// Intraday Replay mode - replays from most recent market open, then continues live:
+// (only available within 24h of last market open)
+// await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" },
+//     startTime: DateTimeOffset.MinValue);
 
-// Start streaming
 await client.StartAsync();
 
-// Stream records using IAsyncEnumerable
 await foreach (var record in client.StreamAsync())
 {
-    // Process records
     if (record is TradeMessage trade)
-    {
-        Console.WriteLine($"Trade: {trade.InstrumentId} @ {trade.PriceDecimal}");
-    }
+        Console.WriteLine($"{trade.InstrumentId}: ${trade.PriceDecimal} x {trade.Size}");
 }
 ```
 
-### 4. Historical Data Example
+### 3. Historical Data
 
 ```csharp
 using Databento.Client.Builders;
 using Databento.Client.Models;
 
-// Get API key from environment variable (secure)
-var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
-    ?? throw new InvalidOperationException("DATABENTO_API_KEY environment variable not set");
-
-// Create historical client
 await using var client = new HistoricalClientBuilder()
-    .WithApiKey(apiKey)
+    .WithKeyFromEnv()
     .Build();
 
-// Define time range - Static trading day: November 11-12, 2025
-var startTime = new DateTimeOffset(2025, 11, 11, 0, 0, 0, TimeSpan.Zero); // 11/11/2025 00:00 UTC
-var endTime = new DateTimeOffset(2025, 11, 12, 23, 59, 59, TimeSpan.Zero);   // 11/12/2025 23:59 UTC
+var start = new DateTimeOffset(2025, 1, 15, 14, 30, 0, TimeSpan.Zero);
+var end = start.AddHours(1);
 
-// Query historical trades
 await foreach (var record in client.GetRangeAsync(
-    dataset: "EQUS.MINI",
-    schema: Schema.Trades,
-    symbols: new[] { "NVDA" },
-    startTime: startTime,
-    endTime: endTime))
+    "EQUS.MINI", Schema.Trades, new[] { "NVDA" }, start, end))
 {
-    Console.WriteLine($"Historical record: {record}");
+    Console.WriteLine(record);
 }
 ```
 
-**Try it yourself:** Run the included example with:
-```bash
-dotnet run --project examples/Historical.Readme.Example/Historical.Readme.Example.csproj
-```
+## Features
 
-## Symbol Mapping - Resolving InstrumentId to Ticker Symbols
+| Feature | Description |
+|---------|-------------|
+| **Live Streaming** | Real-time market data with async/await and IAsyncEnumerable |
+| **Historical Queries** | Time-range queries with efficient streaming |
+| **Auto-Reconnect** | Configurable retry policies with exponential backoff |
+| **All Record Types** | Full support for all 16 DBN record types |
+| **Symbol Mapping** | Resolve InstrumentId to ticker symbols |
+| **Reference Data** | SecurityMaster, CorporateActions, AdjustmentFactors |
+| **Cross-Platform** | Windows, Linux, macOS |
+| **High Performance** | Built on databento-cpp with native P/Invoke |
 
-When streaming market data, records contain numeric `InstrumentId` values (e.g., `11667`) instead of ticker symbols (e.g., `"NVDA"`). You must handle `SymbolMappingMessage` records to resolve these IDs to human-readable symbols.
+### Supported Schemas (20)
 
-### Why Symbol Mapping is Needed
+`MBO` · `MBP-1` · `MBP-10` · `TBBO` · `Trades` · `OHLCV-1S` · `OHLCV-1M` · `OHLCV-1H` · `OHLCV-1D` · `OHLCV-EOD` · `Definition` · `Statistics` · `Status` · `Imbalance` · `CMBP-1` · `CBBO-1S` · `CBBO-1M` · `TCBBO` · `BBO-1S` · `BBO-1M`
 
-```csharp
-// What you receive in TradeMessage:
-InstrumentId: 11667
-Price: 185.97
-Size: 100
+## Symbol Mapping
 
-// What you need to display:
-"NVDA: $185.97 x 100"
-```
+Records contain numeric `InstrumentId` values instead of ticker symbols. Resolve them as shown below.
 
-### How It Works
-
-1. **SymbolMappingMessage records arrive FIRST** (before trades/quotes)
-2. Build a lookup dictionary: `InstrumentId → Symbol`
-3. Use the dictionary to resolve symbols in subsequent data records
-
-### ⚠️ CRITICAL: Use `STypeOutSymbol`, NOT `STypeInSymbol`
-
-```csharp
-// ✅ CORRECT
-symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
-
-// ❌ WRONG - Will show "ALL_SYMBOLS" for every trade!
-symbolMap[mapping.InstrumentId] = mapping.STypeInSymbol;
-```
-
-**Why?** For multi-symbol subscriptions:
-- `STypeInSymbol` = Your subscription string (`"ALL_SYMBOLS"`) - **same for all records**
-- `STypeOutSymbol` = Actual ticker symbol (`"NVDA"`, `"AAPL"`, etc.) - **unique per instrument**
-
-### Complete Working Example
+### Live Client Symbol Mapping
 
 ```csharp
 using System.Collections.Concurrent;
 using Databento.Client.Builders;
 using Databento.Client.Models;
 
-var apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
-    ?? throw new InvalidOperationException("DATABENTO_API_KEY not set");
-
-// Symbol map: InstrumentId → Ticker Symbol
 var symbolMap = new ConcurrentDictionary<uint, string>();
 
 await using var client = new LiveClientBuilder()
-    .WithApiKey(apiKey)
+    .WithKeyFromEnv()
     .Build();
 
-// Handle incoming records
 client.DataReceived += (sender, e) =>
 {
-    // Step 1: Capture symbol mappings (arrive first)
     if (e.Record is SymbolMappingMessage mapping)
     {
-        // ⚠️ Use STypeOutSymbol for the actual ticker symbol!
+        // Use STypeOutSymbol (NOT STypeInSymbol)
         symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+        Console.WriteLine($"Mapped {mapping.InstrumentId} to {mapping.STypeOutSymbol}");
         return;
     }
 
-    // Step 2: Resolve symbols for data records
     if (e.Record is TradeMessage trade)
     {
-        var symbol = symbolMap.GetValueOrDefault(
-            trade.InstrumentId,
-            trade.InstrumentId.ToString());  // Fallback if not found
-
-        Console.WriteLine($"{symbol}: ${trade.PriceDecimal:F2} x {trade.Size}");
+        var symbol = symbolMap.GetValueOrDefault(trade.InstrumentId, "UNKNOWN");
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal}");
     }
 };
 
-// Subscribe to live data
-await client.SubscribeAsync(
-    dataset: "EQUS.MINI",
-    schema: Schema.Trades,
-    symbols: new[] { "NVDA", "AAPL" }
-);
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA", "AAPL" });
+await client.StartAsync();
+await foreach (var record in client.StreamAsync()) { }
+```
 
+> **Important:** Always use `STypeOutSymbol` for the actual ticker. `STypeInSymbol` contains your subscription string (e.g., "ALL_SYMBOLS").
+
+### LiveBlocking Client Symbol Mapping
+
+```csharp
+using System.Collections.Concurrent;
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var symbolMap = new ConcurrentDictionary<uint, string>();
+
+await using var client = new LiveBlockingClientBuilder()
+    .WithKeyFromEnv()
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA", "AAPL" });
 await client.StartAsync();
 
-// Stream records
-await foreach (var record in client.StreamAsync())
+while (true)
 {
-    // Records handled by DataReceived event
+    var record = await client.NextRecordAsync(timeout: TimeSpan.FromSeconds(5));
+    if (record == null) break;
+
+    if (record is SymbolMappingMessage mapping)
+    {
+        symbolMap[mapping.InstrumentId] = mapping.STypeOutSymbol;
+        Console.WriteLine($"Mapped {mapping.InstrumentId} to {mapping.STypeOutSymbol}");
+        continue;
+    }
+
+    if (record is TradeMessage trade)
+    {
+        var symbol = symbolMap.GetValueOrDefault(trade.InstrumentId, "UNKNOWN");
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal}");
+    }
 }
 ```
 
-> 💡 **Testing outside market hours?** Use replay mode by adding a `startTime` parameter to `SubscribeAsync()` (e.g., `startTime: DateTimeOffset.UtcNow.AddHours(-1)`). See `examples/LiveSymbolResolution.Example` for a complete replay mode implementation.
+### Historical Client Symbol Mapping
 
-### Expected Output
+> **Note:** Historical API does **not** send SymbolMappingMessage. Use `SymbologyResolveAsync()` first.
 
-```
-NVDA: $185.97 x 100
-AAPL: $172.45 x 50
-NVDA: $186.02 x 200
-...
-```
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
 
-### Performance
+await using var client = new HistoricalClientBuilder()
+    .WithKeyFromEnv()
+    .Build();
 
-Symbol lookups are very fast (~20-50 nanoseconds per lookup using `ConcurrentDictionary`), negligible compared to network I/O.
+var symbols = new[] { "NVDA", "AAPL" };
+var start = new DateTimeOffset(2025, 1, 15, 14, 30, 0, TimeSpan.Zero);
+var end = start.AddHours(1);
 
-### Complete Example Project
+// Step 1: Resolve symbols to instrument IDs BEFORE streaming
+var queryDate = DateOnly.FromDateTime(start.Date);
+var resolution = await client.SymbologyResolveAsync(
+    "EQUS.MINI", symbols, SType.RawSymbol, SType.InstrumentId,
+    queryDate, queryDate.AddDays(1));
 
-See `examples/LiveSymbolResolution.Example` for a complete, tested example with:
-- Symbol mapping implementation using replay mode (works anytime, no market hours required)
-- Performance measurement
-- Error handling
-- Validation
+var symbolMap = new Dictionary<uint, string>();
+foreach (var (inputSymbol, intervals) in resolution.Mappings)
+    foreach (var interval in intervals)
+        if (uint.TryParse(interval.Symbol, out var instrumentId))
+        {
+            symbolMap[instrumentId] = inputSymbol;
+            Console.WriteLine($"Mapped {instrumentId} to {inputSymbol}");
+        }
 
-The example uses replay mode by default (replaying from most recent market open), with live mode shown as a commented alternative.
-
-```bash
-dotnet run --project examples/LiveSymbolResolution.Example/LiveSymbolResolution.Example.csproj
-```
-
-### See Also
-
-- **API Reference**: [Symbol Mapping section](API_REFERENCE.md#6-symbol-mapping) for detailed documentation
-- **IntelliSense**: Hover over `SymbolMappingMessage` in your IDE for inline examples
-- **Example Code**: `examples/LiveSymbolResolution.Example/Program.cs`
-
-
-## Building
-
-### Build All (Native + .NET)
-
-```bash
-# Windows
-./build/build-all.ps1 -Configuration Release
-
-# Linux/macOS
-./build/build-all.sh --configuration Release
+// Step 2: Stream data using the pre-built symbol map
+await foreach (var record in client.GetRangeAsync(
+    "EQUS.MINI", Schema.Trades, symbols, start, end))
+{
+    if (record is TradeMessage trade)
+    {
+        var symbol = symbolMap.GetValueOrDefault(trade.InstrumentId, "UNKNOWN");
+        Console.WriteLine($"{symbol}: ${trade.PriceDecimal} x {trade.Size}");
+    }
+}
 ```
 
-### Build Native Library Only
-
-```bash
-# Windows
-./build/build-native.ps1 -Configuration Release
-
-# Linux/macOS
-./build/build-native.sh --configuration Release
-```
-
-### Build .NET Solution Only
-
-```bash
-dotnet build databento-dotnet.sln -c Release
-```
-
-## Project Structure
-
-```
-databento-dotnet/
-├── src/
-│   ├── Databento.Native/          # C++ native wrapper
-│   │   ├── include/               # C API headers
-│   │   ├── src/                   # C++ implementation
-│   │   └── CMakeLists.txt
-│   ├── Databento.Interop/         # P/Invoke layer
-│   │   ├── Native/                # P/Invoke declarations
-│   │   └── Handles/               # SafeHandle wrappers
-│   └── Databento.Client/          # High-level .NET API
-│       ├── Live/                  # Live streaming
-│       ├── Historical/            # Historical queries
-│       ├── Reference/             # Reference data APIs
-│       ├── Models/                # Data models
-│       └── Builders/              # Builder pattern
-├── examples/
-│   ├── LiveStreaming.Example/
-│   ├── HistoricalData.Example/
-│   ├── Reference.Example/
-│   └── (26+ examples total)
-├── build/
-│   ├── build-native.ps1           # Native build (Windows)
-│   ├── build-native.sh            # Native build (Linux/macOS)
-│   └── build-all.ps1              # Full solution build
-└── databento-dotnet.sln           # Visual Studio solution
-```
-
-## Running Examples
-
-**Prerequisites:** Set the `DATABENTO_API_KEY` environment variable (see [API Key Setup](#api-key-setup) above).
-
-```bash
-# Run live streaming example
-dotnet run --project examples/LiveStreaming.Example
-
-# Run historical data example
-dotnet run --project examples/HistoricalData.Example
-
-# Run reference data example
-dotnet run --project examples/Reference.Example
-```
-
-## Supported Schemas
-
-- **MBO**: Market by order
-- **MBP-1**: Market by price (Level 1)
-- **MBP-10**: Market by price (Level 10)
-- **Trades**: Trade messages
-- **OHLCV**: OHLCV bars (1s, 1m, 1h, 1d)
-- **Definition**: Instrument definitions
-- **Statistics**: Market statistics
-- **Status**: Trading status
-- **Imbalance**: Order imbalances
-
-## API Documentation
+## API Reference
 
 ### LiveClient
 
 ```csharp
-ILiveClient client = new LiveClientBuilder()
-    .WithApiKey(apiKey)
+await using var client = new LiveClientBuilder()
+    .WithApiKey(apiKey)           // Or .WithKeyFromEnv()
+    .WithDataset("GLBX.MDP3")     // Default dataset
+    .WithAutoReconnect()          // Enable resilience
     .Build();
 
-// Events
-client.DataReceived += (sender, e) => { /* ... */ };
-client.ErrorOccurred += (sender, e) => { /* ... */ };
-
-// Methods
+// Subscribe and stream
 await client.SubscribeAsync(dataset, schema, symbols);
 await client.StartAsync();
-await client.StopAsync();
+await foreach (var record in client.StreamAsync()) { }
 
-// IAsyncEnumerable streaming
-await foreach (var record in client.StreamAsync()) { /* ... */ }
+// Events
+client.DataReceived += (s, e) => { };
+client.ErrorOccurred += (s, e) => { };
+```
+
+### LiveBlockingClient
+
+Pull-based API for explicit control over record retrieval:
+
+```csharp
+await using var client = new LiveBlockingClientBuilder()
+    .WithKeyFromEnv()
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
+await client.StartAsync();
+
+// Pull records one at a time
+while (true)
+{
+    var record = await client.NextRecordAsync(timeout: TimeSpan.FromSeconds(5));
+    if (record == null) break;  // Timeout reached
+    Console.WriteLine(record);
+}
 ```
 
 ### HistoricalClient
 
 ```csharp
-IHistoricalClient client = new HistoricalClientBuilder()
-    .WithApiKey(apiKey)
+await using var client = new HistoricalClientBuilder()
+    .WithKeyFromEnv()
     .Build();
 
-// Query historical data
 await foreach (var record in client.GetRangeAsync(
-    dataset, schema, symbols, startTime, endTime))
-{
-    // Process records
-}
+    dataset, schema, symbols, startTime, endTime)) { }
 ```
 
 ### ReferenceClient
 
 ```csharp
-IReferenceClient client = new ReferenceClientBuilder()
+var client = new ReferenceClientBuilder()
     .SetApiKey(apiKey)
     .Build();
 
-// Get latest security master data
+// Security master
 var records = await client.SecurityMaster.GetLastAsync(
-    symbols: new[] { "NVDA" },
-    stypeIn: SType.RawSymbol
-);
+    symbols: new[] { "NVDA" }, stypeIn: SType.RawSymbol);
 
-// Get security master data for a date range
-var historicalRecords = await client.SecurityMaster.GetRangeAsync(
-    start: DateTimeOffset.UtcNow.AddDays(-30),
-    end: DateTimeOffset.UtcNow,
-    symbols: new[] { "NVDA" }
-);
-
-// Get adjustment factors
+// Adjustment factors
 var adjustments = await client.AdjustmentFactors.GetRangeAsync(
-    start: DateTimeOffset.UtcNow.AddDays(-90),
-    symbols: new[] { "NVDA" }
-);
+    start: DateTimeOffset.UtcNow.AddDays(-90), symbols: new[] { "NVDA" });
 
-// Get corporate actions
-var corporateActions = await client.CorporateActions.GetRangeAsync(
-    start: DateTimeOffset.UtcNow.AddYears(-1),
-    symbols: new[] { "NVDA" }
-);
+// Corporate actions
+var actions = await client.CorporateActions.GetRangeAsync(
+    start: DateTimeOffset.UtcNow.AddYears(-1), symbols: new[] { "NVDA" });
 ```
 
-## Performance Considerations
+### Resilience & Auto-Reconnect
 
-1. **Memory Management**: Records are copied from native to managed memory. For high-throughput scenarios, consider batching.
+The client includes built-in resilience features for production deployments:
 
-2. **Threading**: Callbacks fire on native threads. The library marshals them to the .NET thread pool via `Channel<T>`.
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Resilience;
 
-3. **Backpressure**: The `Channel<T>` is unbounded by default. Consider adding bounds for memory-constrained environments.
+await using var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .WithAutoReconnect()                              // Enable auto-reconnect
+    .WithRetryPolicy(RetryPolicy.Aggressive)          // 5 retries, longer delays
+    .WithHeartbeatTimeout(TimeSpan.FromSeconds(60))   // Stale connection detection
+    .Build();
+```
 
-4. **Disposal**: Always use `await using` to ensure proper resource cleanup.
+#### Retry Policies
+
+| Policy | Max Retries | Initial Delay | Max Delay |
+|--------|-------------|---------------|-----------|
+| `RetryPolicy.Default` | 3 | 1s | 30s |
+| `RetryPolicy.Aggressive` | 5 | 1s | 60s |
+| `RetryPolicy.None` | 0 | - | - |
+
+#### Resilience Callbacks
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Resilience;
+
+var options = new ResilienceOptions
+{
+    AutoReconnect = true,
+    OnReconnecting = (attempt, ex) => {
+        Console.WriteLine($"Reconnecting (attempt {attempt}): {ex.Message}");
+        return true;  // Continue reconnecting
+    },
+    OnReconnected = (attempts) => Console.WriteLine($"Reconnected after {attempts} attempts"),
+    OnReconnectFailed = (ex) => Console.WriteLine($"Reconnect failed: {ex.Message}")
+};
+
+await using var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .WithResilienceOptions(options)
+    .Build();
+```
+
+## Building from Source
+
+### Prerequisites
+
+- .NET 8 SDK or later
+- CMake 3.24+
+- C++17 compiler (VS 2019+, GCC 9+, Clang 10+)
+
+### Build
+
+```bash
+# Full build (native + .NET)
+./build/build-all.ps1 -Configuration Release    # Windows
+./build/build-all.sh --configuration Release    # Linux/macOS
+
+# .NET only (if native library already built)
+dotnet build -c Release
+```
+
+### Project Structure
+
+```
+databento-dotnet/
+├── src/
+│   ├── Databento.Client/     # High-level .NET API
+│   ├── Databento.Interop/    # P/Invoke layer
+│   └── Databento.Native/     # C++ wrapper (CMake)
+├── examples/                  # 25+ working examples
+└── docs/                      # Additional documentation
+```
 
 ## Troubleshooting
 
-### Native Library Not Found
+### DllNotFoundException
 
-Ensure the native library is built and copied to the output directory:
+The NuGet package includes all dependencies. If you still see this error:
 
-```bash
-# Rebuild native library
-./build/build-native.ps1
+1. Ensure you're on a supported platform (Windows x64, Linux x64, macOS x64/ARM64)
+2. Try `dotnet restore --force`
+3. On Windows, install [VC++ 2022 Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+### Connection Issues
+
+```csharp
+// Enable logging for diagnostics
+var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .WithLogger(loggerFactory.CreateLogger<ILiveClient>())
+    .Build();
 ```
 
-### CMake Configuration Fails
+### More Help
 
-Ensure all prerequisites are installed:
-
-```bash
-# Windows (with chocolatey)
-choco install cmake visualstudio2022buildtools
-
-# Linux (Ubuntu/Debian)
-sudo apt-get install cmake build-essential libssl-dev libzstd-dev
-
-# macOS (with Homebrew)
-brew install cmake openssl zstd
-```
-
-### API Authentication Errors
-
-Verify your API key is correct and has the required permissions:
-
-```bash
-# Test API key
-curl -H "Authorization: Bearer your-api-key" https://api.databento.com/v1/metadata.list_datasets
-```
+- [API Reference](API_REFERENCE.md) - Quick-start guide with examples
+- [API Classification](API_Classification.md) - Complete method signatures
+- [Databento Documentation](https://databento.com/docs/)
+- [Issue Tracker](https://github.com/Alparse/databento-dotnet/issues)
 
 ## License
 
-Apache 2.0 License. See [LICENSE](LICENSE) for details.
+Apache 2.0 - See [LICENSE](LICENSE)
 
-## Resources
+---
 
-- [Databento Documentation](https://docs.databento.com)
-- [databento-cpp GitHub](https://github.com/databento/databento-cpp)
-- [Issue Tracker](https://github.com/Alparse/databento-dotnet/issues)
-
-## Acknowledgments
-
-Built on top of [Databento's official C++ client](https://github.com/databento/databento-cpp).
+Built on [databento-cpp](https://github.com/databento/databento-cpp)
