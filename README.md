@@ -18,7 +18,7 @@ A high-performance .NET client for accessing [Databento](https://databento.com) 
 Install via .NET CLI:
 
 ```bash
-dotnet add package Databento.Client --prerelease
+dotnet add package Databento.Client
 ```
 
 Or via Package Manager Console:
@@ -208,7 +208,7 @@ The library includes runtime DLLs, but in rare cases Windows may require the ful
 ### 1. Install Package
 
 ```bash
-dotnet add package Databento.Client --prerelease
+dotnet add package Databento.Client
 ```
 
 ### 2. Set API Key
