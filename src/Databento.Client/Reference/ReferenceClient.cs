@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Databento.Client.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -15,7 +16,7 @@ public sealed class ReferenceClient : IReferenceClient
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _baseUrl;
-    private readonly ILogger<IReferenceClient>? _logger;
+    private readonly ILogger<IReferenceClient> _logger;
     private bool _disposed;
 
     // MEDIUM FIX: Polly retry policy for transient HTTP failures
@@ -83,7 +84,7 @@ public sealed class ReferenceClient : IReferenceClient
             throw new ArgumentException("API key cannot be null or empty", nameof(apiKey));
 
         _apiKey = apiKey;
-        _logger = logger;
+        _logger = logger ?? NullLogger<IReferenceClient>.Instance;
 
         // Map gateway to base URL
         _baseUrl = gateway switch
@@ -118,7 +119,7 @@ public sealed class ReferenceClient : IReferenceClient
         _securityMaster = new Lazy<ISecurityMasterApi>(() =>
             new SecurityMasterApi(_httpClient, _baseUrl, _logger, () => _disposed, RetryPolicy));
 
-        _logger?.LogInformation(
+        _logger.LogInformation(
             "ReferenceClient created successfully. Gateway={Gateway}, BaseUrl={BaseUrl}",
             gateway,
             _baseUrl);

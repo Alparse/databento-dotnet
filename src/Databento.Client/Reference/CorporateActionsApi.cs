@@ -14,15 +14,15 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
 {
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
-    private readonly ILogger? _logger;
+    private readonly ILogger _logger;
     private readonly Func<bool> _isDisposed;
     private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
 
-    public CorporateActionsApi(HttpClient httpClient, string baseUrl, ILogger? logger, Func<bool> isDisposed, IAsyncPolicy<HttpResponseMessage> retryPolicy)
+    public CorporateActionsApi(HttpClient httpClient, string baseUrl, ILogger logger, Func<bool> isDisposed, IAsyncPolicy<HttpResponseMessage> retryPolicy)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _baseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _isDisposed = isDisposed ?? throw new ArgumentNullException(nameof(isDisposed));
         _retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
     }
@@ -111,7 +111,7 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         }
 
         var url = $"{_baseUrl}/v0/corporate_actions.get_range";
-        _logger?.LogDebug("POST {Url}", url);
+        _logger.LogDebug("POST {Url}", url);
 
         // MEDIUM FIX: Execute with retry policy for transient failures
         var content = new FormUrlEncodedContent(queryParams);

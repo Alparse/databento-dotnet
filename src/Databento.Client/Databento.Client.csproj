@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>4.0.1-beta</Version>
+    <Version>4.1.0</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v4.0.1-beta: CRITICAL HOTFIX - Fixed AccessViolationException crash in Historical, Live, and LiveBlocking clients by restoring logger. Regression from v4.0.0-beta. All users on v4.0.0-beta should upgrade immediately.</PackageReleaseNotes>
+    <PackageReleaseNotes>v4.1.0: Production release with resilience features. Added auto-reconnect, retry policies with exponential backoff, and connection health monitoring. Fixed critical SEHException crash during LiveClient disposal. Now targets .NET 8 and .NET 9.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->

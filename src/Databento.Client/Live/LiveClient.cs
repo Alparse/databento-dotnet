@@ -6,10 +6,12 @@ using System.Threading.Channels;
 using Databento.Client.Events;
 using Databento.Client.Models;
 using Databento.Client.Models.Dbn;
+using Databento.Client.Resilience;
 using Databento.Interop;
 using Databento.Interop.Handles;
 using Databento.Interop.Native;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Databento.Client.Live;
 
@@ -29,10 +31,12 @@ public sealed class LiveClient : ILiveClient
     private readonly VersionUpgradePolicy _upgradePolicy;
     private readonly TimeSpan _heartbeatInterval;
     private readonly string _apiKey;
-    private readonly ILogger<ILiveClient>? _logger;
+    private readonly ILogger<ILiveClient> _logger;
     private readonly ExceptionCallback? _exceptionHandler;
+    private readonly ResilienceOptions _resilienceOptions;
+    private readonly ConnectionHealthMonitor? _healthMonitor;
     // HIGH FIX: Use thread-safe collection for concurrent subscription operations
-    private readonly System.Collections.Concurrent.ConcurrentBag<(string dataset, Schema schema, string[] symbols, bool withSnapshot)> _subscriptions;
+    private readonly System.Collections.Concurrent.ConcurrentBag<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime)> _subscriptions;
     private Task? _streamTask;
     // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
     private int _disposeState = 0;
@@ -69,8 +73,46 @@ public sealed class LiveClient : ILiveClient
         }
     }
 
+    #region Configuration Properties
+
+    /// <summary>
+    /// The default dataset for subscriptions, if configured
+    /// </summary>
+    public string? Dataset => _defaultDataset;
+
+    /// <summary>
+    /// Whether ts_out timestamps are sent with records
+    /// </summary>
+    public bool SendTsOut => _sendTsOut;
+
+    /// <summary>
+    /// The DBN version upgrade policy
+    /// </summary>
+    public VersionUpgradePolicy UpgradePolicy => _upgradePolicy;
+
+    /// <summary>
+    /// The heartbeat interval for connection monitoring
+    /// </summary>
+    public TimeSpan HeartbeatInterval => _heartbeatInterval;
+
+    /// <summary>
+    /// The active subscriptions on this client
+    /// </summary>
+    public IReadOnlyList<LiveSubscription> Subscriptions =>
+        _subscriptions.Select(s => new LiveSubscription
+        {
+            Dataset = s.dataset,
+            Schema = s.schema,
+            STypeIn = SType.RawSymbol, // Default - native API uses raw symbols
+            Symbols = s.symbols,
+            StartTime = s.startTime,
+            WithSnapshot = s.withSnapshot
+        }).ToList().AsReadOnly();
+
+    #endregion
+
     internal LiveClient(string apiKey)
-        : this(apiKey, null, false, VersionUpgradePolicy.Upgrade, TimeSpan.FromSeconds(30), null, null)
+        : this(apiKey, null, false, VersionUpgradePolicy.Upgrade, TimeSpan.FromSeconds(30), null, null, null)
     {
     }
 
@@ -81,7 +123,8 @@ public sealed class LiveClient : ILiveClient
         VersionUpgradePolicy upgradePolicy,
         TimeSpan heartbeatInterval,
         ILogger<ILiveClient>? logger = null,
-        ExceptionCallback? exceptionHandler = null)
+        ExceptionCallback? exceptionHandler = null,
+        ResilienceOptions? resilienceOptions = null)
     {
         if (string.IsNullOrEmpty(apiKey))
             throw new ArgumentException("API key cannot be null or empty", nameof(apiKey));
@@ -91,9 +134,19 @@ public sealed class LiveClient : ILiveClient
         _sendTsOut = sendTsOut;
         _upgradePolicy = upgradePolicy;
         _heartbeatInterval = heartbeatInterval;
-        _logger = logger;
+        _logger = logger ?? NullLogger<ILiveClient>.Instance;
         _exceptionHandler = exceptionHandler;
-        _subscriptions = new System.Collections.Concurrent.ConcurrentBag<(string, Schema, string[], bool)>();
+        _resilienceOptions = resilienceOptions ?? new ResilienceOptions();
+        _subscriptions = new System.Collections.Concurrent.ConcurrentBag<(string, Schema, string[], bool, DateTimeOffset?)>();
+
+        // Initialize health monitor if auto-reconnect or heartbeat monitoring enabled
+        if (_resilienceOptions.AutoReconnect || _resilienceOptions.HeartbeatTimeout > TimeSpan.Zero)
+        {
+            _healthMonitor = new ConnectionHealthMonitor(
+                _resilienceOptions,
+                _logger,
+                async ct => await PerformReconnectAsync(ct));
+        }
         // MEDIUM FIX: Use Interlocked for consistency
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
 
@@ -130,13 +183,13 @@ public sealed class LiveClient : ILiveClient
         {
             // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            _logger?.LogError("Failed to create LiveClient: {Error}", error);
+            _logger.LogError("Failed to create LiveClient: {Error}", error);
             throw new DbentoException($"Failed to create live client: {error}");
         }
 
         _handle = new LiveClientHandle(handlePtr);
 
-        _logger?.LogInformation(
+        _logger.LogInformation(
             "LiveClient created successfully. Dataset={Dataset}, SendTsOut={SendTsOut}, UpgradePolicy={UpgradePolicy}, Heartbeat={Heartbeat}s",
             defaultDataset ?? "(none)",
             sendTsOut,
@@ -176,7 +229,7 @@ public sealed class LiveClient : ILiveClient
                 ? 0  // Full replay history
                 : Utilities.DateTimeHelpers.ToUnixNanos(startTime.Value);
 
-            _logger?.LogInformation(
+            _logger.LogInformation(
                 "Subscribing with replay: dataset={Dataset}, schema={Schema}, symbolCount={SymbolCount}, startTime={StartTime}",
                 dataset,
                 schema,
@@ -196,7 +249,7 @@ public sealed class LiveClient : ILiveClient
         else
         {
             // Basic subscribe without replay (matches databento-cpp: Subscribe(symbols, schema, stype))
-            _logger?.LogInformation(
+            _logger.LogInformation(
                 "Subscribing to dataset={Dataset}, schema={Schema}, symbolCount={SymbolCount}",
                 dataset,
                 schema,
@@ -216,7 +269,7 @@ public sealed class LiveClient : ILiveClient
         {
             // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            _logger?.LogError(
+            _logger.LogError(
                 "Subscription failed with error code {ErrorCode}: {Error}. Dataset={Dataset}, Schema={Schema}",
                 result,
                 error,
@@ -227,9 +280,9 @@ public sealed class LiveClient : ILiveClient
         }
 
         // Track subscription for resubscription
-        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false));
+        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime));
 
-        _logger?.LogInformation("Subscription successful for {SymbolCount} symbols", symbolArray.Length);
+        _logger.LogInformation("Subscription successful for {SymbolCount} symbols", symbolArray.Length);
 
         return Task.CompletedTask;
     }
@@ -274,7 +327,7 @@ public sealed class LiveClient : ILiveClient
         }
 
         // Track subscription for resubscription
-        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: true));
+        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: true, startTime: null));
 
         return Task.CompletedTask;
     }
@@ -288,13 +341,20 @@ public sealed class LiveClient : ILiveClient
 
         // CRITICAL FIX: Create TaskCompletionSource BEFORE creating task to prevent race condition
         // This ensures each thread gets its own TCS that won't be overwritten
-        var metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>();
+        // CRITICAL FIX: Use RunContinuationsAsynchronously to prevent deadlock when TrySetResult
+        // is called from native callback thread - continuations must run on a different thread
+        var metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        _logger?.LogInformation("Starting live stream");
+        // CRITICAL FIX: Set instance-level TCS BEFORE starting the task
+        // The native metadata callback fires asynchronously and may arrive before Task.Run() returns
+        // If _metadataTcs is not set, OnMetadataReceived will silently do nothing (null-conditional)
+        _metadataTcs = metadataTcs;
+
+        _logger.LogInformation("Starting live stream");
 
         // MEDIUM FIX: Use Interlocked for consistency
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Connecting);
-        _logger?.LogDebug("Connection state changed: Disconnected → Connecting");
+        _logger.LogDebug("Connection state changed: Disconnected → Connecting");
 
         // CRITICAL FIX: Create task first, THEN use CompareExchange to atomically set _streamTask
         // This prevents TOCTOU race condition - only one thread can successfully set _streamTask from null
@@ -319,8 +379,8 @@ public sealed class LiveClient : ILiveClient
                 var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
                 // MEDIUM FIX: Use Interlocked for consistency
                 Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
-                _logger?.LogError("Live stream start failed with error code {ErrorCode}: {Error}", result, error);
-                _logger?.LogDebug("Connection state changed: Connecting → Disconnected");
+                _logger.LogError("Live stream start failed with error code {ErrorCode}: {Error}", result, error);
+                _logger.LogDebug("Connection state changed: Connecting → Disconnected");
 
                 // Set exception on TaskCompletionSource
                 var exception = DbentoException.CreateFromErrorCode($"Start failed: {error}", result);
@@ -332,8 +392,11 @@ public sealed class LiveClient : ILiveClient
 
             // MEDIUM FIX: Use Interlocked for consistency
             Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Streaming);
-            _logger?.LogInformation("Live stream started successfully");
-            _logger?.LogDebug("Connection state changed: Connecting → Streaming");
+            _logger.LogInformation("Live stream started successfully");
+            _logger.LogDebug("Connection state changed: Connecting → Streaming");
+
+            // Start health monitoring if enabled
+            _healthMonitor?.Start();
         }, cancellationToken);
 
         // CRITICAL FIX: Use CompareExchange (not Exchange) to atomically set _streamTask
@@ -342,46 +405,69 @@ public sealed class LiveClient : ILiveClient
         var previousTask = Interlocked.CompareExchange(ref _streamTask, newTask, null);
         if (previousTask != null)
         {
-            // Another thread won the race - restore connection state and throw
+            // Another thread won the race - restore connection state and clean up
             Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
-            _logger?.LogWarning("StartAsync called concurrently - another thread already started");
+            _metadataTcs = null;  // Clean up the TCS we set earlier
+            _logger.LogWarning("StartAsync called concurrently - another thread already started");
             throw new InvalidOperationException("Client is already started");
         }
-
-        // We won the race - set the instance-level TCS for use by callbacks
-        _metadataTcs = metadataTcs;
 
         // Wait for metadata to be received from callback
         return await metadataTcs.Task.ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Stop receiving data
+    /// Stop receiving data. This method is idempotent and can be called multiple times safely.
     /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         // CRITICAL FIX: Use atomic read for disposal state
         if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
         {
-            NativeMethods.dbento_live_stop(_handle);
-            // MEDIUM FIX: Use Interlocked for consistency
-            Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Stopped);
+            // Check if already stopped - make StopAsync idempotent
+            var previousState = Interlocked.CompareExchange(ref _connectionState, (int)ConnectionState.Stopped, (int)ConnectionState.Streaming);
+            if (previousState != (int)ConnectionState.Streaming && previousState != (int)ConnectionState.Connecting)
+            {
+                // Already stopped or never started - nothing to do
+                return;
+            }
 
-            // CRITICAL FIX: Wait for all active callbacks to complete before closing channel
-            // This prevents race condition where callbacks try to write to a closed channel
+            // CRITICAL FIX: Use stop_and_wait to ensure native thread terminates before proceeding
+            // This prevents race conditions during disposal where callbacks fire after cleanup
+            byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
+            var result = NativeMethods.dbento_live_stop_and_wait(
+                _handle,
+                10000, // 10 second timeout
+                errorBuffer,
+                (nuint)errorBuffer.Length);
+
+            if (result == 1)
+            {
+                // Timeout - log warning but continue
+                _logger.LogWarning("Timeout waiting for native thread to stop. Proceeding with cleanup.");
+            }
+            else if (result < 0)
+            {
+                // Error - log but continue
+                var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
+                _logger.LogWarning("Error during stop: {Error}. Proceeding with cleanup.", error);
+            }
+
+            // Wait for any remaining managed callbacks to complete
+            // (native thread is stopped, but managed callbacks may still be in-flight)
             int waitCount = 0;
             while (Interlocked.CompareExchange(ref _activeCallbackCount, 0, 0) > 0)
             {
-                if (waitCount++ > 1000) // 10 second timeout (10ms * 1000)
+                if (waitCount++ > 100) // 1 second timeout (10ms * 100) - much shorter now
                 {
-                    _logger?.LogWarning("Timeout waiting for active callbacks to complete. Count: {Count}", 
+                    _logger.LogWarning("Timeout waiting for active callbacks to complete. Count: {Count}",
                         Interlocked.CompareExchange(ref _activeCallbackCount, 0, 0));
                     break;
                 }
                 await Task.Delay(10, cancellationToken).ConfigureAwait(false);
             }
 
-            _recordChannel.Writer.Complete();
+            _recordChannel.Writer.TryComplete();
         }
     }
 
@@ -456,6 +542,29 @@ public sealed class LiveClient : ILiveClient
     }
 
     /// <summary>
+    /// Internal method to perform full reconnection with resubscription.
+    /// Called by the health monitor when auto-reconnect is enabled.
+    /// </summary>
+    private async Task PerformReconnectAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Performing automatic reconnection...");
+
+        // Reconnect to gateway
+        await ReconnectAsync(cancellationToken).ConfigureAwait(false);
+
+        // Resubscribe if enabled
+        if (_resilienceOptions.AutoResubscribe)
+        {
+            await ResubscribeAsync(cancellationToken).ConfigureAwait(false);
+
+            // Restart streaming
+            await StartAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        _logger.LogInformation("Automatic reconnection completed successfully");
+    }
+
+    /// <summary>
     /// Stream records as an async enumerable
     /// </summary>
     public async IAsyncEnumerable<Record> StreamAsync(
@@ -520,7 +629,7 @@ public sealed class LiveClient : ILiveClient
             }
             catch (Exception ex) when (ex is AccessViolationException or ArgumentException or ArgumentOutOfRangeException)
             {
-                _logger?.LogError(ex, "Marshal.Copy failed: corrupted native memory detected. Ptr={Ptr}, Length={Length}",
+                _logger.LogError(ex, "Marshal.Copy failed: corrupted native memory detected. Ptr={Ptr}, Length={Length}",
                     (IntPtr)recordBytes, recordLength);
 
                 var wrappedException = new DbentoException(
@@ -531,6 +640,9 @@ public sealed class LiveClient : ILiveClient
 
             // Deserialize record using the recordType parameter
             var record = Record.FromBytes(bytes, recordType);
+
+            // Record activity for health monitoring
+            _healthMonitor?.RecordActivity();
 
             // CRITICAL FIX: Double-check disposal state before channel operations
             if (Interlocked.CompareExchange(ref _disposeState, 0, 0) == 0)
@@ -558,6 +670,9 @@ public sealed class LiveClient : ILiveClient
     {
         var exception = new DbentoException(errorMessage, errorCode);
 
+        // Record error for health monitoring (may trigger auto-reconnect)
+        _healthMonitor?.RecordError(exception);
+
         // Fire the ErrorOccurred event - CRITICAL FIX: Use SafeInvokeEvent to prevent subscriber exceptions from crashing app
         SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(exception, errorCode));
 
@@ -567,11 +682,11 @@ public sealed class LiveClient : ILiveClient
             try
             {
                 var action = _exceptionHandler(exception);
-                _logger?.LogDebug("ExceptionCallback returned {Action} for error: {Error}", action, errorMessage);
+                _logger.LogDebug("ExceptionCallback returned {Action} for error: {Error}", action, errorMessage);
 
                 if (action == ExceptionAction.Stop)
                 {
-                    _logger?.LogInformation("ExceptionCallback requested Stop - stopping stream");
+                    _logger.LogInformation("ExceptionCallback requested Stop - stopping stream");
                     // Stop the stream (async operation, but callback is synchronous)
                     // We'll schedule this on the thread pool to avoid blocking
                     Task.Run(async () =>
@@ -582,18 +697,18 @@ public sealed class LiveClient : ILiveClient
                         }
                         catch (Exception ex)
                         {
-                            _logger?.LogError(ex, "Error during exception handler stop");
+                            _logger.LogError(ex, "Error during exception handler stop");
                         }
                     });
                 }
                 else
                 {
-                    _logger?.LogDebug("ExceptionCallback requested Continue - continuing stream");
+                    _logger.LogDebug("ExceptionCallback requested Continue - continuing stream");
                 }
             }
             catch (Exception handlerEx)
             {
-                _logger?.LogError(handlerEx, "Exception in ExceptionCallback - ignoring and continuing");
+                _logger.LogError(handlerEx, "Exception in ExceptionCallback - ignoring and continuing");
                 // If the exception handler itself throws, we ignore it and continue
             }
         }
@@ -610,7 +725,7 @@ public sealed class LiveClient : ILiveClient
                 return;
             }
 
-            _logger?.LogDebug("Metadata received: {MetadataLength} bytes", metadataLength);
+            _logger.LogDebug("Metadata received: {MetadataLength} bytes", metadataLength);
 
             // Parse JSON metadata into DbnMetadata object
             // Use JsonDocument.Parse to handle UINT64_MAX for "end" field (same as LiveBlocking)
@@ -658,7 +773,7 @@ public sealed class LiveClient : ILiveClient
                 Mappings = new List<SymbolMapping>() // TODO: Parse mappings if needed
             };
 
-            _logger?.LogInformation(
+            _logger.LogInformation(
                 "DBN metadata received: version={Version}, dataset={Dataset}",
                 metadata.Version,
                 metadata.Dataset);
@@ -668,7 +783,7 @@ public sealed class LiveClient : ILiveClient
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error processing metadata callback");
+            _logger.LogError(ex, "Error processing metadata callback");
             _metadataTcs?.TrySetException(ex);
             SafeInvokeEvent(ErrorOccurred, new Events.ErrorEventArgs(ex));
         }
@@ -695,7 +810,7 @@ public sealed class LiveClient : ILiveClient
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex,
+                _logger.LogError(ex,
                     "Event subscriber threw unhandled exception. Event type: {EventType}, Subscriber: {Subscriber}",
                     typeof(TEventArgs).Name,
                     subscriber.Method.Name);
@@ -723,16 +838,16 @@ public sealed class LiveClient : ILiveClient
         if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
-        _logger?.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop...");
+        _logger.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop...");
 
         try
         {
             await streamTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-            _logger?.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
+            _logger.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("BlockUntilStoppedAsync: Cancelled by user");
+            _logger.LogInformation("BlockUntilStoppedAsync: Cancelled by user");
             throw;
         }
     }
@@ -756,22 +871,22 @@ public sealed class LiveClient : ILiveClient
         if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
-        _logger?.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop (timeout: {Timeout}ms)...", timeout.TotalMilliseconds);
+        _logger.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop (timeout: {Timeout}ms)...", timeout.TotalMilliseconds);
 
         try
         {
             await streamTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
-            _logger?.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
+            _logger.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
             return true;  // Stopped normally
         }
         catch (System.TimeoutException)
         {
-            _logger?.LogWarning("BlockUntilStoppedAsync: Timeout reached after {Timeout}ms", timeout.TotalMilliseconds);
+            _logger.LogWarning("BlockUntilStoppedAsync: Timeout reached after {Timeout}ms", timeout.TotalMilliseconds);
             return false;  // Timeout reached
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("BlockUntilStoppedAsync: Cancelled by user");
+            _logger.LogInformation("BlockUntilStoppedAsync: Cancelled by user");
             throw;
         }
     }
@@ -821,24 +936,12 @@ public sealed class LiveClient : ILiveClient
 
         // Channel already completed by StopAsync() - no need to complete again
 
-        // Dispose handle
-        // CRITICAL FIX: Catch SEHException from native disposal crash (databento-cpp bug)
-        // Known issue: dbento_live_destroy may crash with STATUS_STACK_BUFFER_OVERRUN
-        // due to race condition between callbacks and resource cleanup.
-        // Catching this prevents process crash while still cleaning up managed resources.
-        try
-        {
-            _handle?.Dispose();
-        }
-        catch (SEHException ex)
-        {
-            // Native disposal crashed - this is a known issue in databento-cpp
-            // The crash occurs when dbento_live_destroy frees resources while callbacks
-            // are still active. Safe to ignore - OS will clean up native resources.
-            _logger?.LogWarning(ex,
-                "Native handle disposal failed with SEH exception (known databento-cpp issue). " +
-                "Managed resources cleaned up successfully. Native resources will be freed by OS.");
-        }
+        // Dispose health monitor
+        _healthMonitor?.Dispose();
+
+        // Dispose handle - BlockForStop() is called in StopAsync() and dbento_live_destroy()
+        // to ensure proper thread synchronization before resource cleanup
+        _handle?.Dispose();
 
         _cts?.Dispose();
 

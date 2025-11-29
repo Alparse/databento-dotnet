@@ -12,6 +12,7 @@ using Databento.Interop;
 using Databento.Interop.Handles;
 using Databento.Interop.Native;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Databento.Client.Historical;
 
@@ -27,7 +28,7 @@ public sealed class HistoricalClient : IHistoricalClient
     private readonly VersionUpgradePolicy _upgradePolicy;
     private readonly string? _userAgent;
     private readonly TimeSpan _timeout;
-    private readonly ILogger<IHistoricalClient>? _logger;
+    private readonly ILogger<IHistoricalClient> _logger;
     // MEDIUM FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
     private int _disposeState = 0;
 
@@ -39,6 +40,35 @@ public sealed class HistoricalClient : IHistoricalClient
     {
         Converters = { new JsonStringEnumConverter() }
     };
+
+    #region Configuration Properties
+
+    /// <summary>
+    /// The gateway used for historical API requests
+    /// </summary>
+    public HistoricalGateway Gateway => _gateway;
+
+    /// <summary>
+    /// The DBN version upgrade policy
+    /// </summary>
+    public VersionUpgradePolicy UpgradePolicy => _upgradePolicy;
+
+    /// <summary>
+    /// The request timeout
+    /// </summary>
+    public TimeSpan Timeout => _timeout;
+
+    /// <summary>
+    /// The custom gateway host, if configured
+    /// </summary>
+    public string? CustomHost => _customHost;
+
+    /// <summary>
+    /// The custom gateway port, if configured
+    /// </summary>
+    public ushort? CustomPort => _customPort;
+
+    #endregion
 
     internal HistoricalClient(string apiKey)
         : this(apiKey, HistoricalGateway.Bo1, null, null, VersionUpgradePolicy.Upgrade, null, TimeSpan.FromSeconds(30), null)
@@ -64,7 +94,7 @@ public sealed class HistoricalClient : IHistoricalClient
         _upgradePolicy = upgradePolicy;
         _userAgent = userAgent;
         _timeout = timeout;
-        _logger = logger;
+        _logger = logger ?? NullLogger<IHistoricalClient>.Instance;
 
         byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
         var handlePtr = NativeMethods.dbento_historical_create(apiKey, errorBuffer, (nuint)errorBuffer.Length);
@@ -73,13 +103,13 @@ public sealed class HistoricalClient : IHistoricalClient
         {
             // HIGH FIX: Use safe error string extraction
             var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            _logger?.LogError("Failed to create HistoricalClient: {Error}", error);
+            _logger.LogError("Failed to create HistoricalClient: {Error}", error);
             throw new DbentoException($"Failed to create historical client: {error}");
         }
 
         _handle = new HistoricalClientHandle(handlePtr);
 
-        _logger?.LogInformation(
+        _logger.LogInformation(
             "HistoricalClient created successfully. Gateway={Gateway}, UpgradePolicy={UpgradePolicy}, Timeout={Timeout}s",
             gateway,
             upgradePolicy,
@@ -120,7 +150,7 @@ public sealed class HistoricalClient : IHistoricalClient
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
 
-        _logger?.LogInformation(
+        _logger.LogInformation(
             "Starting historical query. Dataset={Dataset}, Schema={Schema}, SymbolCount={SymbolCount}, Start={Start}, End={End}",
             dataset,
             schema,
@@ -274,7 +304,7 @@ public sealed class HistoricalClient : IHistoricalClient
         var symbolArray = symbols.ToArray();
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
 
-        _logger?.LogInformation(
+        _logger.LogInformation(
             "Starting historical query with symbology filtering. Dataset={Dataset}, Schema={Schema}, SymbolCount={SymbolCount}, Start={Start}, End={End}, StypeIn={StypeIn}, StypeOut={StypeOut}, Limit={Limit}",
             dataset,
             schema,
@@ -1043,7 +1073,7 @@ public sealed class HistoricalClient : IHistoricalClient
                 // HIGH FIX: Use TryParse to prevent FormatException on malformed native cost string
                 if (!decimal.TryParse(costString, out var cost))
                 {
-                    _logger?.LogWarning("Failed to parse cost string from native code: {CostString}", costString);
+                    _logger.LogWarning("Failed to parse cost string from native code: {CostString}", costString);
                     throw new DbentoException($"Invalid cost format returned from native code: '{costString}'");
                 }
 
@@ -1621,7 +1651,7 @@ public sealed class HistoricalClient : IHistoricalClient
                         }
                         else
                         {
-                            _logger?.LogWarning(
+                            _logger.LogWarning(
                                 "Skipping invalid mapping interval: StartDate={StartDate}, EndDate={EndDate}, Symbol={Symbol}",
                                 startDateStrInterval, endDateStrInterval, symbol);
                         }

@@ -43,6 +43,17 @@ public static partial class NativeMethods
     [LibraryImport(LibName)]
     public static partial void dbento_live_stop(LiveClientHandle handle);
 
+    /// <summary>
+    /// Stop receiving data and wait for internal thread to terminate.
+    /// Returns 0 on success, 1 on timeout, negative on error.
+    /// </summary>
+    [LibraryImport(LibName)]
+    public static partial int dbento_live_stop_and_wait(
+        LiveClientHandle handle,
+        int timeoutMs,
+        byte[]? errorBuffer,
+        nuint errorBufferSize);
+
     [LibraryImport(LibName)]
     public static partial void dbento_live_destroy(IntPtr handle);
 

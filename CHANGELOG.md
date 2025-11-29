@@ -5,6 +5,42 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-11-28
+
+### Added
+
+- **.NET 9 Support**: Now targets both .NET 8 and .NET 9
+- **Resilience Features**: Added comprehensive connection resilience capabilities (non-breaking, opt-in)
+  - `RetryPolicy` class with exponential backoff and jitter
+  - `ResilienceOptions` for configuring auto-reconnect behavior
+  - `ConnectionHealthMonitor` for detecting stale connections
+  - New builder methods:
+    - `WithAutoReconnect(bool)` - Enable automatic reconnection on failure
+    - `WithRetryPolicy(RetryPolicy)` - Configure retry behavior
+    - `WithHeartbeatTimeout(TimeSpan)` - Configure stale connection detection
+    - `WithResilienceOptions(ResilienceOptions)` - Full resilience configuration
+  - Pre-built policies: `RetryPolicy.Default`, `RetryPolicy.Aggressive`, `ResilienceOptions.HighAvailability`
+  - Health monitoring events: `OnReconnecting`, `OnReconnected`, `OnReconnectFailed`
+
+### Fixed
+
+- **CRITICAL**: Fixed SEHException (STATUS_STACK_BUFFER_OVERRUN) crash during LiveClient disposal
+  - **Root Cause**: databento-cpp's `LiveThreaded` destructor only signals internal thread to stop but doesn't wait for it to terminate, causing race condition where callbacks execute during/after resource cleanup
+  - **Solution**: Implemented proper thread synchronization using databento-cpp's `BlockForStop()` method
+  - **Changes**:
+    - Added new native API `dbento_live_stop_and_wait()` that synchronously waits for thread termination
+    - Updated `StopAsync()` to use new API with 10-second timeout
+    - Updated `dbento_live_destroy()` to call `BlockForStop()` before resource cleanup
+    - Removed SEHException catch workaround from `DisposeAsync()` (no longer needed)
+  - **Impact**: `await using` pattern now works reliably without crashes
+  - **Files Changed**:
+    - `src/Databento.Native/include/databento_native.h`
+    - `src/Databento.Native/src/live_client_wrapper.cpp`
+    - `src/Databento.Interop/Native/NativeMethods.cs`
+    - `src/Databento.Client/Live/LiveClient.cs`
+
+---
+
 ## [4.0.1-beta] - 2025-11-25
 
 ### Fixed

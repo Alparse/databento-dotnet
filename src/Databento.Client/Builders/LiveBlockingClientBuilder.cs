@@ -26,6 +26,19 @@ public sealed class LiveBlockingClientBuilder
     }
 
     /// <summary>
+    /// Set the API key from the DATABENTO_API_KEY environment variable
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set</exception>
+    public LiveBlockingClientBuilder WithKeyFromEnv()
+    {
+        _apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+            ?? throw new InvalidOperationException(
+                "DATABENTO_API_KEY environment variable is not set. " +
+                "Set the environment variable or use WithApiKey() instead.");
+        return this;
+    }
+
+    /// <summary>
     /// Set the default dataset for subscriptions
     /// </summary>
     /// <param name="dataset">Dataset name (e.g., "GLBX.MDP3", "XNAS.ITCH")</param>

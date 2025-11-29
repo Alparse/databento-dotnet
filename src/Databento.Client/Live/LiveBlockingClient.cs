@@ -17,8 +17,51 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
 {
     private readonly ILogger<ILiveBlockingClient> _logger;
     private readonly LiveClientHandle _handle;
+    private readonly string? _dataset;
+    private readonly bool _sendTsOut;
+    private readonly VersionUpgradePolicy _upgradePolicy;
+    private readonly TimeSpan _heartbeatInterval;
+    private readonly List<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime)> _subscriptions = new();
     private bool _isDisposed;
     private bool _isStarted;
+
+    #region Configuration Properties
+
+    /// <summary>
+    /// The default dataset for subscriptions, if configured
+    /// </summary>
+    public string? Dataset => _dataset;
+
+    /// <summary>
+    /// Whether ts_out timestamps are sent with records
+    /// </summary>
+    public bool SendTsOut => _sendTsOut;
+
+    /// <summary>
+    /// The DBN version upgrade policy
+    /// </summary>
+    public VersionUpgradePolicy UpgradePolicy => _upgradePolicy;
+
+    /// <summary>
+    /// The heartbeat interval for connection monitoring
+    /// </summary>
+    public TimeSpan HeartbeatInterval => _heartbeatInterval;
+
+    /// <summary>
+    /// The active subscriptions on this client
+    /// </summary>
+    public IReadOnlyList<LiveSubscription> Subscriptions =>
+        _subscriptions.Select(s => new LiveSubscription
+        {
+            Dataset = s.dataset,
+            Schema = s.schema,
+            STypeIn = SType.RawSymbol,
+            Symbols = s.symbols,
+            StartTime = s.startTime,
+            WithSnapshot = s.withSnapshot
+        }).ToList().AsReadOnly();
+
+    #endregion
 
     /// <summary>
     /// Create a new LiveBlockingClient (use LiveBlockingClientBuilder instead)
@@ -31,6 +74,10 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
         TimeSpan heartbeatInterval,
         ILogger<ILiveBlockingClient>? logger)
     {
+        _dataset = dataset;
+        _sendTsOut = sendTsOut;
+        _upgradePolicy = upgradePolicy;
+        _heartbeatInterval = heartbeatInterval;
         _logger = logger ?? NullLogger<ILiveBlockingClient>.Instance;
 
         var errorBuffer = new byte[4096];
@@ -86,6 +133,9 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
 
             _logger.LogInformation("Subscribed to {Dataset} {Schema} with {Count} symbols",
                 dataset, schema, symbolArray.Length);
+
+            // Track subscription
+            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime: null));
         }, cancellationToken).ConfigureAwait(false);
     }
 
@@ -126,6 +176,9 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
 
             _logger.LogInformation("Subscribed with replay from {Start} to {Dataset} {Schema}",
                 start, dataset, schema);
+
+            // Track subscription
+            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime: start));
         }, cancellationToken).ConfigureAwait(false);
     }
 
@@ -162,6 +215,9 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
 
             _logger.LogInformation("Subscribed with snapshot to {Dataset} {Schema}",
                 dataset, schema);
+
+            // Track subscription
+            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: true, startTime: null));
         }, cancellationToken).ConfigureAwait(false);
     }
 

@@ -512,3 +512,34 @@ DATABENTO_API void dbento_live_blocking_destroy(DbentoLiveClientHandle handle)
         // Ignore exceptions during cleanup
     }
 }
+
+DATABENTO_API int dbento_live_blocking_set_log_level(DbentoLiveClientHandle handle, int level)
+{
+    try {
+        auto* wrapper = databento_native::ValidateAndCast<LiveBlockingWrapper>(
+            handle, databento_native::HandleType::LiveBlocking, nullptr);
+        if (!wrapper) {
+            return -1;  // Invalid handle
+        }
+
+        if (!wrapper->log_receiver) {
+            return -2;  // No log receiver
+        }
+
+        // Map int to LogLevel enum: 0=Debug, 1=Info, 2=Warning, 3=Error
+        db::LogLevel log_level;
+        switch (level) {
+            case 0: log_level = db::LogLevel::Debug; break;
+            case 1: log_level = db::LogLevel::Info; break;
+            case 2: log_level = db::LogLevel::Warning; break;
+            case 3: log_level = db::LogLevel::Error; break;
+            default: return -3;  // Invalid level
+        }
+
+        wrapper->log_receiver->SetMinLevel(log_level);
+        return 0;
+    }
+    catch (...) {
+        return -1;
+    }
+}

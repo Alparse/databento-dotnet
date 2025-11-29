@@ -1,5 +1,6 @@
 using Databento.Client.Live;
 using Databento.Client.Models;
+using Databento.Client.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace Databento.Client.Builders;
@@ -16,6 +17,7 @@ public sealed class LiveClientBuilder
     private TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(30);
     private ILogger<ILiveClient>? _logger;
     private ExceptionCallback? _exceptionHandler;
+    private ResilienceOptions _resilienceOptions = new();
 
     /// <summary>
     /// Set the Databento API key
@@ -23,6 +25,19 @@ public sealed class LiveClientBuilder
     public LiveClientBuilder WithApiKey(string apiKey)
     {
         _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+        return this;
+    }
+
+    /// <summary>
+    /// Set the API key from the DATABENTO_API_KEY environment variable
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set</exception>
+    public LiveClientBuilder WithKeyFromEnv()
+    {
+        _apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+            ?? throw new InvalidOperationException(
+                "DATABENTO_API_KEY environment variable is not set. " +
+                "Set the environment variable or use WithApiKey() instead.");
         return this;
     }
 
@@ -100,6 +115,51 @@ public sealed class LiveClientBuilder
     }
 
     /// <summary>
+    /// Enable automatic reconnection on connection failure.
+    /// Uses the default retry policy (3 retries with exponential backoff).
+    /// </summary>
+    /// <param name="enabled">True to enable auto-reconnect, false to disable</param>
+    public LiveClientBuilder WithAutoReconnect(bool enabled = true)
+    {
+        _resilienceOptions.AutoReconnect = enabled;
+        return this;
+    }
+
+    /// <summary>
+    /// Configure the retry policy for connection attempts.
+    /// </summary>
+    /// <param name="policy">The retry policy to use</param>
+    public LiveClientBuilder WithRetryPolicy(RetryPolicy policy)
+    {
+        _resilienceOptions.RetryPolicy = policy ?? throw new ArgumentNullException(nameof(policy));
+        return this;
+    }
+
+    /// <summary>
+    /// Configure the heartbeat timeout for detecting stale connections.
+    /// If no activity is received within this duration, the connection is considered stale.
+    /// </summary>
+    /// <param name="timeout">The heartbeat timeout (default: 90 seconds)</param>
+    public LiveClientBuilder WithHeartbeatTimeout(TimeSpan timeout)
+    {
+        if (timeout < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout cannot be negative");
+
+        _resilienceOptions.HeartbeatTimeout = timeout;
+        return this;
+    }
+
+    /// <summary>
+    /// Configure full resilience options.
+    /// </summary>
+    /// <param name="options">The resilience options to use</param>
+    public LiveClientBuilder WithResilienceOptions(ResilienceOptions options)
+    {
+        _resilienceOptions = options ?? throw new ArgumentNullException(nameof(options));
+        return this;
+    }
+
+    /// <summary>
     /// Build the LiveClient instance
     /// </summary>
     public ILiveClient Build()
@@ -114,6 +174,7 @@ public sealed class LiveClientBuilder
             _upgradePolicy,
             _heartbeatInterval,
             _logger,
-            _exceptionHandler);
+            _exceptionHandler,
+            _resilienceOptions);
     }
 }

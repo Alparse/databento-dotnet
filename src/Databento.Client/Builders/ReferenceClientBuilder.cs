@@ -25,6 +25,19 @@ public sealed class ReferenceClientBuilder
     }
 
     /// <summary>
+    /// Set the API key from the DATABENTO_API_KEY environment variable
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set</exception>
+    public ReferenceClientBuilder WithKeyFromEnv()
+    {
+        _apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+            ?? throw new InvalidOperationException(
+                "DATABENTO_API_KEY environment variable is not set. " +
+                "Set the environment variable or use WithApiKey() instead.");
+        return this;
+    }
+
+    /// <summary>
     /// Set the historical gateway to connect to
     /// </summary>
     /// <param name="gateway">Historical gateway (currently only Bo1 is supported)</param>

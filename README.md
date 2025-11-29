@@ -1,13 +1,13 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v4.0.1--beta-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Downloads](https://img.shields.io/badge/Downloads-5.4K-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Release](https://img.shields.io/badge/Release-v4.0.1--beta-blue)](https://github.com/Alparse/databento-dotnet/releases)
+[![NuGet](https://img.shields.io/badge/NuGet-v4.1.0-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Downloads](https://img.shields.io/badge/Downloads-6.4K-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Release](https://img.shields.io/badge/Release-v4.1.0-blue)](https://github.com/Alparse/databento-dotnet/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A high-performance .NET client for accessing [Databento](https://databento.com) market data, supporting both real-time streaming and historical data queries.
 
-> ⚠️ **Beta Software**: This is a newly developed client library. While functional and tested, it should be thoroughly validated in your specific use case before production deployment. Please report any issues to the [issue tracker](https://github.com/Alparse/databento-dotnet/issues).
+> 📢 **Production Ready**: v4.1.0 is the first stable production release with .NET 8 and .NET 9 support. Please report any issues to the [issue tracker](https://github.com/Alparse/databento-dotnet/issues).
 
 ## Installation
 

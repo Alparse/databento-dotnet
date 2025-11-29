@@ -131,13 +131,29 @@ DATABENTO_API int dbento_live_start(
 );
 
 /**
- * Stop receiving data
+ * Stop receiving data (signals stop but may return before thread terminates)
  * @param handle Live client handle
  */
 DATABENTO_API void dbento_live_stop(DbentoLiveClientHandle handle);
 
 /**
+ * Stop receiving data and wait for internal thread to terminate
+ * This is the recommended way to stop before disposal to prevent race conditions.
+ * @param handle Live client handle
+ * @param timeout_ms Maximum time to wait in milliseconds (use 0 for default 10s)
+ * @param error_buffer Buffer for error messages (can be NULL)
+ * @param error_buffer_size Size of error buffer
+ * @return 0 on success (stopped), 1 on timeout, negative on error
+ */
+DATABENTO_API int dbento_live_stop_and_wait(
+    DbentoLiveClientHandle handle,
+    int timeout_ms,
+    char* error_buffer,
+    size_t error_buffer_size);
+
+/**
  * Destroy live client and free resources
+ * Note: Calls stop_and_wait internally to ensure safe cleanup
  * @param handle Live client handle
  */
 DATABENTO_API void dbento_live_destroy(DbentoLiveClientHandle handle);
@@ -260,6 +276,14 @@ DATABENTO_API int dbento_live_subscribe_with_replay(
  * @return Connection state: 0=Disconnected, 1=Connecting, 2=Connected, 3=Streaming
  */
 DATABENTO_API int dbento_live_get_connection_state(DbentoLiveClientHandle handle);
+
+/**
+ * Set the minimum log level for stderr output
+ * @param handle Live client handle
+ * @param level Minimum log level (0=Debug, 1=Info, 2=Warning, 3=Error)
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_set_log_level(DbentoLiveClientHandle handle, int level);
 
 // ============================================================================
 // LiveBlocking Client API (Pull-based)
@@ -430,6 +454,14 @@ DATABENTO_API void dbento_live_blocking_stop(DbentoLiveClientHandle handle);
  */
 DATABENTO_API void dbento_live_blocking_destroy(DbentoLiveClientHandle handle);
 
+/**
+ * Set the minimum log level for stderr output (LiveBlocking)
+ * @param handle LiveBlocking client handle
+ * @param level Minimum log level (0=Debug, 1=Info, 2=Warning, 3=Error)
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_live_blocking_set_log_level(DbentoLiveClientHandle handle, int level);
+
 // ============================================================================
 // Historical Client API
 // ============================================================================
@@ -597,6 +629,14 @@ DATABENTO_API DbentoMetadataHandle dbento_historical_get_metadata(
  * @param handle Historical client handle
  */
 DATABENTO_API void dbento_historical_destroy(DbentoHistoricalClientHandle handle);
+
+/**
+ * Set the minimum log level for stderr output (Historical)
+ * @param handle Historical client handle
+ * @param level Minimum log level (0=Debug, 1=Info, 2=Warning, 3=Error)
+ * @return 0 on success, negative error code on failure
+ */
+DATABENTO_API int dbento_historical_set_log_level(DbentoHistoricalClientHandle handle, int level);
 
 // ============================================================================
 // Metadata API

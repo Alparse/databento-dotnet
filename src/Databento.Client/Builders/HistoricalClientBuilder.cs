@@ -28,6 +28,19 @@ public sealed class HistoricalClientBuilder
     }
 
     /// <summary>
+    /// Set the API key from the DATABENTO_API_KEY environment variable
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set</exception>
+    public HistoricalClientBuilder WithKeyFromEnv()
+    {
+        _apiKey = Environment.GetEnvironmentVariable("DATABENTO_API_KEY")
+            ?? throw new InvalidOperationException(
+                "DATABENTO_API_KEY environment variable is not set. " +
+                "Set the environment variable or use WithApiKey() instead.");
+        return this;
+    }
+
+    /// <summary>
     /// Set the historical API gateway
     /// </summary>
     /// <param name="gateway">Gateway to use (Bo1, Bo2, or Custom)</param>

@@ -111,6 +111,8 @@ inline databento::Schema ParseSchema(const std::string& schema_str) {
 
     // Trade schemas
     if (schema_str == "trades") return databento::Schema::Trades;
+    if (schema_str == "tbbo") return databento::Schema::Tbbo;
+    if (schema_str == "tcbbo") return databento::Schema::Tcbbo;
 
     // OHLCV schemas
     if (schema_str == "ohlcv-1s") return databento::Schema::Ohlcv1S;
@@ -118,6 +120,15 @@ inline databento::Schema ParseSchema(const std::string& schema_str) {
     if (schema_str == "ohlcv-1h") return databento::Schema::Ohlcv1H;
     if (schema_str == "ohlcv-1d") return databento::Schema::Ohlcv1D;
     if (schema_str == "ohlcv-eod") return databento::Schema::OhlcvEod;
+
+    // BBO schemas
+    if (schema_str == "bbo-1s") return databento::Schema::Bbo1S;
+    if (schema_str == "bbo-1m") return databento::Schema::Bbo1M;
+
+    // Consolidated schemas
+    if (schema_str == "cmbp-1") return databento::Schema::Cmbp1;
+    if (schema_str == "cbbo-1s") return databento::Schema::Cbbo1S;
+    if (schema_str == "cbbo-1m") return databento::Schema::Cbbo1M;
 
     // Other schemas
     if (schema_str == "definition") return databento::Schema::Definition;
@@ -248,7 +259,7 @@ inline bool IsErrorBufferValid(char* error_buffer, size_t error_buffer_size) {
 // ============================================================================
 
 /**
- * Simple ILogReceiver implementation that logs to stderr
+ * Simple ILogReceiver implementation that logs to stderr with level filtering
  * Used by all wrapper components to prevent NULL pointer dereferences
  * and provide consistent logging behavior across Historical, Batch, and Live clients.
  *
@@ -257,10 +268,98 @@ inline bool IsErrorBufferValid(char* error_buffer, size_t error_buffer_size) {
  * - Thread-safe: stderr writes are atomic for single fprintf calls
  * - Explicit flush: Ensures messages are visible immediately
  * - Consistent format: [Databento LEVEL] prefix for all messages
+ * - Level filtering: Only logs messages at or above configured minimum level
+ *
+ * Log level severity (lowest to highest):
+ *   Debug(0) < Info(1) < Warning(2) < Error(3)
+ *
+ * ============================================================================
+ * DEPLOYMENT: CAPTURING STDERR LOGS
+ * ============================================================================
+ *
+ * The native databento-cpp library outputs diagnostic logs to stderr. To capture
+ * these logs in production, configure your deployment environment appropriately:
+ *
+ * 1. CONSOLE APPLICATIONS:
+ *    Logs appear automatically on the console's stderr stream.
+ *    Redirect with: myapp.exe 2>logs.txt  (Windows)
+ *                   ./myapp 2>logs.txt    (Linux/macOS)
+ *
+ * 2. WINDOWS SERVICES:
+ *    Use Event Log redirection or configure a log file:
+ *    - In ServiceBase.OnStart(), redirect Console.Error to a StreamWriter
+ *    - Or use ProcessStartInfo.RedirectStandardError when spawning processes
+ *
+ * 3. DOCKER/CONTAINERS:
+ *    Container runtimes capture both stdout and stderr by default.
+ *    Use: docker logs <container_id>
+ *    Or configure logging driver to aggregate stderr output.
+ *
+ * 4. LINUX SYSTEMD:
+ *    stderr is captured automatically in journald.
+ *    View with: journalctl -u myservice.service
+ *
+ * 5. IIS/ASP.NET:
+ *    Configure stdoutLogEnabled in web.config:
+ *    <aspNetCore stdoutLogEnabled="true" stdoutLogFile=".\logs\stdout" />
+ *    This captures both stdout and stderr to log files.
+ *
+ * 6. KUBERNETES:
+ *    stderr is captured automatically by kubectl logs.
+ *    Configure log aggregation (Fluentd, Loki, etc.) to collect stderr.
+ *
+ * CONFIGURING LOG LEVEL:
+ *    Use dbento_live_set_log_level(), dbento_live_blocking_set_log_level(),
+ *    or dbento_historical_set_log_level() to filter output:
+ *    - Level 0 (Debug): All messages including verbose debug output
+ *    - Level 1 (Info): Informational messages and above (default)
+ *    - Level 2 (Warning): Warning messages and errors only
+ *    - Level 3 (Error): Only error messages
+ *
+ * ============================================================================
  */
 class StderrLogReceiver : public databento::ILogReceiver {
 public:
+    /**
+     * Construct StderrLogReceiver with configurable minimum log level
+     * @param min_level Minimum level to log (default: Info - logs Info, Warning, Error)
+     */
+    explicit StderrLogReceiver(databento::LogLevel min_level = databento::LogLevel::Info)
+        : min_level_(min_level) {}
+
+    /**
+     * Set the minimum log level
+     * @param level Minimum level to log (messages below this level are filtered out)
+     */
+    void SetMinLevel(databento::LogLevel level) {
+        min_level_ = level;
+    }
+
+    /**
+     * Get the current minimum log level
+     * @return Current minimum log level
+     */
+    databento::LogLevel GetMinLevel() const {
+        return min_level_;
+    }
+
+    /**
+     * Check if a message at the given level should be logged
+     * @param level Log level to check
+     * @return true if level >= min_level_, false otherwise
+     */
+    bool ShouldLog(databento::LogLevel level) const override {
+        // Log levels: Debug=0, Info=1, Warning=2, Error=3
+        // We log if level >= min_level (e.g., if min_level=Warning, we log Warning and Error)
+        return static_cast<int>(level) >= static_cast<int>(min_level_);
+    }
+
     void Receive(databento::LogLevel level, const std::string& message) override {
+        // Filter by minimum level
+        if (!ShouldLog(level)) {
+            return;
+        }
+
         const char* level_str = "INFO";
         switch (level) {
             case databento::LogLevel::Error:   level_str = "ERROR";   break;
@@ -274,6 +373,9 @@ public:
         std::fprintf(stderr, "[Databento %s] %s\n", level_str, message.c_str());
         std::fflush(stderr);
     }
+
+private:
+    databento::LogLevel min_level_;
 };
 
 }  // namespace databento_native

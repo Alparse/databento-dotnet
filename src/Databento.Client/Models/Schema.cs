@@ -105,8 +105,12 @@ public static class SchemaExtensions
     /// <summary>
     /// Parse schema from string
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when schemaString is null</exception>
+    /// <exception cref="ArgumentException">Thrown when schemaString is not a valid schema</exception>
     public static Schema ParseSchema(string schemaString)
     {
+        ArgumentNullException.ThrowIfNull(schemaString);
+
         return schemaString.ToLowerInvariant() switch
         {
             "mbo" => Schema.Mbo,

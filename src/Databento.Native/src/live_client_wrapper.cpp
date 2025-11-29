@@ -283,27 +283,81 @@ DATABENTO_API void dbento_live_stop(DbentoLiveClientHandle handle)
     }
 }
 
+DATABENTO_API int dbento_live_stop_and_wait(
+    DbentoLiveClientHandle handle,
+    int timeout_ms,
+    char* error_buffer,
+    size_t error_buffer_size)
+{
+    try {
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, nullptr);
+        if (!wrapper) {
+            SafeStrCopy(error_buffer, error_buffer_size, "Invalid handle");
+            return -1;
+        }
+
+        // Signal our wrapper to stop processing callbacks
+        wrapper->is_running.store(false, std::memory_order_release);
+
+        // If client exists, wait for internal thread to terminate
+        if (wrapper->client) {
+            // Use provided timeout or default to 10 seconds
+            auto timeout = std::chrono::milliseconds(timeout_ms > 0 ? timeout_ms : 10000);
+
+            // BlockForStop waits for the internal processing thread to terminate
+            // Returns KeepGoing::Stop when thread has exited, Continue on timeout
+            auto result = wrapper->client->BlockForStop(timeout);
+
+            if (result == db::KeepGoing::Continue) {
+                // Timeout - thread did not stop in time
+                SafeStrCopy(error_buffer, error_buffer_size,
+                    "Timeout waiting for processing thread to stop");
+                return 1;
+            }
+        }
+
+        return 0;  // Success - thread has stopped
+    }
+    catch (const std::exception& e) {
+        SafeStrCopy(error_buffer, error_buffer_size, e.what());
+        return -2;
+    }
+    catch (...) {
+        SafeStrCopy(error_buffer, error_buffer_size, "Unknown error during stop");
+        return -3;
+    }
+}
+
 DATABENTO_API void dbento_live_destroy(DbentoLiveClientHandle handle)
 {
     try {
         auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
             handle, databento_native::HandleType::LiveClient, nullptr);
         if (wrapper) {
-            // HIGH FIX: Phase 1 - Signal shutdown
+            // CRITICAL FIX: Phase 1 - Signal shutdown
             wrapper->is_running.store(false, std::memory_order_release);
 
-            // HIGH FIX: Phase 2 - Brief delay to allow in-flight callbacks to observe stop signal
-            // This prevents race where callbacks check is_running after we've deleted the wrapper
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            // CRITICAL FIX: Phase 2 - Wait for internal thread to terminate
+            // This replaces the heuristic 50ms sleep with proper synchronization
+            if (wrapper->client) {
+                try {
+                    // Wait up to 5 seconds for thread to stop during destruction
+                    wrapper->client->BlockForStop(std::chrono::seconds(5));
+                }
+                catch (...) {
+                    // Ignore errors - we're cleaning up anyway
+                }
+            }
 
-            // HIGH FIX: Phase 3 - Acquire lock to ensure no callbacks are executing
+            // CRITICAL FIX: Phase 3 - Acquire lock to ensure no callbacks are executing
             {
                 std::lock_guard<std::mutex> lock(wrapper->callback_mutex);
                 // Any callbacks that were in-flight are now complete
-                // Any new callback attempts will be blocked here
             }
 
-            // HIGH FIX: Phase 4 - Safe to delete wrapper now (no callbacks can access it)
+            // CRITICAL FIX: Phase 4 - Safe to delete wrapper now
+            // Internal thread has stopped, no callbacks can access wrapper
             delete wrapper;
 
             // Destroy the validated handle
@@ -695,5 +749,36 @@ DATABENTO_API int dbento_live_get_connection_state(DbentoLiveClientHandle handle
     }
     catch (...) {
         return 0;  // Disconnected on error
+    }
+}
+
+DATABENTO_API int dbento_live_set_log_level(DbentoLiveClientHandle handle, int level)
+{
+    try {
+        auto* wrapper = databento_native::ValidateAndCast<LiveClientWrapper>(
+            handle, databento_native::HandleType::LiveClient, nullptr);
+        if (!wrapper) {
+            return -1;  // Invalid handle
+        }
+
+        if (!wrapper->log_receiver) {
+            return -2;  // No log receiver
+        }
+
+        // Map int to LogLevel enum: 0=Debug, 1=Info, 2=Warning, 3=Error
+        db::LogLevel log_level;
+        switch (level) {
+            case 0: log_level = db::LogLevel::Debug; break;
+            case 1: log_level = db::LogLevel::Info; break;
+            case 2: log_level = db::LogLevel::Warning; break;
+            case 3: log_level = db::LogLevel::Error; break;
+            default: return -3;  // Invalid level
+        }
+
+        wrapper->log_receiver->SetMinLevel(log_level);
+        return 0;
+    }
+    catch (...) {
+        return -1;
     }
 }
