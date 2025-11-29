@@ -1,7 +1,7 @@
 # Databento .NET Client - Complete API Classification
 
-**Version:** 4.0.1-beta
-**Generated:** 2025-11-27
+**Version:** 4.1.0
+**Generated:** 2025-11-28
 
 This document provides a comprehensive classification of every API call available in the databento-dotnet library, including input parameters and expected outputs. This library wraps databento-cpp (Databento's C++ client library) for .NET consumption.
 
@@ -38,7 +38,7 @@ The library follows a layered architecture:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Databento.Client (.NET 8.0)                                │
+│  Databento.Client (.NET 8.0 / 9.0)                          │
 │  High-level managed API with IAsyncEnumerable support       │
 │  83 C# files providing:                                     │
 │  - Client classes (Historical, Live, LiveBlocking)          │
@@ -49,7 +49,7 @@ The library follows a layered architecture:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Databento.Interop (.NET 8.0)                               │
+│  Databento.Interop (.NET 8.0 / 9.0)                         │
 │  P/Invoke layer with SafeHandle wrappers                    │
 │  - NativeMethods (P/Invoke declarations)                    │
 │  - 9 SafeHandle wrapper classes                             │
@@ -880,7 +880,8 @@ Critical enum for DBN binary protocol message routing. Values match databento-cp
 
 | Method | Parameter | Type | Required | Default | Description |
 |--------|-----------|------|----------|---------|-------------|
-| `WithApiKey` | `apiKey` | `string` | **Yes** | - | Databento API key |
+| `WithApiKey` | `apiKey` | `string` | **Yes*** | - | Databento API key |
+| `WithKeyFromEnv` | - | - | **Yes*** | - | Set API key from DATABENTO_API_KEY env var |
 | `WithGateway` | `gateway` | `HistoricalGateway` | No | `Bo1` | API gateway selection |
 | `WithAddress` | `host`, `port` | `string`, `ushort` | No | - | Custom gateway address (sets gateway to Custom) |
 | `WithUpgradePolicy` | `policy` | `VersionUpgradePolicy` | No | `Upgrade` | DBN version upgrade policy |
@@ -889,30 +890,42 @@ Critical enum for DBN binary protocol message routing. Values match databento-cp
 | `WithLogger` | `logger` | `ILogger<IHistoricalClient>` | No | - | Logger for diagnostics |
 | `Build` | - | - | - | - | Returns `IHistoricalClient` |
 
+*One of `WithApiKey` or `WithKeyFromEnv` is required.
+
 ### LiveClientBuilder
 
 | Method | Parameter | Type | Required | Default | Description |
 |--------|-----------|------|----------|---------|-------------|
-| `WithApiKey` | `apiKey` | `string` | **Yes** | - | Databento API key |
+| `WithApiKey` | `apiKey` | `string` | **Yes*** | - | Databento API key |
+| `WithKeyFromEnv` | - | - | **Yes*** | - | Set API key from DATABENTO_API_KEY env var |
 | `WithDataset` | `dataset` | `string` | No | - | Default dataset for subscriptions |
 | `WithSendTsOut` | `sendTsOut` | `bool` | No | `false` | Include ts_out timestamps in records |
 | `WithUpgradePolicy` | `policy` | `VersionUpgradePolicy` | No | `Upgrade` | DBN version upgrade policy |
 | `WithHeartbeatInterval` | `interval` | `TimeSpan` | No | 30 seconds | Heartbeat interval (must be positive) |
 | `WithLogger` | `logger` | `ILogger<ILiveClient>` | No | - | Logger for diagnostics |
 | `WithExceptionHandler` | `handler` | `ExceptionCallback` | No | - | Exception handler for streaming errors |
+| `WithAutoReconnect` | `enabled` | `bool` | No | `false` | Enable automatic reconnection on failure |
+| `WithRetryPolicy` | `policy` | `RetryPolicy` | No | `Default` | Configure retry behavior for connections |
+| `WithHeartbeatTimeout` | `timeout` | `TimeSpan` | No | 90 seconds | Stale connection detection timeout |
+| `WithResilienceOptions` | `options` | `ResilienceOptions` | No | - | Full resilience configuration |
 | `Build` | - | - | - | - | Returns `ILiveClient` |
+
+*One of `WithApiKey` or `WithKeyFromEnv` is required.
 
 ### LiveBlockingClientBuilder
 
 | Method | Parameter | Type | Required | Default | Description |
 |--------|-----------|------|----------|---------|-------------|
-| `WithApiKey` | `apiKey` | `string` | **Yes** | - | Databento API key |
+| `WithApiKey` | `apiKey` | `string` | **Yes*** | - | Databento API key |
+| `WithKeyFromEnv` | - | - | **Yes*** | - | Set API key from DATABENTO_API_KEY env var |
 | `WithDataset` | `dataset` | `string` | **Yes** | - | Dataset for connection (native library requirement) |
 | `WithSendTsOut` | `sendTsOut` | `bool` | No | `false` | Include ts_out timestamps in records |
 | `WithUpgradePolicy` | `policy` | `VersionUpgradePolicy` | No | `Upgrade` | DBN version upgrade policy |
 | `WithHeartbeatInterval` | `interval` | `TimeSpan` | No | 30 seconds | Heartbeat interval (must be positive) |
 | `WithLogger` | `logger` | `ILogger<ILiveBlockingClient>` | No | - | Logger for diagnostics |
 | `Build` | - | - | - | - | Returns `ILiveBlockingClient` |
+
+*One of `WithApiKey` or `WithKeyFromEnv` is required.
 
 ### ReferenceClientBuilder
 
@@ -1233,4 +1246,4 @@ typedef void (*MetadataCallback)(
 
 ---
 
-*Document generated from databento-dotnet v4.0.1-beta source code analysis.*
+*Document generated from databento-dotnet v4.1.0 source code analysis.*

@@ -1,7 +1,7 @@
 # databento-dotnet API Reference
 
-**Version:** v4.0.0-beta
-**Last Updated:** November 25, 2025
+**Version:** v4.1.0
+**Last Updated:** November 28, 2025
 
 Comprehensive API reference for the databento-dotnet library, a high-performance .NET client for accessing Databento market data.
 
@@ -12,6 +12,9 @@ Comprehensive API reference for the databento-dotnet library, a high-performance
 1. [Live Streaming API](#1-live-streaming-api)
    - [LiveClient](#liveclient)
    - [LiveClientBuilder](#liveclientbuilder)
+   - [LiveBlockingClient](#liveblockingclient)
+   - [LiveBlockingClientBuilder](#liveblockingclientbuilder)
+   - [Resilience & Auto-Reconnect](#resilience--auto-reconnect)
    - [Events & Callbacks](#events--callbacks)
    - [Subscription Methods](#subscription-methods)
    - [Streaming Methods](#streaming-methods)
@@ -924,21 +927,27 @@ Builder for creating `ILiveClient` instances.
 | Method | Description |
 |--------|-------------|
 | `WithApiKey(string)` | **Required.** Set Databento API key |
+| `WithKeyFromEnv()` | Set API key from DATABENTO_API_KEY environment variable |
 | `WithDataset(string)` | Set default dataset for subscriptions |
 | `WithSendTsOut(bool)` | Enable sending ts_out timestamps (default: false) |
 | `WithUpgradePolicy(VersionUpgradePolicy)` | Set DBN version upgrade policy (default: Upgrade) |
 | `WithHeartbeatInterval(TimeSpan)` | Set heartbeat interval (default: 30 seconds) |
 | `WithLogger(ILogger<ILiveClient>)` | Set logger for diagnostics |
 | `WithExceptionHandler(ExceptionCallback)` | Set exception handler callback |
+| `WithAutoReconnect(bool)` | Enable automatic reconnection on failure (default: false) |
+| `WithRetryPolicy(RetryPolicy)` | Configure retry behavior for connection attempts |
+| `WithHeartbeatTimeout(TimeSpan)` | Configure stale connection detection timeout (default: 90s) |
+| `WithResilienceOptions(ResilienceOptions)` | Configure full resilience options |
 | `Build()` | Build the LiveClient instance |
 
 **Complete Example:**
 ```csharp
-var client = new LiveClientBuilder()
-    .WithApiKey(Environment.GetEnvironmentVariable("DATABENTO_API_KEY"))
+await using var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
     .WithDataset("EQUS.MINI")
-    .WithHeartbeatInterval(TimeSpan.FromSeconds(15))
-    .WithUpgradePolicy(VersionUpgradePolicy.Upgrade)
+    .WithAutoReconnect()
+    .WithRetryPolicy(RetryPolicy.Aggressive)
+    .WithHeartbeatTimeout(TimeSpan.FromSeconds(60))
     .Build();
 ```
 
@@ -1072,6 +1081,164 @@ public class UserSessionHandler
 - Test scaling: Can handle 100+ concurrent clients on typical hardware
 
 **Recommendation:** Use a single long-lived client unless you need per-user isolation or different API keys for different tenants.
+
+### LiveBlockingClient
+
+The `ILiveBlockingClient` interface provides a pull-based API for live streaming, giving explicit control over record retrieval timing.
+
+#### Interface
+
+```csharp
+public interface ILiveBlockingClient : IAsyncDisposable
+```
+
+#### Creating a LiveBlockingClient
+
+Use `LiveBlockingClientBuilder` to create instances:
+
+```csharp
+await using var client = new LiveBlockingClientBuilder()
+    .WithKeyFromEnv()
+    .WithDataset("EQUS.MINI")
+    .Build();
+```
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `SubscribeAsync(dataset, schema, symbols)` | Subscribe to a data stream |
+| `SubscribeWithReplayAsync(dataset, schema, symbols, start)` | Subscribe with historical replay |
+| `SubscribeWithSnapshotAsync(dataset, schema, symbols)` | Subscribe with MBO snapshot |
+| `StartAsync()` | Start the stream and return metadata |
+| `NextRecordAsync(timeout)` | Pull next record (returns null on timeout) |
+| `ReconnectAsync()` | Reconnect to the gateway |
+| `ResubscribeAsync()` | Resubscribe to previous subscriptions |
+| `StopAsync()` | Stop the stream |
+
+#### Example
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+await using var client = new LiveBlockingClientBuilder()
+    .WithKeyFromEnv()
+    .WithDataset("EQUS.MINI")
+    .Build();
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
+await client.StartAsync();
+
+while (true)
+{
+    var record = await client.NextRecordAsync(timeout: TimeSpan.FromSeconds(5));
+    if (record == null) break;  // Timeout reached
+
+    if (record is TradeMessage trade)
+        Console.WriteLine($"Trade: {trade.InstrumentId} @ ${trade.PriceDecimal}");
+}
+```
+
+### LiveBlockingClientBuilder
+
+Builder for creating `ILiveBlockingClient` instances.
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `WithApiKey(string)` | **Required.** Set Databento API key |
+| `WithKeyFromEnv()` | Set API key from DATABENTO_API_KEY environment variable |
+| `WithDataset(string)` | Set default dataset (required for LiveBlockingClient) |
+| `WithSendTsOut(bool)` | Enable sending ts_out timestamps (default: false) |
+| `WithUpgradePolicy(VersionUpgradePolicy)` | Set DBN version upgrade policy (default: Upgrade) |
+| `WithHeartbeatInterval(TimeSpan)` | Set heartbeat interval (default: 30 seconds) |
+| `WithLogger(ILogger<ILiveBlockingClient>)` | Set logger for diagnostics |
+| `Build()` | Build the LiveBlockingClient instance |
+
+### Resilience & Auto-Reconnect
+
+The LiveClient includes built-in resilience features for production deployments.
+
+#### RetryPolicy
+
+Configuration for retry behavior on transient failures with exponential backoff.
+
+```csharp
+public sealed class RetryPolicy
+{
+    public int MaxRetries { get; set; } = 3;
+    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
+    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(30);
+    public double BackoffMultiplier { get; set; } = 2.0;
+    public bool UseJitter { get; set; } = true;
+}
+```
+
+**Pre-built Policies:**
+
+| Policy | Max Retries | Initial Delay | Max Delay |
+|--------|-------------|---------------|-----------|
+| `RetryPolicy.Default` | 3 | 1s | 30s |
+| `RetryPolicy.Aggressive` | 5 | 1s | 60s |
+| `RetryPolicy.None` | 0 | - | - |
+
+#### ResilienceOptions
+
+Full configuration for connection resilience features.
+
+```csharp
+public sealed class ResilienceOptions
+{
+    public bool AutoReconnect { get; set; } = false;
+    public bool AutoResubscribe { get; set; } = true;
+    public RetryPolicy RetryPolicy { get; set; } = RetryPolicy.Default;
+    public TimeSpan HeartbeatTimeout { get; set; } = TimeSpan.FromSeconds(90);
+
+    // Callbacks
+    public Func<int, Exception, bool>? OnReconnecting { get; set; }
+    public Action<int>? OnReconnected { get; set; }
+    public Action<Exception>? OnReconnectFailed { get; set; }
+}
+```
+
+**Pre-built Options:**
+
+| Option | Description |
+|--------|-------------|
+| `ResilienceOptions.Default` | No auto-reconnect |
+| `ResilienceOptions.WithAutoReconnect` | Auto-reconnect with default retry policy |
+| `ResilienceOptions.HighAvailability` | Aggressive retries, 60s heartbeat timeout |
+
+#### Complete Resilience Example
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Resilience;
+
+var options = new ResilienceOptions
+{
+    AutoReconnect = true,
+    AutoResubscribe = true,
+    RetryPolicy = RetryPolicy.Aggressive,
+    HeartbeatTimeout = TimeSpan.FromSeconds(60),
+    OnReconnecting = (attempt, ex) =>
+    {
+        Console.WriteLine($"Reconnecting (attempt {attempt}): {ex.Message}");
+        return true;  // Continue reconnecting
+    },
+    OnReconnected = (attempts) =>
+        Console.WriteLine($"Reconnected after {attempts} attempts"),
+    OnReconnectFailed = (ex) =>
+        Console.WriteLine($"Reconnect failed: {ex.Message}")
+};
+
+await using var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .WithResilienceOptions(options)
+    .Build();
+```
 
 ---
 
