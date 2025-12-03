@@ -402,6 +402,7 @@ var client = new LiveClientBuilder()
 
 ### More Help
 
+- [AI Coding Agents Guide](Readme_For_Coding_Agents.md) - Optimized reference for AI code agents
 - [API Reference](API_REFERENCE.md) - Quick-start guide with examples
 - [API Classification](API_Classification.md) - Complete method signatures
 - [Databento Documentation](https://databento.com/docs/)
