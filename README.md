@@ -1,7 +1,7 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v4.1.1-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Downloads](https://img.shields.io/badge/Downloads-6.4K-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v4.2.0-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Downloads](https://img.shields.io/badge/Downloads-9.1K-blue)](https://www.nuget.org/packages/Databento.Client)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -13,6 +13,7 @@ A high-performance .NET client for [Databento](https://databento.com) market dat
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Symbol Mapping](#symbol-mapping)
+- [Backtesting](#backtesting)
 - [API Reference](#api-reference)
 - [Building from Source](#building-from-source)
 - [Troubleshooting](#troubleshooting)
@@ -26,7 +27,7 @@ dotnet add package Databento.Client
 
 **Requirements:** .NET 8.0 or .NET 9.0
 
-**Platforms:** Windows (x64), Linux (x64), macOS (x64/ARM64)
+**Platforms:** Windows x64 (NuGet package) | Linux/macOS ([build from source](#building-from-source))
 
 ## Quick Start
 
@@ -96,11 +97,11 @@ await foreach (var record in client.GetRangeAsync(
 |---------|-------------|
 | **Live Streaming** | Real-time market data with async/await and IAsyncEnumerable |
 | **Historical Queries** | Time-range queries with efficient streaming |
+| **Backtesting** | Run strategies against historical data with identical code to live |
 | **Auto-Reconnect** | Configurable retry policies with exponential backoff |
-| **All Record Types** | Full support for all 16 DBN record types |
+| **All Record Types** | Full support for all 20 DBN record types |
 | **Symbol Mapping** | Resolve InstrumentId to ticker symbols |
 | **Reference Data** | SecurityMaster, CorporateActions, AdjustmentFactors |
-| **Cross-Platform** | Windows, Linux, macOS |
 | **High Performance** | Built on databento-cpp with native P/Invoke |
 
 ### Supported Schemas (20)
@@ -228,6 +229,81 @@ await foreach (var record in client.GetRangeAsync(
 }
 ```
 
+## Backtesting
+
+Run your trading strategies against historical data using the same code you use for live trading.
+
+### Historical API Backtesting
+
+```csharp
+using Databento.Client.Builders;
+using Databento.Client.Models;
+
+var start = new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5));
+var end = start.AddHours(6.5);  // Full trading day
+
+await using var client = new BacktestingClientBuilder()
+    .WithKeyFromEnv()
+    .WithTimeRange(start, end)
+    .WithDiskCache()  // Cache for repeated runs
+    .Build();
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA", "AAPL" });
+await client.StartAsync();
+
+await foreach (var record in client.StreamAsync())
+{
+    if (record is TradeMessage trade)
+        Console.WriteLine($"{trade.Timestamp}: {trade.PriceDecimal}");
+}
+```
+
+### File-Based Backtesting (Offline)
+
+```csharp
+// No API key needed - use pre-downloaded DBN files
+await using var client = new BacktestingClientBuilder()
+    .WithFileSource("/path/to/historical_data.dbn")
+    .Build();
+
+await client.StartAsync();
+
+await foreach (var record in client.StreamAsync())
+{
+    if (record is TradeMessage trade)
+        Console.WriteLine($"{trade.PriceDecimal}");
+}
+```
+
+### Code Parity with Live Trading
+
+```csharp
+// Your strategy works identically with live or backtest clients
+async Task RunStrategy(ILiveClient client)
+{
+    await foreach (var record in client.StreamAsync())
+    {
+        if (record is TradeMessage trade)
+            ProcessTrade(trade);
+    }
+}
+
+// Backtest mode
+await using var backtestClient = new BacktestingClientBuilder()
+    .WithKeyFromEnv()
+    .WithTimeRange(start, end)
+    .Build();
+await RunStrategy(backtestClient);
+
+// Live mode - same strategy code!
+await using var liveClient = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .Build();
+await RunStrategy(liveClient);
+```
+
+> **See [Backtesting Reference](docs/backtesting_reference.md)** for playback control, caching options, and complete examples.
+
 ## API Reference
 
 ### LiveClient
@@ -351,21 +427,57 @@ await using var client = new LiveClientBuilder()
 
 ## Building from Source
 
-### Prerequisites
+> **Note:** The NuGet package includes pre-built native libraries for **Windows x64 only**. Linux and macOS users must build from source.
 
-- .NET 8 SDK or later
-- CMake 3.24+
-- C++17 compiler (VS 2019+, GCC 9+, Clang 10+)
+### Windows
 
-### Build
+```powershell
+# Prerequisites: .NET 8 SDK, CMake 3.24+, Visual Studio 2019+
 
-```bash
 # Full build (native + .NET)
-./build/build-all.ps1 -Configuration Release    # Windows
-./build/build-all.sh --configuration Release    # Linux/macOS
+.\build\build-all.ps1 -Configuration Release
 
 # .NET only (if native library already built)
 dotnet build -c Release
+```
+
+### Linux
+
+```bash
+# Prerequisites
+sudo apt-get update
+sudo apt-get install -y cmake build-essential libssl-dev libzstd-dev
+
+# Clone and build
+git clone https://github.com/Alparse/databento-dotnet.git
+cd databento-dotnet
+
+# Build native library
+./build/build-native.sh --configuration Release
+
+# Build .NET
+dotnet build -c Release
+
+# Native library output: src/Databento.Interop/runtimes/linux-x64/native/libdatabento_native.so
+```
+
+### macOS
+
+```bash
+# Prerequisites
+brew install cmake openssl@3 zstd
+
+# Clone and build
+git clone https://github.com/Alparse/databento-dotnet.git
+cd databento-dotnet
+
+# Build native library
+./build/build-native.sh --configuration Release
+
+# Build .NET
+dotnet build -c Release
+
+# Native library output: src/Databento.Interop/runtimes/osx-*/native/libdatabento_native.dylib
 ```
 
 ### Project Structure
@@ -374,7 +486,7 @@ dotnet build -c Release
 databento-dotnet/
 ├── src/
 │   ├── Databento.Client/     # High-level .NET API
-│   ├── Databento.Interop/    # P/Invoke layer
+│   ├── Databento.Interop/    # P/Invoke layer + runtimes/
 │   └── Databento.Native/     # C++ wrapper (CMake)
 ├── examples/                  # 25+ working examples
 └── docs/                      # Additional documentation
@@ -384,11 +496,14 @@ databento-dotnet/
 
 ### DllNotFoundException
 
-The NuGet package includes all dependencies. If you still see this error:
+The NuGet package includes native libraries for **Windows x64 only**.
 
-1. Ensure you're on a supported platform (Windows x64, Linux x64, macOS x64/ARM64)
-2. Try `dotnet restore --force`
-3. On Windows, install [VC++ 2022 Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+**On Windows:**
+1. Try `dotnet restore --force`
+2. Install [VC++ 2022 Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+**On Linux/macOS:**
+- You must [build from source](#building-from-source) - native libraries are not included in the NuGet package
 
 ### Connection Issues
 

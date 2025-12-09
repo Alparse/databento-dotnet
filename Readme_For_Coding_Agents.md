@@ -2,10 +2,10 @@
 
 > **For AI coding agents**: This document is optimized for programmatic consumption by agentic code tools (Claude Code CLI, Cursor, GitHub Copilot Workspace, etc.). Use this as your primary reference when working with the Databento.Client library.
 
-**Library**: `Databento.Client` v4.1.1
+**Library**: `Databento.Client` v4.2.0
 **Package**: `dotnet add package Databento.Client`
 **Runtime**: .NET 8.0 / 9.0
-**Platforms**: Windows x64, Linux x64, macOS x64/ARM64
+**Platforms**: Windows x64 (NuGet) | Linux/macOS (build from source)
 
 ---
 
@@ -20,6 +20,10 @@ What do you need to do?
 │
 ├─► Query historical market data
 │   └─► Use HistoricalClient
+│
+├─► Run backtests with identical code to live
+│   ├─► From historical API → Use BacktestingClientBuilder.WithTimeRange()
+│   └─► From DBN file (offline) → Use BacktestingClientBuilder.WithFileSource()
 │
 ├─► Get reference data (security master, corporate actions)
 │   └─► Use ReferenceClient
@@ -36,12 +40,13 @@ What do you need to do?
 ## Essential Namespaces
 
 ```csharp
-using Databento.Client.Builders;     // All client builders
+using Databento.Client.Builders;     // All client builders (including BacktestingClientBuilder)
 using Databento.Client.Models;       // Record types, enums, Schema, SType
-using Databento.Client.Live;         // ILiveClient, ILiveBlockingClient
+using Databento.Client.Live;         // ILiveClient, ILiveBlockingClient, IPlaybackControllable
 using Databento.Client.Historical;   // IHistoricalClient
 using Databento.Client.Reference;    // IReferenceClient
 using Databento.Client.Resilience;   // RetryPolicy, ResilienceOptions
+using Databento.Client.DataSources;  // PlaybackSpeed, PlaybackController (for backtesting)
 using Databento.Client.Dbn;          // DbnFileReader, DbnFileWriter
 using Databento.Client.Metadata;     // ITsSymbolMap, IPitSymbolMap
 ```
@@ -77,6 +82,25 @@ await using var client = new HistoricalClientBuilder()
 ```csharp
 var client = new ReferenceClientBuilder()
     .WithKeyFromEnv()
+    .Build();
+```
+
+### BacktestingClient (Historical API)
+```csharp
+var start = new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5));
+var end = start.AddHours(6.5);
+
+await using var client = new BacktestingClientBuilder()
+    .WithKeyFromEnv()
+    .WithTimeRange(start, end)
+    .WithDiskCache()              // Cache for repeated runs (optional)
+    .Build();
+```
+
+### BacktestingClient (File-Based, Offline)
+```csharp
+await using var client = new BacktestingClientBuilder()
+    .WithFileSource("/path/to/data.dbn")  // No API key needed
     .Build();
 ```
 
@@ -120,7 +144,35 @@ await foreach (var record in client.GetRangeAsync(
 }
 ```
 
-### 3. Symbol Mapping (CRITICAL PATTERN)
+### 3. Backtesting (Same Code as Live)
+
+```csharp
+// Strategy code works identically with live or backtest clients
+async Task RunStrategy(ILiveClient client)
+{
+    await foreach (var record in client.StreamAsync())
+    {
+        if (record is TradeMessage trade)
+            ProcessTrade(trade);
+    }
+}
+
+// Backtest mode
+var start = new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5));
+var end = start.AddHours(6.5);
+
+await using var client = new BacktestingClientBuilder()
+    .WithKeyFromEnv()
+    .WithTimeRange(start, end)
+    .WithDiskCache()  // Cache for repeated runs
+    .Build();
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
+await client.StartAsync();
+await RunStrategy(client);  // Same code as live!
+```
+
+### 4. Symbol Mapping (CRITICAL PATTERN)
 
 **Live clients receive `SymbolMappingMessage` records. Historical API does NOT.**
 
@@ -691,6 +743,7 @@ var factors = await client.AdjustmentFactors.GetRangeAsync(
 ## See Also
 
 - [README.md](README.md) - User-facing documentation
+- [Backtesting Reference](docs/backtesting_reference.md) - Complete backtesting guide with playback control
 - [API_REFERENCE.md](API_REFERENCE.md) - Quick API reference
 - [API_Classification.md](API_Classification.md) - Complete API signatures
 - [Databento Docs](https://databento.com/docs/) - Official documentation

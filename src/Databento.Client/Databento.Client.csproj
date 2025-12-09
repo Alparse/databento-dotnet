@@ -9,18 +9,18 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>4.1.1</Version>
+    <Version>4.2.0</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
-    <Description>High-performance .NET client for Databento market data with live streaming, historical queries, and reference data APIs. Supports all 16 DBN record types with async/await and IAsyncEnumerable.</Description>
-    <PackageTags>databento;market-data;financial;trading;streaming;historical;real-time;dbn;equities;futures;options</PackageTags>
+    <Description>High-performance .NET client for Databento market data with live streaming, historical queries, backtesting, and reference data APIs. Supports all 20 DBN record types with async/await and IAsyncEnumerable.</Description>
+    <PackageTags>databento;market-data;financial;trading;streaming;historical;backtesting;real-time;dbn;equities;futures;options</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Alparse/databento-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v4.1.1: Documentation overhaul. Simplified API Reference, comprehensive API Classification, improved README with complete symbol mapping examples for Live, LiveBlocking, and Historical clients.</PackageReleaseNotes>
+    <PackageReleaseNotes>v4.2.0: New BacktestingClientBuilder for running strategies against historical data with identical code to live trading. Includes playback control, disk/memory caching, and file-based offline backtesting. Clarified platform support: Windows x64 via NuGet, Linux/macOS via build from source.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
