@@ -21,6 +21,8 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
     private DbnMetadata? _metadata;
     private int _connectionState = (int)ConnectionState.Disconnected;
     private int _disposeState = 0;
+    // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
+    private TaskCompletionSource _stoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <inheritdoc/>
     public event EventHandler<DataReceivedEventArgs>? DataReceived;
@@ -150,6 +152,9 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
         _logger.LogInformation("BacktestingClient: Stopping...");
         await _dataSource.DisconnectAsync(cancellationToken).ConfigureAwait(false);
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Stopped);
+
+        // Signal that stream has stopped (for BlockUntilStoppedAsync)
+        _stoppedTcs.TrySetResult();
     }
 
     /// <inheritdoc/>
@@ -195,11 +200,11 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        // Wait until disconnected
-        while (ConnectionState == ConnectionState.Streaming)
-        {
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-        }
+        if (_metadata == null)
+            throw new InvalidOperationException("Client not started. Call StartAsync() first.");
+
+        // Wait on _stoppedTcs which is signaled when StopAsync completes
+        await _stoppedTcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -207,15 +212,15 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(timeout);
+        if (_metadata == null)
+            throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
         try
         {
-            await BlockUntilStoppedAsync(cts.Token).ConfigureAwait(false);
+            await _stoppedTcs.Task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
             return true;
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (TimeoutException)
         {
             return false; // Timeout
         }

@@ -46,6 +46,8 @@ public sealed class LiveClient : ILiveClient
     private int _activeCallbackCount = 0;
     // TaskCompletionSource for capturing metadata from callback
     private TaskCompletionSource<Models.Dbn.DbnMetadata>? _metadataTcs;
+    // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
+    private TaskCompletionSource _stoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
     /// Event fired when data is received
@@ -418,6 +420,7 @@ public sealed class LiveClient : ILiveClient
 
     /// <summary>
     /// Stop receiving data. This method is idempotent and can be called multiple times safely.
+    /// Note: After stopping, the client cannot be restarted. Create a new client instance for a new session.
     /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
@@ -431,6 +434,10 @@ public sealed class LiveClient : ILiveClient
                 // Already stopped or never started - nothing to do
                 return;
             }
+
+            // Signal that stream has stopped (for BlockUntilStoppedAsync) - do this FIRST
+            // so that BlockUntilStoppedAsync unblocks immediately when StopAsync is called
+            _stoppedTcs.TrySetResult();
 
             // CRITICAL FIX: Use stop_and_wait to ensure native thread terminates before proceeding
             // This prevents race conditions during disposal where callbacks fire after cleanup
@@ -468,6 +475,8 @@ public sealed class LiveClient : ILiveClient
             }
 
             _recordChannel.Writer.TryComplete();
+
+            _logger.LogInformation("Stream stopped successfully");
         }
     }
 
@@ -828,12 +837,13 @@ public sealed class LiveClient : ILiveClient
     /// <remarks>
     /// Waits indefinitely for the stream to stop. Useful for keeping the client alive
     /// until data processing is complete. Matches C++ API: void BlockForStop();
+    /// The stream stops when StopAsync() is called or an error handler returns Stop.
     /// </remarks>
     public async Task BlockUntilStoppedAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        // MEDIUM FIX: Thread-safe read of _streamTask
+        // Check if client has been started
         var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
         if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
@@ -842,7 +852,8 @@ public sealed class LiveClient : ILiveClient
 
         try
         {
-            await streamTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // Wait on _stoppedTcs which is signaled when StopAsync completes
+            await _stoppedTcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
         }
         catch (OperationCanceledException)
@@ -861,12 +872,13 @@ public sealed class LiveClient : ILiveClient
     /// <remarks>
     /// Waits for the stream to stop or until timeout expires.
     /// Matches C++ API: KeepGoing BlockForStop(std::chrono::milliseconds timeout);
+    /// The stream stops when StopAsync() is called or an error handler returns Stop.
     /// </remarks>
     public async Task<bool> BlockUntilStoppedAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
-        // MEDIUM FIX: Thread-safe read of _streamTask
+        // Check if client has been started
         var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
         if (streamTask == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
@@ -875,7 +887,8 @@ public sealed class LiveClient : ILiveClient
 
         try
         {
-            await streamTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+            // Wait on _stoppedTcs which is signaled when StopAsync completes
+            await _stoppedTcs.Task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("BlockUntilStoppedAsync: Stream stopped normally");
             return true;  // Stopped normally
         }

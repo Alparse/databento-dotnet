@@ -2,7 +2,7 @@
 
 > **For AI coding agents**: This document is optimized for programmatic consumption by agentic code tools (Claude Code CLI, Cursor, GitHub Copilot Workspace, etc.). Use this as your primary reference when working with the Databento.Client library.
 
-**Library**: `Databento.Client` v4.2.0
+**Library**: `Databento.Client` v4.3.0
 **Package**: `dotnet add package Databento.Client`
 **Runtime**: .NET 8.0 / 9.0
 **Platforms**: Windows x64 (NuGet) | Linux/macOS (build from source)
@@ -463,6 +463,8 @@ Task SubscribeAsync(string dataset, Schema schema, IEnumerable<string> symbols,
 Task<DbnMetadata> StartAsync(CancellationToken ct = default);
 IAsyncEnumerable<Record> StreamAsync(CancellationToken ct = default);
 Task StopAsync(CancellationToken ct = default);
+Task BlockUntilStoppedAsync(CancellationToken ct = default);
+Task<bool> BlockUntilStoppedAsync(TimeSpan timeout, CancellationToken ct = default);
 Task ReconnectAsync(CancellationToken ct = default);
 Task ResubscribeAsync(CancellationToken ct = default);
 ```
@@ -573,6 +575,76 @@ client.ErrorOccurred += (sender, e) =>
     Exception exception = e.Exception;
     // Handle error...
 };
+```
+
+---
+
+## BlockUntilStoppedAsync (Event-Based Streaming)
+
+Use `BlockUntilStoppedAsync` when streaming with events (`DataReceived`) instead of `StreamAsync`.
+It blocks until `StopAsync()` is called from elsewhere (e.g., event handler, background task, Ctrl+C).
+
+### Usage Pattern
+
+```csharp
+await using var client = new LiveClientBuilder()
+    .WithKeyFromEnv()
+    .Build();
+
+// Process records via event handler
+client.DataReceived += (s, e) =>
+{
+    if (e.Record is TradeMessage trade)
+    {
+        ProcessTrade(trade);
+        if (shouldStop)
+            client.StopAsync();  // This unblocks BlockUntilStoppedAsync
+    }
+};
+
+await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
+await client.StartAsync();
+
+// Block until StopAsync is called
+await client.BlockUntilStoppedAsync();
+```
+
+### With Timeout
+
+```csharp
+// Stream for up to 5 minutes
+bool stopped = await client.BlockUntilStoppedAsync(TimeSpan.FromSeconds(300));
+if (!stopped)
+{
+    // Timeout reached - stop manually
+    await client.StopAsync();
+}
+```
+
+### When NOT Needed
+
+If using `await foreach (var record in client.StreamAsync())`, you don't need `BlockUntilStoppedAsync` - the enumeration already blocks until the stream ends.
+
+---
+
+## Client Lifecycle
+
+**Important:** Live clients cannot be restarted after `StopAsync()`. Create a new client instance for each session.
+
+```csharp
+// Session 1
+await using var client1 = new LiveClientBuilder().WithKeyFromEnv().Build();
+await client1.SubscribeAsync(...);
+await client1.StartAsync();
+// ... stream data ...
+await client1.StopAsync();
+// client1 is now stopped - cannot restart
+
+// Session 2 - create new client
+await using var client2 = new LiveClientBuilder().WithKeyFromEnv().Build();
+await client2.SubscribeAsync(...);
+await client2.StartAsync();
+// ... stream data ...
 ```
 
 ---

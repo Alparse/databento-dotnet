@@ -1,6 +1,6 @@
 # Databento .NET Client - Complete API Classification
 
-**Version:** 4.1.0
+**Version:** 4.3.0
 **Generated:** 2025-11-28
 
 This document provides a comprehensive classification of every API call available in the databento-dotnet library, including input parameters and expected outputs. This library wraps databento-cpp (Databento's C++ client library) for .NET consumption.
@@ -1249,4 +1249,4 @@ typedef void (*MetadataCallback)(
 
 ---
 
-*Document generated from databento-dotnet v4.1.0 source code analysis.*
+*Document generated from databento-dotnet v4.3.0 source code analysis.*

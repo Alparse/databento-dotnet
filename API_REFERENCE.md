@@ -1,6 +1,6 @@
 # databento-dotnet API Reference
 
-**Version:** v4.1.0 | [Detailed API Classification](API_Classification.md)
+**Version:** v4.3.0 | [Detailed API Classification](API_Classification.md)
 
 ---
 
@@ -70,9 +70,13 @@ await client.SubscribeAsync(dataset, schema, symbols, startTime);  // Intraday r
 
 // Control
 await client.StartAsync();           // Returns DbnMetadata
-await client.StopAsync();
+await client.StopAsync();            // Stop streaming (cannot restart - create new client)
 await client.ReconnectAsync();
 await client.ResubscribeAsync();
+
+// Block until stopped (for event-based streaming)
+await client.BlockUntilStoppedAsync();                    // Block indefinitely
+bool stopped = await client.BlockUntilStoppedAsync(timeout);  // Block with timeout
 
 // Stream
 await foreach (var record in client.StreamAsync()) { }
@@ -84,6 +88,26 @@ await foreach (var record in client.StreamAsync()) { }
 client.DataReceived += (s, e) => Console.WriteLine(e.Record);
 client.ErrorOccurred += (s, e) => Console.WriteLine(e.Exception);
 ```
+
+### BlockUntilStoppedAsync (Event-Based Streaming)
+
+Use when streaming with events instead of `StreamAsync`:
+
+```csharp
+client.DataReceived += (s, e) => {
+    if (e.Record is TradeMessage trade)
+        ProcessTrade(trade);
+    if (shouldStop)
+        client.StopAsync();  // Unblocks BlockUntilStoppedAsync
+};
+
+await client.StartAsync();
+await client.BlockUntilStoppedAsync();  // Blocks until StopAsync is called
+```
+
+### Client Lifecycle
+
+**Important:** Clients cannot be restarted after `StopAsync()`. Create a new instance for each session.
 
 ---
 

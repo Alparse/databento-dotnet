@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>4.2.0</Version>
+    <Version>4.3.0</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v4.2.0: New BacktestingClientBuilder for running strategies against historical data with identical code to live trading. Includes playback control, disk/memory caching, and file-based offline backtesting. Clarified platform support: Windows x64 via NuGet, Linux/macOS via build from source.</PackageReleaseNotes>
+    <PackageReleaseNotes>v4.3.0: Fixed BlockUntilStoppedAsync and StopAsync behavior - BlockUntilStoppedAsync now correctly blocks until StopAsync is called or timeout expires. Added Client Lifecycle documentation clarifying that clients cannot be restarted after stopping.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
