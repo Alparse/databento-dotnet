@@ -1,7 +1,4 @@
 using System.Diagnostics;
-using System.Text;
-using System.Text.Json;
-using System.Web;
 using Databento.Client.Models;
 using Databento.Client.Models.Reference;
 using Microsoft.Extensions.Logging;
@@ -95,15 +92,15 @@ internal sealed class SecurityMasterApi : ISecurityMasterApi
             });
             await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
-            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var records = JsonSerializer.Deserialize<List<SecurityMasterRecord>>(json, ReferenceApiHelpers.JsonOptions);
+            // Parse JSONL response (Databento Reference API returns JSON Lines format)
+            var records = await ReferenceApiHelpers.ParseJsonLinesResponseAsync<SecurityMasterRecord>(response, cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
             Utilities.Telemetry.ApiRequestDuration.Record(stopwatch.Elapsed.TotalMilliseconds,
                 new KeyValuePair<string, object?>("endpoint", "security_master.get_last"),
                 new KeyValuePair<string, object?>("status", "success"));
 
-            return records ?? new List<SecurityMasterRecord>();
+            return records;
         }
         catch (Exception ex)
         {
@@ -185,9 +182,9 @@ internal sealed class SecurityMasterApi : ISecurityMasterApi
         });
         await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var records = JsonSerializer.Deserialize<List<SecurityMasterRecord>>(json, ReferenceApiHelpers.JsonOptions);
+        // Parse JSONL response (Databento Reference API returns JSON Lines format)
+        var records = await ReferenceApiHelpers.ParseJsonLinesResponseAsync<SecurityMasterRecord>(response, cancellationToken).ConfigureAwait(false);
 
-        return records ?? new List<SecurityMasterRecord>();
+        return records;
     }
 }

@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Web;
 using Databento.Client.Models;
 using Databento.Client.Models.Reference;
 using Microsoft.Extensions.Logging;
@@ -93,9 +91,9 @@ internal sealed class AdjustmentFactorsApi : IAdjustmentFactorsApi
         });
         await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var records = JsonSerializer.Deserialize<List<AdjustmentFactorRecord>>(json, ReferenceApiHelpers.JsonOptions);
+        // Parse JSONL response (Databento Reference API returns JSON Lines format)
+        var records = await ReferenceApiHelpers.ParseJsonLinesResponseAsync<AdjustmentFactorRecord>(response, cancellationToken).ConfigureAwait(false);
 
-        return records ?? new List<AdjustmentFactorRecord>();
+        return records;
     }
 }

@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text.Json;
 
 namespace Databento.Client.Reference;
@@ -61,4 +62,73 @@ internal static class ReferenceApiHelpers
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
+
+    /// <summary>
+    /// Parses a JSONL (JSON Lines) response into a list of records.
+    /// The Databento Reference API returns JSONL format (one JSON object per line),
+    /// optionally compressed with zstd.
+    /// </summary>
+    /// <typeparam name="T">The record type to deserialize</typeparam>
+    /// <param name="response">The HTTP response</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of deserialized records</returns>
+    internal static async Task<List<T>> ParseJsonLinesResponseAsync<T>(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken = default)
+    {
+        var records = new List<T>();
+
+        // Get the response stream
+        using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+        // Check if the response is zstd compressed
+        Stream dataStream = responseStream;
+        var contentEncoding = response.Content.Headers.ContentEncoding.FirstOrDefault();
+
+        if (string.Equals(contentEncoding, "zstd", StringComparison.OrdinalIgnoreCase))
+        {
+            // Decompress zstd - use ZstdSharp or read all bytes and decompress
+            // For now, read all bytes since .NET doesn't have built-in zstd
+            var compressedBytes = await ReadAllBytesAsync(responseStream, cancellationToken).ConfigureAwait(false);
+            var decompressedBytes = DecompressZstd(compressedBytes);
+            dataStream = new MemoryStream(decompressedBytes);
+        }
+
+        // Parse JSONL (one JSON object per line)
+        using var reader = new StreamReader(dataStream);
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var record = JsonSerializer.Deserialize<T>(line, JsonOptions);
+            if (record != null)
+            {
+                records.Add(record);
+            }
+        }
+
+        return records;
+    }
+
+    /// <summary>
+    /// Reads all bytes from a stream asynchronously.
+    /// </summary>
+    private static async Task<byte[]> ReadAllBytesAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Decompresses zstd-compressed data.
+    /// </summary>
+    private static byte[] DecompressZstd(byte[] compressedData)
+    {
+        // Use ZstdSharp for decompression
+        using var decompressor = new ZstdSharp.Decompressor();
+        return decompressor.Unwrap(compressedData).ToArray();
+    }
 }

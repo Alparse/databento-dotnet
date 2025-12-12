@@ -2,7 +2,7 @@
 
 > **For AI coding agents**: This document is optimized for programmatic consumption by agentic code tools (Claude Code CLI, Cursor, GitHub Copilot Workspace, etc.). Use this as your primary reference when working with the Databento.Client library.
 
-**Library**: `Databento.Client` v4.3.0
+**Library**: `Databento.Client` v4.3.1
 **Package**: `dotnet add package Databento.Client`
 **Runtime**: .NET 8.0 / 9.0
 **Platforms**: Windows x64 (NuGet) | Linux/macOS (build from source)

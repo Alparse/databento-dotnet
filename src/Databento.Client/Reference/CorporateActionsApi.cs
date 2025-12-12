@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Web;
 using Databento.Client.Models;
 using Databento.Client.Models.Reference;
 using Microsoft.Extensions.Logging;
@@ -121,9 +119,9 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         });
         await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var records = JsonSerializer.Deserialize<List<CorporateActionRecord>>(json, ReferenceApiHelpers.JsonOptions);
+        // Parse JSONL response (Databento Reference API returns JSON Lines format)
+        var records = await ReferenceApiHelpers.ParseJsonLinesResponseAsync<CorporateActionRecord>(response, cancellationToken).ConfigureAwait(false);
 
-        return records ?? new List<CorporateActionRecord>();
+        return records;
     }
 }
