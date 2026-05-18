@@ -200,14 +200,15 @@ public sealed class FileDataSource : IDataSource
 
     private SymbolMappingMessage CreateSymbolMappingMessage(SymbolMapping mapping)
     {
-        // Get first interval for instrument ID
-        var interval = mapping.Intervals.FirstOrDefault();
-
-        // When StypeOut is InstrumentId, interval.Symbol contains the numeric ID
-        uint instrumentId = 0;
-        if (interval != null && _metadata?.StypeOut == SType.InstrumentId)
+        // Get first interval for instrument ID and when StypeOut is InstrumentId, interval.Symbol contains the numeric ID
+        uint instrumentId;
+        if (mapping.Intervals.Count > 0 && _metadata?.StypeOut == SType.InstrumentId)
         {
-            uint.TryParse(interval.Symbol, out instrumentId);
+            uint.TryParse(mapping.Intervals[0].Symbol, out instrumentId);
+        }
+        else
+        {
+            instrumentId = 0;
         }
 
         return new SymbolMappingMessage
