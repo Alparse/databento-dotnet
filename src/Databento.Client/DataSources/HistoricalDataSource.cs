@@ -25,7 +25,7 @@ public sealed class HistoricalDataSource : IDataSource
     private IHistoricalClient? _historicalClient;
     private Dictionary<uint, string>? _symbolMap;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
     private CancellationTokenSource? _streamCts;
 
     /// <summary>

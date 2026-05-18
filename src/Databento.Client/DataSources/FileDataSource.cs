@@ -22,7 +22,7 @@ public sealed class FileDataSource : IDataSource
     private DbnFileReader? _reader;
     private DbnMetadata? _metadata;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
     private CancellationTokenSource? _streamCts;
 
     /// <summary>

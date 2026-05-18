@@ -12,7 +12,7 @@ public sealed class ResilienceOptions
     /// When enabled, transient errors trigger automatic reconnection
     /// using the configured RetryPolicy. Default is false.
     /// </summary>
-    public bool AutoReconnect { get; set; } = false;
+    public bool AutoReconnect { get; set; }
 
     /// <summary>
     /// Whether to automatically resubscribe after reconnection.

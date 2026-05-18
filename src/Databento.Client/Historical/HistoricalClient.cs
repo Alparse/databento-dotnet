@@ -31,7 +31,7 @@ public sealed class HistoricalClient : IHistoricalClient
     private readonly TimeSpan _timeout;
     private readonly ILogger<IHistoricalClient> _logger;
     // MEDIUM FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
-    private int _disposeState = 0;
+    private int _disposeState;
 
     // CRITICAL FIX: Store active callbacks to prevent GC collection
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, RecordCallbackDelegate> _activeCallbacks = new();

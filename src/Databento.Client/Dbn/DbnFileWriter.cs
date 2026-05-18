@@ -16,7 +16,7 @@ public sealed class DbnFileWriter : IDbnFileWriter
     private readonly DbnFileWriterHandle _handle;
     private readonly string _filePath;
     // MEDIUM FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
-    private int _disposeState = 0;
+    private int _disposeState;
 
     /// <summary>
     /// Create a new DBN file writer

@@ -20,7 +20,7 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
 
     private DbnMetadata? _metadata;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
     // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
     private TaskCompletionSource _stoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 

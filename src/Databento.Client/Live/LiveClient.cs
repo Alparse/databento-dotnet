@@ -39,11 +39,11 @@ public sealed class LiveClient : ILiveClient
     private readonly System.Collections.Concurrent.ConcurrentBag<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime, SType stypeIn)> _subscriptions;
     private Task? _streamTask;
     // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
-    private int _disposeState = 0;
+    private int _disposeState;
     // MEDIUM FIX: Use atomic operations instead of volatile for consistency
     private int _connectionState = (int)ConnectionState.Disconnected;
     // CRITICAL FIX: Track active callbacks to prevent race condition on channel completion
-    private int _activeCallbackCount = 0;
+    private int _activeCallbackCount;
     // TaskCompletionSource for capturing metadata from callback
     private TaskCompletionSource<Models.Dbn.DbnMetadata>? _metadataTcs;
     // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
