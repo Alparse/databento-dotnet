@@ -167,7 +167,7 @@ public sealed class HistoricalDataSource : IDataSource
                 subscription.Symbols,
                 _startTime,
                 _endTime,
-                linkedCts.Token))
+                linkedCts.Token).ConfigureAwait(false))
             {
                 // Check for pause/stop
                 if (!await Playback.WaitIfPausedAsync(linkedCts.Token).ConfigureAwait(false))

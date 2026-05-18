@@ -111,12 +111,12 @@ internal sealed class CorporateActionsApi : ICorporateActionsApi
         var url = $"{_baseUrl}/v0/corporate_actions.get_range";
         _logger.LogDebug("POST {Url}", url);
 
-        // MEDIUM FIX: Execute with retry policy for transient failures
-        var content = new FormUrlEncodedContent(queryParams);
+        // MEDIUM FIX: Execute with retry policy for transient failures        
         var response = await _retryPolicy.ExecuteAsync(async () =>
         {
-            return await _httpClient.PostAsync(url, content, cancellationToken);
-        });
+            var content = new FormUrlEncodedContent(queryParams);
+            return await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
         await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
         // Parse JSONL response (Databento Reference API returns JSON Lines format)

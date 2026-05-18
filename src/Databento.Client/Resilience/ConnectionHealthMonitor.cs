@@ -120,7 +120,7 @@ internal sealed class ConnectionHealthMonitor : IDisposable
         {
             try
             {
-                await Task.Delay(checkInterval, _cts.Token);
+                await Task.Delay(checkInterval, _cts.Token).ConfigureAwait(false);
 
                 var timeSinceActivity = DateTime.UtcNow - _lastActivityTime;
 
@@ -136,7 +136,7 @@ internal sealed class ConnectionHealthMonitor : IDisposable
                     if (_options.AutoReconnect)
                     {
                         await TryReconnectAsync(
-                            new TimeoutException($"No activity for {timeSinceActivity.TotalSeconds:F1} seconds"));
+                            new TimeoutException($"No activity for {timeSinceActivity.TotalSeconds:F1} seconds")).ConfigureAwait(false);
                     }
                 }
             }
@@ -189,11 +189,11 @@ internal sealed class ConnectionHealthMonitor : IDisposable
                     "Reconnection attempt {Attempt}/{Max} in {Delay:F1}s",
                     attempt + 1, _options.RetryPolicy.MaxRetries, delay.TotalSeconds);
 
-                await Task.Delay(delay, _cts.Token);
+                await Task.Delay(delay, _cts.Token).ConfigureAwait(false);
 
                 try
                 {
-                    await _reconnectAction(_cts.Token);
+                    await _reconnectAction(_cts.Token).ConfigureAwait(false);
 
                     // Success!
                     ReconnectionCount++;

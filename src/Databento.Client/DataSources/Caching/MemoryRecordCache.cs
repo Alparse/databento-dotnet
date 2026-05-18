@@ -79,7 +79,7 @@ public sealed class MemoryRecordCache : IRecordCache
             yield return record;
         }
 
-        await Task.CompletedTask; // Keep async signature
+        await Task.CompletedTask.ConfigureAwait(false); // Keep async signature
     }
 
     /// <inheritdoc/>
@@ -100,7 +100,7 @@ public sealed class MemoryRecordCache : IRecordCache
             yield return snapshot[i];
         }
 
-        await Task.CompletedTask; // Keep async signature
+        await Task.CompletedTask.ConfigureAwait(false); // Keep async signature
     }
 
     /// <inheritdoc/>

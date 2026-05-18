@@ -133,6 +133,6 @@ public sealed class ReferenceClient : IReferenceClient
         _httpClient?.Dispose();
         _disposed = true;
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

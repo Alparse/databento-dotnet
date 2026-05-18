@@ -188,7 +188,7 @@ public sealed class BacktestingClient : ILiveClient, IPlaybackControllable
 
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Streaming);
 
-        await foreach (var record in _dataSource.StreamAsync(cancellationToken))
+        await foreach (var record in _dataSource.StreamAsync(cancellationToken).ConfigureAwait(false))
         {
             // Fire event
             DataReceived?.Invoke(this, new DataReceivedEventArgs(record));

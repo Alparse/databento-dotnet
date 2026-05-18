@@ -147,7 +147,7 @@ public sealed class LiveClient : ILiveClient
             _healthMonitor = new ConnectionHealthMonitor(
                 _resilienceOptions,
                 _logger,
-                async ct => await PerformReconnectAsync(ct));
+                PerformReconnectAsync);
         }
         // MEDIUM FIX: Use Interlocked for consistency
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
@@ -584,7 +584,7 @@ public sealed class LiveClient : ILiveClient
             throw DbentoException.CreateFromErrorCode($"Resubscription failed: {error}", result);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -616,7 +616,7 @@ public sealed class LiveClient : ILiveClient
     public async IAsyncEnumerable<Record> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return record;
         }

@@ -268,7 +268,7 @@ public sealed class HistoricalClient : IHistoricalClient
         }, cancellationToken);
 
         // Stream results
-        await foreach (var record in channel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var record in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return record;
         }
@@ -427,7 +427,7 @@ public sealed class HistoricalClient : IHistoricalClient
         }, cancellationToken);
 
         // Stream results
-        await foreach (var record in channel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var record in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return record;
         }

@@ -229,7 +229,7 @@ public sealed class LiveDataSource : IDataSource
         if (_recordChannel == null)
             throw new InvalidOperationException("Not connected. Call ConnectAsync() first.");
 
-        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return record;
         }

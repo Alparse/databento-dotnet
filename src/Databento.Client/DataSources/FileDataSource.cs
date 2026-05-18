@@ -133,7 +133,7 @@ public sealed class FileDataSource : IDataSource
         long index = 0;
         long? previousNanos = null;
 
-        await foreach (var record in _reader.ReadRecordsAsync(linkedCts.Token))
+        await foreach (var record in _reader.ReadRecordsAsync(linkedCts.Token).ConfigureAwait(false))
         {
             // Check for pause/stop
             if (!await Playback.WaitIfPausedAsync(linkedCts.Token).ConfigureAwait(false))
@@ -235,6 +235,6 @@ public sealed class FileDataSource : IDataSource
         _reader?.Dispose();
 
         Interlocked.Exchange(ref _disposeState, 2);
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

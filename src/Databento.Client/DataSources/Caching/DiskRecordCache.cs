@@ -122,7 +122,7 @@ public sealed class DiskRecordCache : IRecordCache
         using var reader = new DbnFileReader(_cacheFilePath);
         long index = 0;
 
-        await foreach (var record in reader.ReadRecordsAsync(cancellationToken))
+        await foreach (var record in reader.ReadRecordsAsync(cancellationToken).ConfigureAwait(false))
         {
             index++;
             yield return record;
@@ -140,7 +140,7 @@ public sealed class DiskRecordCache : IRecordCache
         using var reader = new DbnFileReader(_cacheFilePath);
         long index = 0;
 
-        await foreach (var record in reader.ReadRecordsAsync(cancellationToken))
+        await foreach (var record in reader.ReadRecordsAsync(cancellationToken).ConfigureAwait(false))
         {
             if (index >= startIndex)
             {
