@@ -282,7 +282,7 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <remarks>
     /// This overload allows you to specify how symbols are interpreted (stypeIn) and how they should be
     /// represented in the output (stypeOut). For example, you can use SType.Parent with "ES.FUT" to get
-    /// all E-mini S&P 500 futures contracts.
+    /// all E-mini S&amp;P 500 futures contracts.
     /// </remarks>
     public async IAsyncEnumerable<Record> GetRangeAsync(
         string dataset,
@@ -444,7 +444,8 @@ public sealed class HistoricalClient : IHistoricalClient
     /// Previous versions had a critical bug that caused AccessViolationException crashes - this has been resolved.
     /// <para>
     /// For additional validation, you can use the symbology API to pre-validate symbols before calling this method.
-    /// Alternatively, use <see cref="BatchSubmitJobAsync"/> for bulk downloads with additional options.
+    /// Alternatively, use <see cref="BatchSubmitJobAsync(string, IEnumerable{string}, Schema, DateTimeOffset, DateTimeOffset, Encoding, Compression, bool, bool, bool, bool, SplitDuration, ulong, Delivery, SType, SType, ulong, CancellationToken)"/> 
+    /// for bulk downloads with additional options.
     /// </para>
     /// </remarks>
     public async Task<string> GetRangeToFileAsync(
@@ -508,7 +509,7 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <remarks>
     /// This overload allows you to specify how symbols are interpreted (stypeIn) and how they should be
     /// represented in the output (stypeOut). For example, you can use SType.Parent with "ES.FUT" to get
-    /// all E-mini S&P 500 futures contracts.
+    /// all E-mini S&amp;P 500 futures contracts.
     /// </remarks>
     public async Task<string> GetRangeToFileAsync(
         string filePath,
