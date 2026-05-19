@@ -30,7 +30,6 @@ public sealed class LiveClient : ILiveClient
     private readonly bool _sendTsOut;
     private readonly VersionUpgradePolicy _upgradePolicy;
     private readonly TimeSpan _heartbeatInterval;
-    private readonly string _apiKey;
     private readonly ILogger<ILiveClient> _logger;
     private readonly ExceptionCallback? _exceptionHandler;
     private readonly ResilienceOptions _resilienceOptions;
@@ -131,7 +130,6 @@ public sealed class LiveClient : ILiveClient
         if (string.IsNullOrEmpty(apiKey))
             throw new ArgumentException("API key cannot be null or empty", nameof(apiKey));
 
-        _apiKey = apiKey;
         _defaultDataset = defaultDataset;
         _sendTsOut = sendTsOut;
         _upgradePolicy = upgradePolicy;

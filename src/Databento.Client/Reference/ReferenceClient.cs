@@ -14,7 +14,6 @@ namespace Databento.Client.Reference;
 public sealed class ReferenceClient : IReferenceClient
 {
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
     private readonly string _baseUrl;
     private readonly ILogger<IReferenceClient> _logger;
     private bool _disposed;
@@ -83,7 +82,6 @@ public sealed class ReferenceClient : IReferenceClient
         if (string.IsNullOrEmpty(apiKey))
             throw new ArgumentException("API key cannot be null or empty", nameof(apiKey));
 
-        _apiKey = apiKey;
         _logger = logger ?? NullLogger<IReferenceClient>.Instance;
 
         // Map gateway to base URL
