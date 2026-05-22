@@ -35,7 +35,7 @@ public sealed class LiveClient : ILiveClient
     private readonly ResilienceOptions _resilienceOptions;
     private readonly ConnectionHealthMonitor? _healthMonitor;
     // HIGH FIX: Use thread-safe collection for concurrent subscription operations
-    private readonly System.Collections.Concurrent.ConcurrentBag<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime, SType stypeIn)> _subscriptions;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<LiveSubscription, byte> _subscriptions = new();
     private Task? _streamTask;
     // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
     private int _disposeState;
@@ -44,7 +44,7 @@ public sealed class LiveClient : ILiveClient
     // CRITICAL FIX: Track active callbacks to prevent race condition on channel completion
     private int _activeCallbackCount;
     // TaskCompletionSource for capturing metadata from callback
-    private TaskCompletionSource<Models.Dbn.DbnMetadata>? _metadataTcs;
+    private TaskCompletionSource<DbnMetadata>? _metadataTcs;
     // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
     private TaskCompletionSource _stoppedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -100,15 +100,7 @@ public sealed class LiveClient : ILiveClient
     /// The active subscriptions on this client
     /// </summary>
     public IReadOnlyList<LiveSubscription> Subscriptions =>
-        _subscriptions.Select(s => new LiveSubscription
-        {
-            Dataset = s.dataset,
-            Schema = s.schema,
-            STypeIn = s.stypeIn,
-            Symbols = s.symbols,
-            StartTime = s.startTime,
-            WithSnapshot = s.withSnapshot
-        }).ToList().AsReadOnly();
+        _subscriptions.Select(kv => kv.Key).ToList().AsReadOnly();
 
     #endregion
 
@@ -137,7 +129,6 @@ public sealed class LiveClient : ILiveClient
         _logger = logger ?? NullLogger<ILiveClient>.Instance;
         _exceptionHandler = exceptionHandler;
         _resilienceOptions = resilienceOptions ?? new ResilienceOptions();
-        _subscriptions = new System.Collections.Concurrent.ConcurrentBag<(string, Schema, string[], bool, DateTimeOffset?, SType)>();
 
         // Initialize health monitor if auto-reconnect or heartbeat monitoring enabled
         if (_resilienceOptions.AutoReconnect || _resilienceOptions.HeartbeatTimeout > TimeSpan.Zero)
@@ -201,20 +192,20 @@ public sealed class LiveClient : ILiveClient
     /// Subscribe to a data stream (matches databento-cpp Subscribe overloads).
     /// Defaults to SType.RawSymbol for symbol type.
     /// </summary>
-    public Task SubscribeAsync(
+    public async Task SubscribeAsync(
         string dataset,
         Schema schema,
         IEnumerable<string> symbols,
         DateTimeOffset? startTime = null,
         CancellationToken cancellationToken = default)
     {
-        return SubscribeAsync(dataset, schema, symbols, SType.RawSymbol, startTime, cancellationToken);
+        await SubscribeAsync(dataset, schema, symbols, SType.RawSymbol, startTime, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Subscribe to a data stream with a specified symbol type
     /// </summary>
-    public Task SubscribeAsync(
+    public async Task SubscribeAsync(
         string dataset,
         Schema schema,
         IEnumerable<string> symbols,
@@ -227,104 +218,108 @@ public sealed class LiveClient : ILiveClient
         // MEDIUM FIX: Validate input parameters
         ArgumentException.ThrowIfNullOrWhiteSpace(dataset, nameof(dataset));
         ArgumentNullException.ThrowIfNull(symbols, nameof(symbols));
-
+        
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
 
-        // MEDIUM FIX: Increased from 512 to 2048 for full error context
-        byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
-        int result;
-        var stypeInStr = stypeIn.ToStypeString();
+        var subs = new LiveSubscription() { Dataset = dataset, Schema = schema, Symbols = symbolArray, STypeIn = stypeIn, StartTime = startTime, WithSnapshot = false };
+        if (_subscriptions.ContainsKey(subs)) // we already have this subscription
+            return;
 
-        // Check if intraday replay is requested (matches databento-cpp overloads)
-        if (startTime.HasValue)
+        await Task.Run(() =>
         {
-            // Subscribe with intraday replay (matches databento-cpp: Subscribe(symbols, schema, stype, UnixNanos))
-            long startTimeNs = (startTime.Value == DateTimeOffset.MinValue)
-                ? 0  // Full replay history
-                : Utilities.DateTimeHelpers.ToUnixNanos(startTime.Value);
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
+            int result;
+            var stypeInStr = stypeIn.ToStypeString();
 
-            _logger.LogInformation(
-                "Subscribing with replay: dataset={Dataset}, schema={Schema}, stypeIn={StypeIn}, symbolCount={SymbolCount}, startTime={StartTime}",
-                dataset,
-                schema,
-                stypeIn,
-                symbolArray.Length,
-                startTime.Value);
+            // Check if intraday replay is requested (matches databento-cpp overloads)
+            if (startTime.HasValue)
+            {
+                // Subscribe with intraday replay (matches databento-cpp: Subscribe(symbols, schema, stype, UnixNanos))
+                long startTimeNs = (startTime.Value == DateTimeOffset.MinValue)
+                    ? 0  // Full replay history
+                    : Utilities.DateTimeHelpers.ToUnixNanos(startTime.Value);
 
-            result = NativeMethods.dbento_live_subscribe_with_replay_ex(
-                _handle,
-                dataset,
-                schema.ToSchemaString(),
-                symbolArray,
-                (nuint)symbolArray.Length,
-                startTimeNs,
-                stypeInStr,
-                errorBuffer,
-                (nuint)errorBuffer.Length);
-        }
-        else
-        {
-            // Basic subscribe without replay (matches databento-cpp: Subscribe(symbols, schema, stype))
-            _logger.LogInformation(
-                "Subscribing to dataset={Dataset}, schema={Schema}, stypeIn={StypeIn}, symbolCount={SymbolCount}",
-                dataset,
-                schema,
-                stypeIn,
-                symbolArray.Length);
+                _logger.LogInformation(
+                    "Subscribing with replay: dataset={Dataset}, schema={Schema}, stypeIn={StypeIn}, symbolCount={SymbolCount}, startTime={StartTime}",
+                    dataset,
+                    schema,
+                    stypeIn,
+                    symbolArray.Length,
+                    startTime.Value);
 
-            result = NativeMethods.dbento_live_subscribe_ex(
-                _handle,
-                dataset,
-                schema.ToSchemaString(),
-                symbolArray,
-                (nuint)symbolArray.Length,
-                stypeInStr,
-                errorBuffer,
-                (nuint)errorBuffer.Length);
-        }
+                result = NativeMethods.dbento_live_subscribe_with_replay_ex(
+                    _handle,
+                    dataset,
+                    schema.ToSchemaString(),
+                    symbolArray,
+                    (nuint)symbolArray.Length,
+                    startTimeNs,
+                    stypeInStr,
+                    errorBuffer,
+                    (nuint)errorBuffer.Length);
+            }
+            else
+            {
+                // Basic subscribe without replay (matches databento-cpp: Subscribe(symbols, schema, stype))
+                _logger.LogInformation(
+                    "Subscribing to dataset={Dataset}, schema={Schema}, stypeIn={StypeIn}, symbolCount={SymbolCount}",
+                    dataset,
+                    schema,
+                    stypeIn,
+                    symbolArray.Length);
 
-        if (result != 0)
-        {
-            // HIGH FIX: Use safe error string extraction
-            var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            _logger.LogError(
-                "Subscription failed with error code {ErrorCode}: {Error}. Dataset={Dataset}, Schema={Schema}, StypeIn={StypeIn}",
-                result,
-                error,
-                dataset,
-                schema,
-                stypeIn);
-            // MEDIUM FIX: Use exception factory method for proper exception type mapping
-            throw DbentoException.CreateFromErrorCode($"Subscription failed: {error}", result);
-        }
+                result = NativeMethods.dbento_live_subscribe_ex(
+                    _handle,
+                    dataset,
+                    schema.ToSchemaString(),
+                    symbolArray,
+                    (nuint)symbolArray.Length,
+                    stypeInStr,
+                    errorBuffer,
+                    (nuint)errorBuffer.Length);
+            }
 
-        // Track subscription for resubscription
-        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime, stypeIn));
+            if (result != 0)
+            {
+                // HIGH FIX: Use safe error string extraction
+                var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
+                _logger.LogError(
+                    "Subscription failed with error code {ErrorCode}: {Error}. Dataset={Dataset}, Schema={Schema}, StypeIn={StypeIn}",
+                    result,
+                    error,
+                    dataset,
+                    schema,
+                    stypeIn);
+                // MEDIUM FIX: Use exception factory method for proper exception type mapping
+                throw DbentoException.CreateFromErrorCode($"Subscription failed: {error}", result);
+            }
 
-        _logger.LogInformation("Subscription successful for {SymbolCount} symbols", symbolArray.Length);
-
-        return Task.CompletedTask;
+            // Track subscription
+            _subscriptions.TryAdd(subs, 0);
+            _logger.LogInformation("Subscription successful for {SymbolCount} symbols", symbolArray.Length);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Subscribe to a data stream with initial snapshot.
     /// Defaults to SType.RawSymbol for symbol type.
     /// </summary>
-    public Task SubscribeWithSnapshotAsync(
+    public async Task SubscribeWithSnapshotAsync(
         string dataset,
         Schema schema,
         IEnumerable<string> symbols,
         CancellationToken cancellationToken = default)
     {
-        return SubscribeWithSnapshotAsync(dataset, schema, symbols, SType.RawSymbol, cancellationToken);
+        await SubscribeWithSnapshotAsync(dataset, schema, symbols, SType.RawSymbol, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Subscribe to a data stream with initial snapshot and a specified symbol type
     /// </summary>
-    public Task SubscribeWithSnapshotAsync(
+    public async Task SubscribeWithSnapshotAsync(
         string dataset,
         Schema schema,
         IEnumerable<string> symbols,
@@ -340,39 +335,60 @@ public sealed class LiveClient : ILiveClient
         var symbolArray = symbols.ToArray();
         // HIGH FIX: Validate symbol array elements
         Utilities.ErrorBufferHelpers.ValidateSymbolArray(symbolArray);
-        // MEDIUM FIX: Increased from 512 to 2048 for full error context
-        byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
-        var stypeInStr = stypeIn.ToStypeString();
 
-        // Use native subscribe with snapshot support
-        var result = NativeMethods.dbento_live_subscribe_with_snapshot_ex(
-            _handle,
-            dataset,
-            schema.ToSchemaString(),
-            symbolArray,
-            (nuint)symbolArray.Length,
-            stypeInStr,
-            errorBuffer,
-            (nuint)errorBuffer.Length);
+        var subs = new LiveSubscription() { Dataset = dataset, Schema = schema, Symbols = symbolArray, STypeIn = stypeIn, StartTime = null, WithSnapshot = true };
+        if (_subscriptions.ContainsKey(subs)) // we already have this subscription
+            return;
 
-        if (result != 0)
+        await Task.Run(() =>
         {
-            // HIGH FIX: Use safe error string extraction
-            var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
-            // MEDIUM FIX: Use exception factory method for proper exception type mapping
-            throw DbentoException.CreateFromErrorCode($"Subscription with snapshot failed: {error}", result);
-        }
+            // MEDIUM FIX: Increased from 512 to 2048 for full error context
+            byte[] errorBuffer = new byte[Utilities.Constants.ErrorBufferSize];
+            var stypeInStr = stypeIn.ToStypeString();
 
-        // Track subscription for resubscription
-        _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: true, startTime: null, stypeIn));
+            _logger.LogInformation(
+                "Subscribing + initial snapshot to dataset={Dataset}, schema={Schema}, stypeIn={StypeIn}, symbolCount={SymbolCount}",
+                dataset,
+                schema,
+                stypeIn,
+                symbolArray.Length);
 
-        return Task.CompletedTask;
+            // Use native subscribe with snapshot support
+            var result = NativeMethods.dbento_live_subscribe_with_snapshot_ex(
+                _handle,
+                dataset,
+                schema.ToSchemaString(),
+                symbolArray,
+                (nuint)symbolArray.Length,
+                stypeInStr,
+                errorBuffer,
+                (nuint)errorBuffer.Length);
+
+            if (result != 0)
+            {
+                // HIGH FIX: Use safe error string extraction
+                var error = Utilities.ErrorBufferHelpers.SafeGetString(errorBuffer);
+                _logger.LogError(
+                    "Subscription + initial snapshot failed with error code {ErrorCode}: {Error}. Dataset={Dataset}, Schema={Schema}, StypeIn={StypeIn}",
+                    result,
+                    error,
+                    dataset,
+                    schema,
+                    stypeIn);
+                // MEDIUM FIX: Use exception factory method for proper exception type mapping
+                throw DbentoException.CreateFromErrorCode($"Subscription with snapshot failed: {error}", result);
+            }
+
+            // Track subscription
+            _subscriptions.TryAdd(subs, 0);
+            _logger.LogInformation("Subscription + initial snapshot successful for {SymbolCount} symbols", symbolArray.Length);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Start receiving data and return DBN metadata (matches databento-cpp LiveBlocking::Start)
     /// </summary>
-    public async Task<Models.Dbn.DbnMetadata> StartAsync(CancellationToken cancellationToken = default)
+    public async Task<DbnMetadata> StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
@@ -380,7 +396,7 @@ public sealed class LiveClient : ILiveClient
         // This ensures each thread gets its own TCS that won't be overwritten
         // CRITICAL FIX: Use RunContinuationsAsynchronously to prevent deadlock when TrySetResult
         // is called from native callback thread - continuations must run on a different thread
-        var metadataTcs = new TaskCompletionSource<Models.Dbn.DbnMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var metadataTcs = new TaskCompletionSource<DbnMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // CRITICAL FIX: Set instance-level TCS BEFORE starting the task
         // The native metadata callback fires asynchronously and may arrive before Task.Run() returns
@@ -612,7 +628,7 @@ public sealed class LiveClient : ILiveClient
     public async IAsyncEnumerable<Record> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var record in _recordChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return record;
         }
@@ -793,7 +809,7 @@ public sealed class LiveClient : ILiveClient
                 end = endElem.GetInt64();
             }
 
-            var metadata = new Models.Dbn.DbnMetadata
+            var metadata = new DbnMetadata
             {
                 Version = root.GetProperty("version").GetByte(),
                 Dataset = root.GetProperty("dataset").GetString() ?? string.Empty,
@@ -877,8 +893,7 @@ public sealed class LiveClient : ILiveClient
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         // Check if client has been started
-        var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
-        if (streamTask == null)
+        if (Interlocked.CompareExchange(ref _streamTask, null, null) == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
         _logger.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop...");
@@ -912,8 +927,7 @@ public sealed class LiveClient : ILiveClient
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
 
         // Check if client has been started
-        var streamTask = Interlocked.CompareExchange(ref _streamTask, null, null);
-        if (streamTask == null)
+        if (Interlocked.CompareExchange(ref _streamTask, null, null) == null)
             throw new InvalidOperationException("Client not started. Call StartAsync() first.");
 
         _logger.LogDebug("BlockUntilStoppedAsync: Waiting for stream to stop (timeout: {Timeout}ms)...", timeout.TotalMilliseconds);
@@ -937,6 +951,7 @@ public sealed class LiveClient : ILiveClient
         }
     }
 
+    /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
         // CRITICAL FIX: Atomic state transition (0=active -> 1=disposing -> 2=disposed)

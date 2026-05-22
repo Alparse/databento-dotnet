@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Databento.Client.Models;
 using Encoding = System.Text.Encoding;
 using Databento.Client.Models.Dbn;
@@ -21,7 +22,7 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
     private readonly bool _sendTsOut;
     private readonly VersionUpgradePolicy _upgradePolicy;
     private readonly TimeSpan _heartbeatInterval;
-    private readonly List<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime, SType stypeIn)> _subscriptions = new();
+    private readonly ConcurrentDictionary<LiveSubscription, byte> _subscriptions = new();
     private bool _isDisposed;
     private bool _isStarted;
 
@@ -51,15 +52,7 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
     /// The active subscriptions on this client
     /// </summary>
     public IReadOnlyList<LiveSubscription> Subscriptions =>
-        _subscriptions.Select(s => new LiveSubscription
-        {
-            Dataset = s.dataset,
-            Schema = s.schema,
-            STypeIn = s.stypeIn,
-            Symbols = s.symbols,
-            StartTime = s.startTime,
-            WithSnapshot = s.withSnapshot
-        }).ToList().AsReadOnly();
+        _subscriptions.Select(kv => kv.Key).ToList().AsReadOnly();
 
     #endregion
 
@@ -124,11 +117,14 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
         if (symbolArray.Length == 0)
             throw new ArgumentException("Symbols array cannot be empty", nameof(symbols));
 
-        var stypeInStr = stypeIn.ToStypeString();
-
+        var subs = new LiveSubscription() { Dataset = dataset, Schema = schema, Symbols = symbolArray, STypeIn = stypeIn, StartTime = null, WithSnapshot = false };
+        if (_subscriptions.ContainsKey(subs)) // we already have this subscription
+            return;
+        
         await Task.Run(() =>
         {
             var errorBuffer = new byte[4096];
+            var stypeInStr = stypeIn.ToStypeString();
             var result = NativeMethods.dbento_live_blocking_subscribe_ex(
                 _handle,
                 dataset,
@@ -149,7 +145,7 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
                 dataset, schema, stypeIn, symbolArray.Length);
 
             // Track subscription
-            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime: null, stypeIn));
+            _subscriptions.TryAdd(subs, 0);
         }, cancellationToken).ConfigureAwait(false);
     }
 
@@ -179,12 +175,15 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
         if (symbolArray.Length == 0)
             throw new ArgumentException("Symbols array cannot be empty", nameof(symbols));
 
-        var startTimeNs = start.ToUnixTimeMilliseconds() * 1_000_000;
-        var stypeInStr = stypeIn.ToStypeString();
+        var subs = new LiveSubscription() { Dataset = dataset, Schema = schema, Symbols = symbolArray, STypeIn = stypeIn, StartTime = start, WithSnapshot = false };
+        if (_subscriptions.ContainsKey(subs)) // we already have this subscription
+            return;
 
         await Task.Run(() =>
         {
             var errorBuffer = new byte[4096];
+            var startTimeNs = start.ToUnixTimeMilliseconds() * 1_000_000;
+            var stypeInStr = stypeIn.ToStypeString();
             var result = NativeMethods.dbento_live_blocking_subscribe_with_replay_ex(
                 _handle,
                 dataset,
@@ -206,7 +205,7 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
                 start, dataset, schema, stypeIn);
 
             // Track subscription
-            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: false, startTime: start, stypeIn));
+            _subscriptions.TryAdd(subs, 0);
         }, cancellationToken).ConfigureAwait(false);
     }
 
@@ -234,11 +233,14 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
         if (symbolArray.Length == 0)
             throw new ArgumentException("Symbols array cannot be empty", nameof(symbols));
 
-        var stypeInStr = stypeIn.ToStypeString();
+        var subs = new LiveSubscription() { Dataset = dataset, Schema = schema, Symbols = symbolArray, STypeIn = stypeIn, StartTime = null, WithSnapshot = true };
+        if (_subscriptions.ContainsKey(subs)) // we already have this subscription
+            return;
 
         await Task.Run(() =>
         {
             var errorBuffer = new byte[4096];
+            var stypeInStr = stypeIn.ToStypeString();
             var result = NativeMethods.dbento_live_blocking_subscribe_with_snapshot_ex(
                 _handle,
                 dataset,
@@ -259,7 +261,7 @@ public sealed class LiveBlockingClient : ILiveBlockingClient
                 dataset, schema, stypeIn);
 
             // Track subscription
-            _subscriptions.Add((dataset, schema, symbolArray, withSnapshot: true, startTime: null, stypeIn));
+            _subscriptions.TryAdd(subs, 0);
         }, cancellationToken).ConfigureAwait(false);
     }
 
