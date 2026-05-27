@@ -17,7 +17,7 @@ public sealed class DbnFileReader : IDbnFileReader
     private readonly DbnFileReaderHandle _handle;
     private DbnMetadata? _cachedMetadata;
     // MEDIUM FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
-    private int _disposeState = 0;
+    private int _disposeState;
 
     /// <summary>
     /// Open a DBN file for reading

@@ -17,8 +17,8 @@ internal sealed class ConnectionHealthMonitor : IDisposable
 
     private DateTime _lastActivityTime = DateTime.UtcNow;
     private Task? _monitorTask;
-    private int _isReconnecting = 0;
-    private int _consecutiveFailures = 0;
+    private int _isReconnecting;
+    private int _consecutiveFailures;
 
     /// <summary>
     /// Event raised when connection health changes.
@@ -33,7 +33,7 @@ internal sealed class ConnectionHealthMonitor : IDisposable
     /// <summary>
     /// Number of successful reconnections since start.
     /// </summary>
-    public int ReconnectionCount { get; private set; } = 0;
+    public int ReconnectionCount { get; private set; }
 
     /// <summary>
     /// Time of last successful activity (data received or heartbeat).

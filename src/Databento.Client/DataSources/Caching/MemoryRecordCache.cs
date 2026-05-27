@@ -7,6 +7,8 @@ namespace Databento.Client.DataSources.Caching;
 /// Caches records in memory for fast replay.
 /// Best for smaller datasets or when you need fast random access.
 /// </summary>
+/// <remarks>Caching is not yet implemented. This type will be removed in a future major version.</remarks>
+[Obsolete("Caching is not yet implemented. This type will be removed in a future major version.")]
 public sealed class MemoryRecordCache : IRecordCache
 {
     private List<Record>? _records;

@@ -1,5 +1,4 @@
 using Databento.Client.DataSources;
-using Databento.Client.DataSources.Caching;
 using Databento.Client.Live;
 using Microsoft.Extensions.Logging;
 
@@ -34,8 +33,6 @@ public sealed class BacktestingClientBuilder
     private DateTimeOffset? _endTime;
     private string? _fileSourcePath;
     private PlaybackSpeed _playbackSpeed = PlaybackSpeed.Maximum;
-    private CachePolicy _cachePolicy = CachePolicy.None;
-    private string? _cacheDirectory;
     private ILogger? _logger;
 
     /// <summary>
@@ -114,23 +111,28 @@ public sealed class BacktestingClientBuilder
 
     /// <summary>
     /// Enable in-memory caching for historical data.
-    /// Allows multiple replay runs without re-fetching from API.
     /// </summary>
+    /// <remarks>
+    /// Caching is not yet implemented. This method has no effect.
+    /// For repeated replay, use <see cref="WithFileSource"/> with a pre-downloaded DBN file instead.
+    /// </remarks>
+    [Obsolete("Caching is not yet implemented. This method has no effect and will be removed in a future major version. Use WithFileSource() with a pre-downloaded DBN file for repeated replay.")]
     public BacktestingClientBuilder WithMemoryCache()
     {
-        _cachePolicy = CachePolicy.Memory;
         return this;
     }
 
     /// <summary>
     /// Enable disk caching for historical data.
-    /// Persists data as DBN files for unlimited replay.
     /// </summary>
-    /// <param name="directory">Cache directory (optional, defaults to platform-specific location)</param>
+    /// <param name="directory">Cache directory (ignored — caching is not yet implemented)</param>
+    /// <remarks>
+    /// Caching is not yet implemented. This method has no effect.
+    /// For repeated replay, use <see cref="WithFileSource"/> with a pre-downloaded DBN file instead.
+    /// </remarks>
+    [Obsolete("Caching is not yet implemented. This method has no effect and will be removed in a future major version. Use WithFileSource() with a pre-downloaded DBN file for repeated replay.")]
     public BacktestingClientBuilder WithDiskCache(string? directory = null)
     {
-        _cachePolicy = CachePolicy.Disk;
-        _cacheDirectory = directory;
         return this;
     }
 

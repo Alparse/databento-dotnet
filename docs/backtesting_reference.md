@@ -390,19 +390,6 @@ The `BacktestingClientBuilder` creates backtesting clients configured for histor
 .WithPlaybackSpeed(PlaybackSpeed.Times(2.0))
 ```
 
-#### Caching Configuration
-
-```csharp
-// In-memory cache (fast, limited by RAM)
-.WithMemoryCache()
-
-// Disk cache (persistent, unlimited replay)
-.WithDiskCache()
-
-// Disk cache with custom directory
-.WithDiskCache("/custom/cache/path")
-```
-
 #### Other Options
 
 ```csharp
@@ -423,7 +410,6 @@ var client = new BacktestingClientBuilder()
         new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5)),
         new DateTimeOffset(2025, 1, 15, 16, 0, 0, TimeSpan.FromHours(-5)))
     .WithPlaybackSpeed(PlaybackSpeed.Times(10))  // 10x speed
-    .WithDiskCache()
     .WithLogger(logger)
     .Build();
 ```
@@ -439,12 +425,10 @@ Fetches data from Databento's Historical API.
 **When to use:**
 - First-time backtesting of a specific time period
 - When you need the latest historical data
-- When disk space is limited (with memory cache)
 
 **Characteristics:**
 - Requires API key
-- Incurs API costs on first fetch
-- Can be cached for repeated replay
+- Incurs API costs per fetch
 - Supports playback speed control
 - Supports pause/resume
 
@@ -452,9 +436,11 @@ Fetches data from Databento's Historical API.
 var client = new BacktestingClientBuilder()
     .WithKeyFromEnv()
     .WithTimeRange(start, end)
-    .WithDiskCache()  // Cache for repeated runs
     .Build();
 ```
+
+> **Tip:** For repeated replay without re-fetching, download your data to a DBN file first
+> using the Historical API, then use `WithFileSource()` instead. See [Downloading Data for Backtesting](#downloading-data-for-backtesting).
 
 ### FileDataSource
 
@@ -606,85 +592,12 @@ await streamTask;
 
 ## Caching
 
-Caching allows you to fetch historical data once and replay it multiple times without additional API costs.
+> **Note:** The `WithMemoryCache()` and `WithDiskCache()` builder methods are deprecated and have no effect.
+> They will be removed in a future major version.
 
-### Cache Policies
-
-| Policy | Storage | Persistence | Best For |
-|--------|---------|-------------|----------|
-| `None` | N/A | N/A | One-shot analysis |
-| `Memory` | RAM | Process lifetime | Small datasets, fast iteration |
-| `Disk` | DBN files | Permanent | Large datasets, repeated runs |
-
-### Memory Cache
-
-```csharp
-var client = new BacktestingClientBuilder()
-    .WithKeyFromEnv()
-    .WithTimeRange(start, end)
-    .WithMemoryCache()
-    .Build();
-
-// First run: fetches from API, caches in memory
-await RunBacktest(client);
-
-// To replay: create new client (cache is per-instance)
-```
-
-### Disk Cache
-
-```csharp
-var client = new BacktestingClientBuilder()
-    .WithKeyFromEnv()
-    .WithTimeRange(start, end)
-    .WithDiskCache()  // Uses default directory
-    .Build();
-
-// First run: fetches from API, saves to disk
-await RunBacktest(client);
-
-// Subsequent runs: reads from disk (free, fast)
-```
-
-### Default Cache Location
-
-| Platform | Location |
-|----------|----------|
-| Windows | `%LOCALAPPDATA%\Databento\Cache` |
-| Linux/macOS | `~/.local/share/Databento/Cache` |
-
-### Cache Key Generation
-
-Cache keys are generated from query parameters:
-```
-SHA256(dataset + schema + sorted(symbols) + start + end)[0:16]
-```
-
-Same query = same cache. Different parameters = different cache.
-
-### Manual Cache Management
-
-```csharp
-// Get default cache directory
-var cacheDir = DiskRecordCache.GetDefaultCacheDirectory();
-
-// Generate cache key for a query
-var cacheKey = DiskRecordCache.GenerateCacheKey(
-    "EQUS.MINI",
-    Schema.Trades,
-    new[] { "NVDA", "AAPL" },
-    start,
-    end);
-
-// Cache file path
-var cachePath = Path.Combine(cacheDir, $"{cacheKey}.dbn");
-
-// Check if cached
-if (File.Exists(cachePath))
-{
-    Console.WriteLine("Using cached data");
-}
-```
+For repeated replay without re-fetching from the API, download your data to a DBN file first
+using the Historical API (see [Downloading Data for Backtesting](#downloading-data-for-backtesting)),
+then use `WithFileSource()` for unlimited offline replay at no additional API cost.
 
 ---
 
@@ -761,7 +674,7 @@ record AppConfig(
     bool BacktestMode,
     DateTimeOffset? BacktestStart,
     DateTimeOffset? BacktestEnd,
-    bool UseCache,
+    string? BacktestFile,
     string Dataset,
     Schema Schema,
     string[] Symbols
@@ -772,12 +685,17 @@ ILiveClient CreateClient(AppConfig config)
 {
     if (config.BacktestMode)
     {
-        var builder = new BacktestingClientBuilder()
-            .WithKeyFromEnv()
-            .WithTimeRange(config.BacktestStart!.Value, config.BacktestEnd!.Value);
+        var builder = new BacktestingClientBuilder();
 
-        if (config.UseCache)
-            builder.WithDiskCache();
+        if (!string.IsNullOrEmpty(config.BacktestFile))
+        {
+            builder.WithFileSource(config.BacktestFile);
+        }
+        else
+        {
+            builder.WithKeyFromEnv()
+                .WithTimeRange(config.BacktestStart!.Value, config.BacktestEnd!.Value);
+        }
 
         return builder.Build();
     }
@@ -795,7 +713,7 @@ var config = new AppConfig(
     BacktestMode: true,
     BacktestStart: new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5)),
     BacktestEnd: new DateTimeOffset(2025, 1, 15, 16, 0, 0, TimeSpan.FromHours(-5)),
-    UseCache: true,
+    BacktestFile: null,
     Dataset: "EQUS.MINI",
     Schema: Schema.Trades,
     Symbols: new[] { "NVDA", "AAPL" }
@@ -854,17 +772,15 @@ await foreach (var record in client.StreamAsync())
 Console.WriteLine($"Processed {tradeCount:N0} trades, ${totalVolume:N2} volume");
 ```
 
-### Example 2: Cached Multi-Run Backtest
+### Example 2: Multi-Run Backtest with File Source
 
 ```csharp
 using Databento.Client.Builders;
 using Databento.Client.Live;
 using Databento.Client.Models;
 
-// Define time range and symbols
-var start = new DateTimeOffset(2025, 1, 15, 9, 30, 0, TimeSpan.FromHours(-5));
-var end = start.AddHours(6.5);
-var symbols = new[] { "NVDA", "AAPL" };
+// Pre-download data once, then replay from file for each parameter sweep
+var dataFile = "/path/to/trades_20250115.dbn";
 
 // Run backtest with given threshold parameter
 async Task<decimal> RunBacktest(ILiveClient client, decimal priceThreshold)
@@ -887,14 +803,11 @@ var thresholds = new[] { 100m, 125m, 150m, 175m };
 
 foreach (var threshold in thresholds)
 {
-    // Each iteration uses cached data (first run fetches from API)
+    // Each iteration replays from the local file (no API cost)
     await using var client = new BacktestingClientBuilder()
-        .WithKeyFromEnv()
-        .WithTimeRange(start, end)
-        .WithDiskCache()  // Cache for repeated runs
+        .WithFileSource(dataFile)
         .Build();
 
-    await client.SubscribeAsync("EQUS.MINI", Schema.Trades, symbols);
     await client.StartAsync();
 
     var volume = await RunBacktest(client, threshold);
@@ -992,8 +905,8 @@ public sealed class BacktestingClientBuilder
     BacktestingClientBuilder WithTimeRange(DateTimeOffset start, DateTimeOffset end);
     BacktestingClientBuilder WithFileSource(string filePath);
     BacktestingClientBuilder WithPlaybackSpeed(PlaybackSpeed speed);
-    BacktestingClientBuilder WithMemoryCache();
-    BacktestingClientBuilder WithDiskCache(string? directory = null);
+    [Obsolete] BacktestingClientBuilder WithMemoryCache();      // Not implemented — no effect
+    [Obsolete] BacktestingClientBuilder WithDiskCache(string?); // Not implemented — no effect
     BacktestingClientBuilder WithLogger(ILogger logger);
     ILiveClient Build();
 }
@@ -1178,14 +1091,14 @@ This is more efficient than trying to resolve symbols during streaming.
 
 ## Best Practices
 
-### 1. Use Disk Cache for Repeated Backtests
+### 1. Use File Source for Repeated Backtests
 
 ```csharp
-// Good - data fetched once, reused many times
-.WithDiskCache()
+// Good - download data once, replay from file for free
+.WithFileSource("/path/to/data.dbn")
 
 // Expensive - fetches from API every run
-// (no caching)
+.WithTimeRange(start, end)
 ```
 
 ### 2. Use Maximum Speed Unless Testing Timing
@@ -1301,7 +1214,7 @@ if (!File.Exists(path))
 ### Slow Backtest Performance
 
 1. Use `PlaybackSpeed.Maximum` (default)
-2. Enable disk cache to avoid re-fetching
+2. Use `WithFileSource()` with a pre-downloaded DBN file to avoid re-fetching
 3. Reduce symbol count if possible
 4. Check if you're doing expensive operations per-record
 

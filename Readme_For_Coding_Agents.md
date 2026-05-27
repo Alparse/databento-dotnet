@@ -93,7 +93,6 @@ var end = start.AddHours(6.5);
 await using var client = new BacktestingClientBuilder()
     .WithKeyFromEnv()
     .WithTimeRange(start, end)
-    .WithDiskCache()              // Cache for repeated runs (optional)
     .Build();
 ```
 
@@ -164,7 +163,6 @@ var end = start.AddHours(6.5);
 await using var client = new BacktestingClientBuilder()
     .WithKeyFromEnv()
     .WithTimeRange(start, end)
-    .WithDiskCache()  // Cache for repeated runs
     .Build();
 
 await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });

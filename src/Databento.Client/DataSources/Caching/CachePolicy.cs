@@ -3,6 +3,8 @@ namespace Databento.Client.DataSources.Caching;
 /// <summary>
 /// Specifies how historical data should be cached during backtesting.
 /// </summary>
+/// <remarks>Caching is not yet implemented. This type will be removed in a future major version.</remarks>
+[Obsolete("Caching is not yet implemented. This type will be removed in a future major version.")]
 public enum CachePolicy
 {
     /// <summary>

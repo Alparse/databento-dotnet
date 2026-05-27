@@ -30,7 +30,6 @@ public sealed class LiveClient : ILiveClient
     private readonly bool _sendTsOut;
     private readonly VersionUpgradePolicy _upgradePolicy;
     private readonly TimeSpan _heartbeatInterval;
-    private readonly string _apiKey;
     private readonly ILogger<ILiveClient> _logger;
     private readonly ExceptionCallback? _exceptionHandler;
     private readonly ResilienceOptions _resilienceOptions;
@@ -39,11 +38,11 @@ public sealed class LiveClient : ILiveClient
     private readonly System.Collections.Concurrent.ConcurrentBag<(string dataset, Schema schema, string[] symbols, bool withSnapshot, DateTimeOffset? startTime, SType stypeIn)> _subscriptions;
     private Task? _streamTask;
     // CRITICAL FIX: Use atomic int for disposal state (0=active, 1=disposing, 2=disposed)
-    private int _disposeState = 0;
+    private int _disposeState;
     // MEDIUM FIX: Use atomic operations instead of volatile for consistency
     private int _connectionState = (int)ConnectionState.Disconnected;
     // CRITICAL FIX: Track active callbacks to prevent race condition on channel completion
-    private int _activeCallbackCount = 0;
+    private int _activeCallbackCount;
     // TaskCompletionSource for capturing metadata from callback
     private TaskCompletionSource<Models.Dbn.DbnMetadata>? _metadataTcs;
     // TaskCompletionSource for BlockUntilStoppedAsync - signals when stream stops
@@ -131,7 +130,6 @@ public sealed class LiveClient : ILiveClient
         if (string.IsNullOrEmpty(apiKey))
             throw new ArgumentException("API key cannot be null or empty", nameof(apiKey));
 
-        _apiKey = apiKey;
         _defaultDataset = defaultDataset;
         _sendTsOut = sendTsOut;
         _upgradePolicy = upgradePolicy;
@@ -147,7 +145,7 @@ public sealed class LiveClient : ILiveClient
             _healthMonitor = new ConnectionHealthMonitor(
                 _resilienceOptions,
                 _logger,
-                async ct => await PerformReconnectAsync(ct));
+                PerformReconnectAsync);
         }
         // MEDIUM FIX: Use Interlocked for consistency
         Interlocked.Exchange(ref _connectionState, (int)ConnectionState.Disconnected);
@@ -610,9 +608,7 @@ public sealed class LiveClient : ILiveClient
         _logger.LogInformation("Automatic reconnection completed successfully");
     }
 
-    /// <summary>
-    /// Stream records as an async enumerable
-    /// </summary>
+    /// <inheritdoc/>
     public async IAsyncEnumerable<Record> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

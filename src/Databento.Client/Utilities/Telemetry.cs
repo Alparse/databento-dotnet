@@ -88,8 +88,8 @@ internal static class Telemetry
 
     // ========== Observable Gauges (for current state) ==========
 
-    private static long _activeConnections = 0;
-    private static long _activeSubscriptions = 0;
+    private static long _activeConnections;
+    private static long _activeSubscriptions;
 
     /// <summary>
     /// Current number of active Live client connections

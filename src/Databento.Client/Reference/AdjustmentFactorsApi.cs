@@ -84,11 +84,11 @@ internal sealed class AdjustmentFactorsApi : IAdjustmentFactorsApi
         _logger.LogDebug("POST {Url}", url);
 
         // MEDIUM FIX: Execute with retry policy for transient failures
-        var content = new FormUrlEncodedContent(queryParams);
         var response = await _retryPolicy.ExecuteAsync(async () =>
         {
-            return await _httpClient.PostAsync(url, content, cancellationToken);
-        });
+            var content = new FormUrlEncodedContent(queryParams);
+            return await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
         await ReferenceApiHelpers.EnsureSuccessStatusCode(response).ConfigureAwait(false);
 
         // Parse JSONL response (Databento Reference API returns JSON Lines format)

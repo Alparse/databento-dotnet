@@ -4,9 +4,10 @@ namespace Databento.Client.DataSources;
 /// Controls playback state for backtesting data sources.
 /// Supports pause, resume, seek, and position tracking.
 /// </summary>
-public sealed class PlaybackController
+public sealed class PlaybackController : IDisposable
 {
     private readonly SemaphoreSlim _pauseSemaphore = new(1, 1);
+    private bool _disposed;
     private readonly object _lock = new();
 
     private volatile bool _isPaused;
@@ -188,6 +189,16 @@ public sealed class PlaybackController
         }
 
         PositionChanged?.Invoke(this, new PlaybackPositionEventArgs(index, timestamp));
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _pauseSemaphore.Dispose();
     }
 }
 

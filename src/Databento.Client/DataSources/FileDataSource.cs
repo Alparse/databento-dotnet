@@ -22,7 +22,7 @@ public sealed class FileDataSource : IDataSource
     private DbnFileReader? _reader;
     private DbnMetadata? _metadata;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
     private CancellationTokenSource? _streamCts;
 
     /// <summary>
@@ -201,7 +201,7 @@ public sealed class FileDataSource : IDataSource
     private SymbolMappingMessage CreateSymbolMappingMessage(SymbolMapping mapping)
     {
         // Get first interval for instrument ID
-        var interval = mapping.Intervals.FirstOrDefault();
+        var interval = mapping.Intervals.Count > 0 ? mapping.Intervals[0] : null;
 
         // When StypeOut is InstrumentId, interval.Symbol contains the numeric ID
         uint instrumentId = 0;
@@ -233,6 +233,8 @@ public sealed class FileDataSource : IDataSource
         _streamCts?.Dispose();
 
         _reader?.Dispose();
+
+        Playback.Dispose();
 
         Interlocked.Exchange(ref _disposeState, 2);
         await Task.CompletedTask;

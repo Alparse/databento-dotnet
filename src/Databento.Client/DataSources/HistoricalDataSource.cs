@@ -25,7 +25,7 @@ public sealed class HistoricalDataSource : IDataSource
     private IHistoricalClient? _historicalClient;
     private Dictionary<uint, string>? _symbolMap;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
     private CancellationTokenSource? _streamCts;
 
     /// <summary>
@@ -298,6 +298,8 @@ public sealed class HistoricalDataSource : IDataSource
         {
             await _historicalClient.DisposeAsync().ConfigureAwait(false);
         }
+
+        Playback.Dispose();
 
         Interlocked.Exchange(ref _disposeState, 2);
     }

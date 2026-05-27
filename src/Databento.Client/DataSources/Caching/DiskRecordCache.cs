@@ -10,6 +10,8 @@ namespace Databento.Client.DataSources.Caching;
 /// Caches historical data to DBN files on disk.
 /// Persists across process restarts for unlimited replay.
 /// </summary>
+/// <remarks>Caching is not yet implemented. This type will be removed in a future major version.</remarks>
+[Obsolete("Caching is not yet implemented. This type will be removed in a future major version.")]
 public sealed class DiskRecordCache : IRecordCache
 {
     private readonly string _cacheDirectory;

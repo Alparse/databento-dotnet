@@ -103,8 +103,21 @@ public interface ILiveClient : IAsyncDisposable
     Task ResubscribeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Stream records as an async enumerable
+    /// Stream records as an async enumerable.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Live mode:</b> The stream runs indefinitely until <see cref="StopAsync"/> is called
+    /// or the <paramref name="cancellationToken"/> is cancelled. You must explicitly stop
+    /// the client to exit the <c>await foreach</c> loop.
+    /// </para>
+    /// <para>
+    /// <b>Backtest mode:</b> The stream ends automatically when all historical data or
+    /// file records have been consumed.
+    /// </para>
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token that stops the stream when cancelled</param>
+    /// <returns>An async enumerable of records that yields until the client is stopped or data is exhausted</returns>
     IAsyncEnumerable<Record> StreamAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

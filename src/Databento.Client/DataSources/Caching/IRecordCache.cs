@@ -6,6 +6,8 @@ namespace Databento.Client.DataSources.Caching;
 /// Abstraction for caching historical records.
 /// Enables repeated replay without re-fetching from API.
 /// </summary>
+/// <remarks>Caching is not yet implemented. This type will be removed in a future major version.</remarks>
+[Obsolete("Caching is not yet implemented. This type will be removed in a future major version.")]
 public interface IRecordCache : IAsyncDisposable
 {
     /// <summary>

@@ -12,7 +12,7 @@ public sealed class LiveClientBuilder
 {
     private string? _apiKey;
     private string? _dataset;
-    private bool _sendTsOut = false;
+    private bool _sendTsOut;
     private VersionUpgradePolicy _upgradePolicy = VersionUpgradePolicy.Upgrade;
     private TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(30);
     private ILogger<ILiveClient>? _logger;

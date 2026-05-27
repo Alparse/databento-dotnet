@@ -5,6 +5,25 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.2] - 2026-05-26
+
+### Fixed
+
+- **Pin databento-cpp to v0.58.0** to prevent builds from pulling broken intermediate states from main branch (Issue #24)
+- **Fix FormUrlEncodedContent disposal in retry loops** — content was created outside the retry lambda, causing `ObjectDisposedException` on retry attempts in `AdjustmentFactorsApi`, `CorporateActionsApi`, and `SecurityMasterApi` (PR #28)
+- **Fix XML doc comments** — escape `S&P` as `S&amp;P`, qualify `BatchSubmitJobAsync` cref to resolve to correct overload (PR #25)
+- **Fix CA1826** — replace `FirstOrDefault()` with direct indexer after count check in `FileDataSource.CreateSymbolMappingMessage` (PR #27)
+
+### Changed
+
+- **Deprecate caching API** — `WithMemoryCache()`, `WithDiskCache()`, `CachePolicy`, `IRecordCache`, `DiskRecordCache`, and `MemoryRecordCache` are now marked `[Obsolete]` with guidance to use `WithFileSource()` instead (Issue #29)
+- **PlaybackController implements IDisposable** — disposes internal `SemaphoreSlim`; called automatically by `FileDataSource` and `HistoricalDataSource` during disposal (Issue #29)
+- **StreamAsync XML documentation** — detailed docs explaining live mode (indefinite until `StopAsync`/cancellation) vs backtest mode (ends when data exhausted) (Issue #30)
+- **Add ConfigureAwait(false)** across Reference API methods for library best practices (PR #28)
+- **Simplify reconnect lambda** — `async ct => await PerformReconnectAsync(ct)` → `PerformReconnectAsync` in `LiveClient` constructor (PR #28)
+- **Remove CA1805 default initializations** — remove explicit `= 0` and `= false` on fields across 10 files (PR #26)
+- **Remove dead `_apiKey` field** from `LiveClient` and `ReferenceClient` (PR #31)
+
 ## [4.1.0] - 2025-11-28
 
 ### Added

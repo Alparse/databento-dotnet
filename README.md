@@ -1,7 +1,7 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v5.3.1-blue)](https://www.nuget.org/packages/Databento.Client)
-[![Downloads](https://img.shields.io/badge/Downloads-17.2K-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v5.3.2-blue)](https://www.nuget.org/packages/Databento.Client)
+[![Downloads](https://img.shields.io/badge/Downloads-18.4K-blue)](https://www.nuget.org/packages/Databento.Client)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -64,6 +64,8 @@ await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
 
 await client.StartAsync();
 
+// StreamAsync yields records until StopAsync() is called or the token is cancelled.
+// In live mode this loop runs indefinitely; in backtest mode it ends when data is exhausted.
 await foreach (var record in client.StreamAsync())
 {
     if (record is TradeMessage trade)
@@ -144,6 +146,8 @@ client.DataReceived += (sender, e) =>
 
 await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA", "AAPL" });
 await client.StartAsync();
+
+// Loop runs until StopAsync() is called or cancellation token fires
 await foreach (var record in client.StreamAsync()) { }
 ```
 
@@ -245,12 +249,12 @@ var end = start.AddHours(6.5);  // Full trading day
 await using var client = new BacktestingClientBuilder()
     .WithKeyFromEnv()
     .WithTimeRange(start, end)
-    .WithDiskCache()  // Cache for repeated runs
     .Build();
 
 await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA", "AAPL" });
 await client.StartAsync();
 
+// In backtest mode, StreamAsync ends when all historical data is consumed
 await foreach (var record in client.StreamAsync())
 {
     if (record is TradeMessage trade)
@@ -315,7 +319,7 @@ await using var client = new LiveClientBuilder()
     .WithAutoReconnect()          // Enable resilience
     .Build();
 
-// Subscribe and stream
+// Subscribe and stream (loop runs until StopAsync() is called)
 await client.SubscribeAsync(dataset, schema, symbols);
 await client.StartAsync();
 await foreach (var record in client.StreamAsync()) { }

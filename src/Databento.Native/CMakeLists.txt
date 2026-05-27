@@ -32,7 +32,7 @@ message(STATUS "Fetching databento-cpp...")
 FetchContent_Declare(
     databento-cpp
     GIT_REPOSITORY https://github.com/databento/databento-cpp.git
-    GIT_TAG        main
+    GIT_TAG        v0.58.0
 )
 
 # Make available - this will also fetch transitive dependencies

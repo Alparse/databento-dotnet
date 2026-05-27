@@ -31,7 +31,7 @@ public sealed class LiveDataSource : IDataSource
     private Channel<Record>? _recordChannel;
     private TaskCompletionSource<DbnMetadata>? _metadataTcs;
     private int _connectionState = (int)ConnectionState.Disconnected;
-    private int _disposeState = 0;
+    private int _disposeState;
 
     // Native callbacks (must be stored to prevent GC collection)
     private RecordCallbackDelegate? _recordCallback;
