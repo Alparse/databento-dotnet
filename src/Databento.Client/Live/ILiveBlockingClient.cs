@@ -8,15 +8,27 @@ namespace Databento.Client.Live;
 /// Provides synchronous control over record retrieval via StartAsync/NextRecordAsync.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This is the pull-based API counterpart to LiveClient (LiveThreaded).
 /// Use this when you want explicit control over when records are retrieved,
 /// as opposed to push-based event/callback delivery.
+/// </para>
+/// <para>
+/// <b>Thread safety:</b> All Subscribe calls must complete before calling <see cref="StartAsync"/>.
+/// Subscribe methods are not thread-safe — do not call them concurrently or after the stream has started.
+/// Using <c>await</c> on each call naturally serializes them and mitigates this risk.
+/// This mirrors the databento-cpp LiveBlocking calling convention where the Subscribe path performs
+/// unsynchronized socket writes.
+/// </para>
 /// </remarks>
 public interface ILiveBlockingClient : IAsyncDisposable
 {
     /// <summary>
     /// Subscribe to a dataset and schema
     /// </summary>
+    /// <remarks>
+    /// Not thread-safe. Await each call and complete all subscriptions before calling <see cref="StartAsync"/>.
+    /// </remarks>
     /// <param name="dataset">Dataset to subscribe to (e.g., "EQUS.MINI")</param>
     /// <param name="schema">Schema type to receive</param>
     /// <param name="symbols">List of symbols to subscribe to</param>

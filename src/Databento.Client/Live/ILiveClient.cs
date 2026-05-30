@@ -6,6 +6,13 @@ namespace Databento.Client.Live;
 /// <summary>
 /// Live streaming client for real-time market data
 /// </summary>
+/// <remarks>
+/// <b>Thread safety:</b> All Subscribe calls must complete before calling <see cref="StartAsync"/>.
+/// Subscribe methods are not thread-safe — do not call them concurrently or after the stream has started.
+/// Using <c>await</c> on each call naturally serializes them and mitigates this risk.
+/// This mirrors the databento-cpp calling convention where thread safety is by design (single-threaded setup),
+/// not by enforcement (no internal locks).
+/// </remarks>
 public interface ILiveClient : IAsyncDisposable
 {
     /// <summary>
@@ -21,6 +28,9 @@ public interface ILiveClient : IAsyncDisposable
     /// <summary>
     /// Subscribe to a data stream (matches databento-cpp Subscribe overloads)
     /// </summary>
+    /// <remarks>
+    /// Not thread-safe. Await each call and complete all subscriptions before calling <see cref="StartAsync"/>.
+    /// </remarks>
     /// <param name="dataset">Dataset name (e.g., "GLBX.MDP3")</param>
     /// <param name="schema">Schema type</param>
     /// <param name="symbols">List of symbols to subscribe to</param>

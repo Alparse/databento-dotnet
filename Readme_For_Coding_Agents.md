@@ -2,7 +2,7 @@
 
 > **For AI coding agents**: This document is optimized for programmatic consumption by agentic code tools (Claude Code CLI, Cursor, GitHub Copilot Workspace, etc.). Use this as your primary reference when working with the Databento.Client library.
 
-**Library**: `Databento.Client` v5.1.4
+**Library**: `Databento.Client` v5.3.3
 **Package**: `dotnet add package Databento.Client`
 **Runtime**: .NET 8.0 / 9.0
 **Platforms**: Windows x64 (NuGet) | Linux/macOS (build from source)
@@ -449,6 +449,20 @@ await client.SubscribeAsync("EQUS.MINI", Schema.Trades, new[] { "NVDA" });
 await client.StartAsync();
 await foreach (var record in client.StreamAsync()) { }
 ```
+
+### 6. Concurrent Subscribe Calls (Thread Safety)
+```csharp
+// WRONG - Data race in native layer (unsynchronized socket writes and std::vector mutation)
+var t1 = Task.Run(() => client.SubscribeAsync("GLBX.MDP3", Schema.Mbp1, new[] { "ESM5" }));
+var t2 = Task.Run(() => client.SubscribeAsync("GLBX.MDP3", Schema.Trades, new[] { "NQM5" }));
+await Task.WhenAll(t1, t2);
+
+// CORRECT - Await each call sequentially, then start
+await client.SubscribeAsync("GLBX.MDP3", Schema.Mbp1, new[] { "ESM5" });
+await client.SubscribeAsync("GLBX.MDP3", Schema.Trades, new[] { "NQM5" });
+await client.StartAsync();
+```
+`SubscribeAsync` is not thread-safe. Using `await` on each call naturally serializes them and mitigates this risk. This mirrors the databento-cpp calling convention where thread safety is by design (single-threaded setup), not by enforcement (no internal locks).
 
 ---
 

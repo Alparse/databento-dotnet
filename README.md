@@ -1,6 +1,6 @@
 # databento-dotnet
 
-[![NuGet](https://img.shields.io/badge/NuGet-v5.3.2-blue)](https://www.nuget.org/packages/Databento.Client)
+[![NuGet](https://img.shields.io/badge/NuGet-v5.3.3-blue)](https://www.nuget.org/packages/Databento.Client)
 [![Downloads](https://img.shields.io/badge/Downloads-18.4K-blue)](https://www.nuget.org/packages/Databento.Client)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -328,6 +328,8 @@ await foreach (var record in client.StreamAsync()) { }
 client.DataReceived += (s, e) => { };
 client.ErrorOccurred += (s, e) => { };
 ```
+
+> **Thread safety:** `SubscribeAsync` is not thread-safe. Always `await` each call sequentially and complete all subscriptions before calling `StartAsync`. The `await` pattern shown above naturally serializes calls and is safe by construction. This mirrors the databento-cpp calling convention.
 
 ### LiveBlockingClient
 

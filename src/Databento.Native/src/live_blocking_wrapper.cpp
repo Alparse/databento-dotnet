@@ -1,4 +1,7 @@
-#define NOMINMAX  // Prevent Windows min/max macros from interfering with std::numeric_limits
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
+
 #include "databento_native.h"
 #include "common_helpers.hpp"
 #include "handle_validation.hpp"

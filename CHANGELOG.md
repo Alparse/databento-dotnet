@@ -5,6 +5,18 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.3] - 2026-05-29
+
+### Fixed
+
+- **Add NOMINMAX guards to native wrappers** — prevents `<windows.h>` min/max macro conflicts that could cause compilation failures with certain build configurations (Issue #24)
+
+### Changed
+
+- **Thread safety documentation** — added class-level and method-level thread safety remarks to `ILiveClient` and `ILiveBlockingClient` documenting the databento-cpp calling convention: complete all Subscribe calls before StartAsync, await each call sequentially
+- **README thread safety callout** — added thread safety guidance between LiveClient and LiveBlockingClient API reference sections
+- **Coding agent guide** — updated to v5.3.3, added pitfall #6 documenting concurrent Subscribe call risks with correct/incorrect code examples
+
 ## [5.3.2] - 2026-05-26
 
 ### Fixed
