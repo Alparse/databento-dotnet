@@ -5,6 +5,16 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.4] - 2026-06-28
+
+### Added
+
+- **`stype_in` and `limit` parameters for metadata APIs** — `GetCostAsync`, `GetRecordCountAsync`, `GetBillableSizeAsync`, and `GetBillingInfoAsync` now accept `SType stypeIn` and `ulong limit` parameters, enabling queries with `Continuous`, `Parent`, `Smart`, and other symbol types (Issue #35)
+
+### Changed
+
+- **Native wrapper updated** — `dbento_metadata_get_cost`, `dbento_metadata_get_record_count`, `dbento_metadata_get_billable_size`, and `dbento_metadata_get_billing_info` now pass `stype_in` and `limit` through to databento-cpp's full overloads
+
 ## [5.3.3] - 2026-05-29
 
 ### Fixed

@@ -203,7 +203,7 @@ public interface IHistoricalClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get record count for a query
+    /// Get record count for a query (defaults to <see cref="SType.RawSymbol"/>)
     /// </summary>
     /// <param name="dataset">Dataset name</param>
     /// <param name="schema">Schema type</param>
@@ -221,7 +221,29 @@ public interface IHistoricalClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get billable size for a query
+    /// Get record count for a query with symbol type and limit
+    /// </summary>
+    /// <param name="dataset">Dataset name</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="stypeIn">Symbol type of the input symbols</param>
+    /// <param name="limit">Maximum number of records (0 for no limit)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Record count</returns>
+    Task<ulong> GetRecordCountAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get billable size for a query (defaults to <see cref="SType.RawSymbol"/>)
     /// </summary>
     /// <param name="dataset">Dataset name</param>
     /// <param name="schema">Schema type</param>
@@ -239,7 +261,29 @@ public interface IHistoricalClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get cost estimate for a query
+    /// Get billable size for a query with symbol type and limit
+    /// </summary>
+    /// <param name="dataset">Dataset name</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="stypeIn">Symbol type of the input symbols</param>
+    /// <param name="limit">Maximum number of records (0 for no limit)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Billable size in bytes</returns>
+    Task<ulong> GetBillableSizeAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get cost estimate for a query (defaults to <see cref="SType.RawSymbol"/>)
     /// </summary>
     /// <param name="dataset">Dataset name</param>
     /// <param name="schema">Schema type</param>
@@ -257,7 +301,29 @@ public interface IHistoricalClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get combined billing information for a query
+    /// Get cost estimate for a query with symbol type and limit
+    /// </summary>
+    /// <param name="dataset">Dataset name</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="stypeIn">Symbol type of the input symbols</param>
+    /// <param name="limit">Maximum number of records (0 for no limit)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Cost in USD</returns>
+    Task<decimal> GetCostAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get combined billing information for a query (defaults to <see cref="SType.RawSymbol"/>)
     /// </summary>
     /// <param name="dataset">Dataset name</param>
     /// <param name="schema">Schema type</param>
@@ -272,6 +338,28 @@ public interface IHistoricalClient : IAsyncDisposable
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get combined billing information for a query with symbol type and limit
+    /// </summary>
+    /// <param name="dataset">Dataset name</param>
+    /// <param name="schema">Schema type</param>
+    /// <param name="startTime">Start time</param>
+    /// <param name="endTime">End time</param>
+    /// <param name="symbols">List of symbols</param>
+    /// <param name="stypeIn">Symbol type of the input symbols</param>
+    /// <param name="limit">Maximum number of records (0 for no limit)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Billing information</returns>
+    Task<BillingInfo> GetBillingInfoAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
         CancellationToken cancellationToken = default);
 
     // ========================================================================

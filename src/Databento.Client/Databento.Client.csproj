@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>5.3.3</Version>
+    <Version>5.3.4</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v5.3.3: Add NOMINMAX guards to native wrappers fixing min/max macro conflicts (Issue #24). Add thread safety documentation to ILiveClient, ILiveBlockingClient, README, and coding agent guide.</PackageReleaseNotes>
+    <PackageReleaseNotes>v5.3.4: Add stype_in and limit parameters to GetCostAsync, GetRecordCountAsync, GetBillableSizeAsync, and GetBillingInfoAsync — enables querying with Continuous, Parent, and other symbol types (Issue #35).</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->

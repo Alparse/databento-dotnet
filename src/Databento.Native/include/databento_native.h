@@ -916,6 +916,8 @@ DATABENTO_API const char* dbento_metadata_get_dataset_range(
  * @param end_time_ns End time (nanoseconds since epoch)
  * @param symbols Array of symbols
  * @param symbol_count Number of symbols
+ * @param stype_in Symbol type for input symbols (e.g. "raw_symbol", "parent"), or NULL for default (raw_symbol)
+ * @param limit Maximum number of records (0 for no limit)
  * @param error_buffer Buffer for error messages
  * @param error_buffer_size Size of error buffer
  * @return Record count, or UINT64_MAX on failure
@@ -928,6 +930,8 @@ DATABENTO_API uint64_t dbento_metadata_get_record_count(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size);
 
@@ -940,6 +944,8 @@ DATABENTO_API uint64_t dbento_metadata_get_record_count(
  * @param end_time_ns End time (nanoseconds since epoch)
  * @param symbols Array of symbols
  * @param symbol_count Number of symbols
+ * @param stype_in Symbol type for input symbols (e.g. "raw_symbol", "parent"), or NULL for default (raw_symbol)
+ * @param limit Maximum number of records (0 for no limit)
  * @param error_buffer Buffer for error messages
  * @param error_buffer_size Size of error buffer
  * @return Billable size in bytes, or UINT64_MAX on failure
@@ -952,6 +958,8 @@ DATABENTO_API uint64_t dbento_metadata_get_billable_size(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size);
 
@@ -964,6 +972,8 @@ DATABENTO_API uint64_t dbento_metadata_get_billable_size(
  * @param end_time_ns End time (nanoseconds since epoch)
  * @param symbols Array of symbols
  * @param symbol_count Number of symbols
+ * @param stype_in Symbol type for input symbols (e.g. "raw_symbol", "parent"), or NULL for default (raw_symbol)
+ * @param limit Maximum number of records (0 for no limit)
  * @param error_buffer Buffer for error messages
  * @param error_buffer_size Size of error buffer
  * @return Cost as JSON string, or NULL on failure (must be freed with dbento_free_string)
@@ -976,6 +986,8 @@ DATABENTO_API const char* dbento_metadata_get_cost(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size);
 
@@ -988,6 +1000,8 @@ DATABENTO_API const char* dbento_metadata_get_cost(
  * @param end_time_ns End time (nanoseconds since epoch)
  * @param symbols Array of symbols
  * @param symbol_count Number of symbols
+ * @param stype_in Symbol type for input symbols (e.g. "raw_symbol", "parent"), or NULL for default (raw_symbol)
+ * @param limit Maximum number of records (0 for no limit)
  * @param error_buffer Buffer for error messages
  * @param error_buffer_size Size of error buffer
  * @return JSON object with billing info, or NULL on failure (must be freed with dbento_free_string)
@@ -1000,6 +1014,8 @@ DATABENTO_API const char* dbento_metadata_get_billing_info(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size);
 

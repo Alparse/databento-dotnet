@@ -1364,6 +1364,8 @@ DATABENTO_API uint64_t dbento_metadata_get_record_count(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size)
 {
@@ -1399,9 +1401,13 @@ DATABENTO_API uint64_t dbento_metadata_get_record_count(
         auto end_unix = NsToUnixNanos(end_time_ns);
         db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
 
+        // Parse stype_in
+        db::SType stype_enum = (stype_in && stype_in[0] != '\0')
+            ? ParseSType(stype_in) : db::SType::RawSymbol;
+
         // Get record count
         uint64_t count = wrapper->client->MetadataGetRecordCount(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
 
         return count;
     }
@@ -1419,6 +1425,8 @@ DATABENTO_API uint64_t dbento_metadata_get_billable_size(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size)
 {
@@ -1454,9 +1462,13 @@ DATABENTO_API uint64_t dbento_metadata_get_billable_size(
         auto end_unix = NsToUnixNanos(end_time_ns);
         db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
 
+        // Parse stype_in
+        db::SType stype_enum = (stype_in && stype_in[0] != '\0')
+            ? ParseSType(stype_in) : db::SType::RawSymbol;
+
         // Get billable size
         uint64_t size = wrapper->client->MetadataGetBillableSize(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
 
         return size;
     }
@@ -1474,6 +1486,8 @@ DATABENTO_API const char* dbento_metadata_get_cost(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size)
 {
@@ -1509,9 +1523,13 @@ DATABENTO_API const char* dbento_metadata_get_cost(
         auto end_unix = NsToUnixNanos(end_time_ns);
         db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
 
+        // Parse stype_in
+        db::SType stype_enum = (stype_in && stype_in[0] != '\0')
+            ? ParseSType(stype_in) : db::SType::RawSymbol;
+
         // Get cost
         double cost = wrapper->client->MetadataGetCost(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
 
         // Return cost as string
         std::string cost_str = std::to_string(cost);
@@ -1531,6 +1549,8 @@ DATABENTO_API const char* dbento_metadata_get_billing_info(
     int64_t end_time_ns,
     const char** symbols,
     size_t symbol_count,
+    const char* stype_in,
+    uint64_t limit,
     char* error_buffer,
     size_t error_buffer_size)
 {
@@ -1566,13 +1586,17 @@ DATABENTO_API const char* dbento_metadata_get_billing_info(
         auto end_unix = NsToUnixNanos(end_time_ns);
         db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
 
+        // Parse stype_in
+        db::SType stype_enum = (stype_in && stype_in[0] != '\0')
+            ? ParseSType(stype_in) : db::SType::RawSymbol;
+
         // Get all billing info in one go
         uint64_t record_count = wrapper->client->MetadataGetRecordCount(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
         uint64_t billable_size = wrapper->client->MetadataGetBillableSize(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
         double cost = wrapper->client->MetadataGetCost(
-            dataset, datetime_range, symbol_vec, schema_enum);
+            dataset, datetime_range, symbol_vec, schema_enum, stype_enum, limit);
 
         // Convert to JSON
         json j = json::object();

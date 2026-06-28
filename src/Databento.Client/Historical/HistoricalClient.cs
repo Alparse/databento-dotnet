@@ -922,12 +922,29 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Get record count for a query
     /// </summary>
+    public Task<ulong> GetRecordCountAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default)
+    {
+        return GetRecordCountAsync(dataset, schema, startTime, endTime, symbols,
+            SType.RawSymbol, 0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Get record count for a query with symbol type and limit
+    /// </summary>
     public async Task<ulong> GetRecordCountAsync(
         string dataset,
         Schema schema,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
@@ -942,6 +959,7 @@ public sealed class HistoricalClient : IHistoricalClient
         // HIGH FIX: Use checked arithmetic via helper
         long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
         long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+        var stypeInStr = stypeIn.ToStypeString();
 
         return await Task.Run(() =>
         {
@@ -955,6 +973,8 @@ public sealed class HistoricalClient : IHistoricalClient
                 endTimeNs,
                 symbolArray,
                 (nuint)symbolArray.Length,
+                stypeInStr,
+                limit,
                 errorBuffer,
                 (nuint)errorBuffer.Length);
 
@@ -973,12 +993,29 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Get billable size for a query
     /// </summary>
+    public Task<ulong> GetBillableSizeAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default)
+    {
+        return GetBillableSizeAsync(dataset, schema, startTime, endTime, symbols,
+            SType.RawSymbol, 0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Get billable size for a query with symbol type and limit
+    /// </summary>
     public async Task<ulong> GetBillableSizeAsync(
         string dataset,
         Schema schema,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
@@ -993,6 +1030,7 @@ public sealed class HistoricalClient : IHistoricalClient
         // HIGH FIX: Use checked arithmetic via helper
         long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
         long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+        var stypeInStr = stypeIn.ToStypeString();
 
         return await Task.Run(() =>
         {
@@ -1006,6 +1044,8 @@ public sealed class HistoricalClient : IHistoricalClient
                 endTimeNs,
                 symbolArray,
                 (nuint)symbolArray.Length,
+                stypeInStr,
+                limit,
                 errorBuffer,
                 (nuint)errorBuffer.Length);
 
@@ -1024,12 +1064,29 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Get cost estimate for a query
     /// </summary>
+    public Task<decimal> GetCostAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default)
+    {
+        return GetCostAsync(dataset, schema, startTime, endTime, symbols,
+            SType.RawSymbol, 0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Get cost estimate for a query with symbol type and limit
+    /// </summary>
     public async Task<decimal> GetCostAsync(
         string dataset,
         Schema schema,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
@@ -1044,6 +1101,7 @@ public sealed class HistoricalClient : IHistoricalClient
         // HIGH FIX: Use checked arithmetic via helper
         long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
         long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+        var stypeInStr = stypeIn.ToStypeString();
 
         return await Task.Run(() =>
         {
@@ -1057,6 +1115,8 @@ public sealed class HistoricalClient : IHistoricalClient
                 endTimeNs,
                 symbolArray,
                 (nuint)symbolArray.Length,
+                stypeInStr,
+                limit,
                 errorBuffer,
                 (nuint)errorBuffer.Length);
 
@@ -1090,12 +1150,29 @@ public sealed class HistoricalClient : IHistoricalClient
     /// <summary>
     /// Get combined billing information for a query
     /// </summary>
+    public Task<BillingInfo> GetBillingInfoAsync(
+        string dataset,
+        Schema schema,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime,
+        IEnumerable<string> symbols,
+        CancellationToken cancellationToken = default)
+    {
+        return GetBillingInfoAsync(dataset, schema, startTime, endTime, symbols,
+            SType.RawSymbol, 0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Get combined billing information for a query with symbol type and limit
+    /// </summary>
     public async Task<BillingInfo> GetBillingInfoAsync(
         string dataset,
         Schema schema,
         DateTimeOffset startTime,
         DateTimeOffset endTime,
         IEnumerable<string> symbols,
+        SType stypeIn,
+        ulong limit = 0,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
@@ -1110,6 +1187,7 @@ public sealed class HistoricalClient : IHistoricalClient
         // HIGH FIX: Use checked arithmetic via helper
         long startTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(startTime);
         long endTimeNs = Utilities.DateTimeHelpers.ToUnixNanos(endTime);
+        var stypeInStr = stypeIn.ToStypeString();
 
         return await Task.Run(() =>
         {
@@ -1123,6 +1201,8 @@ public sealed class HistoricalClient : IHistoricalClient
                 endTimeNs,
                 symbolArray,
                 (nuint)symbolArray.Length,
+                stypeInStr,
+                limit,
                 errorBuffer,
                 (nuint)errorBuffer.Length);
 

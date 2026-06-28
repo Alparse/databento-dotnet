@@ -441,6 +441,8 @@ public static partial class NativeMethods
         [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
         string[] symbols,
         nuint symbolCount,
+        string? stypeIn,
+        ulong limit,
         byte[]? errorBuffer,
         nuint errorBufferSize);
 
@@ -454,6 +456,8 @@ public static partial class NativeMethods
         [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
         string[] symbols,
         nuint symbolCount,
+        string? stypeIn,
+        ulong limit,
         byte[]? errorBuffer,
         nuint errorBufferSize);
 
@@ -467,6 +471,8 @@ public static partial class NativeMethods
         [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
         string[] symbols,
         nuint symbolCount,
+        string? stypeIn,
+        ulong limit,
         byte[]? errorBuffer,
         nuint errorBufferSize);
 
@@ -480,6 +486,8 @@ public static partial class NativeMethods
         [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)]
         string[] symbols,
         nuint symbolCount,
+        string? stypeIn,
+        ulong limit,
         byte[]? errorBuffer,
         nuint errorBufferSize);
 
