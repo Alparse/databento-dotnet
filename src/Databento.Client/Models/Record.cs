@@ -841,13 +841,15 @@ public abstract class Record
 
     private static ConsolidatedBidAskPair DeserializeConsolidatedBidAskPair(ReadOnlySpan<byte> bytes)
     {
-        // ConsolidatedBidAskPair layout (32 bytes):
+        // ConsolidatedBidAskPair layout (32 bytes per DBN spec):
         // offset 0-7: bid_px (int64)
         // offset 8-15: ask_px (int64)
         // offset 16-19: bid_sz (uint32)
         // offset 20-23: ask_sz (uint32)
         // offset 24-25: bid_pb (uint16)
-        // offset 26-27: ask_pb (uint16)
+        // offset 26-27: _reserved1 (uint16)
+        // offset 28-29: ask_pb (uint16)
+        // offset 30-31: _reserved2 (uint16)
 
         return new ConsolidatedBidAskPair
         {
@@ -856,7 +858,7 @@ public abstract class Record
             BidSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(16, 4)),
             AskSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(20, 4)),
             BidPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(24, 2)),
-            AskPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(26, 2))
+            AskPublisher = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.Slice(28, 2))
         };
     }
 

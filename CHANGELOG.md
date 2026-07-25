@@ -5,6 +5,12 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.5] - 2026-07-24
+
+### Fixed
+
+- **Fix ConsolidatedBidAskPair.AskPublisher always 0** — deserialization read from reserved padding at offset 26 instead of the actual `ask_pb` field at offset 28 per the DBN spec. Affects all record types carrying consolidated levels: Cmbp1, Cbbo, and Tcbbo (Issue #36)
+
 ## [5.3.4] - 2026-06-28
 
 ### Added
@@ -336,7 +342,6 @@ This project uses [Semantic Versioning](https://semver.org/):
 - **MAJOR** version for incompatible API changes
 - **MINOR** version for new functionality in a backward compatible manner
 - **PATCH** version for backward compatible bug fixes
-- **-beta** suffix indicates pre-release software
 
 ## Links
 
