@@ -7,6 +7,7 @@
 #include <databento/datetime.hpp>
 #include <nlohmann/json.hpp>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -43,6 +44,83 @@ struct HistoricalClientWrapper {
 // Helper Functions (now in common_helpers.hpp)
 // ============================================================================
 
+// Wire contract for split_duration across the C ABI (Issue #37).
+// These values are what Databento.Client.Models.SplitDuration uses and are
+// documented on dbento_batch_submit_job_ex in databento_native.h. They are
+// mapped explicitly rather than static_cast because databento-cpp's
+// SplitDuration enum has a different order (Day, Week, Month, Year, None)
+// and has been re-ordered between releases.
+namespace {
+
+constexpr int32_t kSplitDurationNone = 0;
+constexpr int32_t kSplitDurationDay = 1;
+constexpr int32_t kSplitDurationWeek = 2;
+constexpr int32_t kSplitDurationMonth = 3;
+constexpr int32_t kSplitDurationYear = 4;
+
+db::SplitDuration SplitDurationFromWire(int32_t value) {
+    switch (value) {
+        case kSplitDurationNone: return db::SplitDuration::None;
+        case kSplitDurationDay: return db::SplitDuration::Day;
+        case kSplitDurationWeek: return db::SplitDuration::Week;
+        case kSplitDurationMonth: return db::SplitDuration::Month;
+        case kSplitDurationYear: return db::SplitDuration::Year;
+        default:
+            throw std::invalid_argument(
+                "Invalid split_duration value " + std::to_string(value) +
+                " (expected 0=None, 1=Day, 2=Week, 3=Month, 4=Year)");
+    }
+}
+
+int32_t SplitDurationToWire(db::SplitDuration value) {
+    switch (value) {
+        case db::SplitDuration::None: return kSplitDurationNone;
+        case db::SplitDuration::Day: return kSplitDurationDay;
+        case db::SplitDuration::Week: return kSplitDurationWeek;
+        case db::SplitDuration::Month: return kSplitDurationMonth;
+        case db::SplitDuration::Year: return kSplitDurationYear;
+        default: return kSplitDurationNone;
+    }
+}
+
+// databento-cpp only models the values the batch API accepts. Anything else
+// would be serialized as "Unknown" and fail server-side with an unhelpful
+// message, so reject it here with a clear one.
+db::Encoding EncodingFromWire(int32_t value) {
+    switch (value) {
+        case 0: return db::Encoding::Dbn;
+        case 1: return db::Encoding::Csv;
+        case 2: return db::Encoding::Json;
+        default:
+            throw std::invalid_argument(
+                "Invalid encoding value " + std::to_string(value) +
+                " (expected 0=Dbn, 1=Csv, 2=Json)");
+    }
+}
+
+db::Compression CompressionFromWire(int32_t value) {
+    switch (value) {
+        case 0: return db::Compression::None;
+        case 1: return db::Compression::Zstd;
+        default:
+            throw std::invalid_argument(
+                "Unsupported compression value " + std::to_string(value) +
+                " for batch jobs (expected 0=None, 1=Zstd)");
+    }
+}
+
+db::Delivery DeliveryFromWire(int32_t value) {
+    switch (value) {
+        case 0: return db::Delivery::Download;
+        default:
+            throw std::invalid_argument(
+                "Unsupported delivery value " + std::to_string(value) +
+                " for batch jobs (expected 0=Download)");
+    }
+}
+
+}  // namespace
+
 // Convert BatchJob to JSON
 static json BatchJobToJson(const db::BatchJob& job) {
     json j;
@@ -62,7 +140,7 @@ static json BatchJobToJson(const db::BatchJob& job) {
     j["pretty_px"] = job.pretty_px;
     j["pretty_ts"] = job.pretty_ts;
     j["map_symbols"] = job.map_symbols;
-    j["split_duration"] = static_cast<int>(job.split_duration);
+    j["split_duration"] = SplitDurationToWire(job.split_duration);
     j["split_size"] = job.split_size;
     j["split_symbols"] = job.split_symbols;
     j["delivery"] = static_cast<int>(job.delivery);
@@ -230,11 +308,11 @@ DATABENTO_API const char* dbento_batch_submit_job_ex(
         auto end_unix = NsToUnixNanos(end_time_ns);
         db::DateTimeRange<db::UnixNanos> datetime_range{start_unix, end_unix};
 
-        // Convert enums
-        db::Encoding encoding_enum = static_cast<db::Encoding>(encoding);
-        db::Compression compression_enum = static_cast<db::Compression>(compression);
-        db::SplitDuration split_duration_enum = static_cast<db::SplitDuration>(split_duration);
-        db::Delivery delivery_enum = static_cast<db::Delivery>(delivery);
+        // Convert enums (explicit mapping, throws on values databento-cpp cannot represent)
+        db::Encoding encoding_enum = EncodingFromWire(encoding);
+        db::Compression compression_enum = CompressionFromWire(compression);
+        db::SplitDuration split_duration_enum = SplitDurationFromWire(split_duration);
+        db::Delivery delivery_enum = DeliveryFromWire(delivery);
         db::SType stype_in_enum = static_cast<db::SType>(stype_in);
         db::SType stype_out_enum = static_cast<db::SType>(stype_out);
 

@@ -5,6 +5,17 @@ All notable changes to databento-dotnet will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.6] - 2026-09-07
+
+### Fixed
+
+- **Fix `BatchSubmitJobAsync` ignoring `splitDuration`** — the C# `SplitDuration` enum (None, Day, Week, Month) was passed to databento-cpp by raw integer, but databento-cpp orders its enum Day, Week, Month, Year, None. Every value landed one step off: `Month` was submitted as `year`, `Week` as `month`, `Day` as `week`, and `None` as `day`. The native wrapper now maps the value explicitly in both directions, so `BatchJob.SplitDuration` returned from submit and list calls is also decoded correctly (Issue #37)
+- **Reject unsupported batch options with a clear error** — `Compression.Gzip`, `Delivery.S3`, and `Delivery.Disk` have no databento-cpp counterpart and were sent to the server as `"Unknown"`. `BatchSubmitJobAsync` now throws `DbentoException` naming the unsupported value instead
+
+### Added
+
+- **`SplitDuration.Year`** — yearly splitting for batch jobs, matching databento-cpp v0.58.0
+
 ## [5.3.5] - 2026-07-24
 
 ### Fixed

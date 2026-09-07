@@ -1185,14 +1185,14 @@ DATABENTO_API const char* dbento_batch_submit_job(
  * @param start_time_ns Start time (nanoseconds since epoch)
  * @param end_time_ns End time (nanoseconds since epoch)
  * @param encoding Encoding type (0=Dbn, 1=Csv, 2=Json)
- * @param compression Compression type (0=None, 1=Zstd)
+ * @param compression Compression type (0=None, 1=Zstd); other values are rejected
  * @param pretty_px Format prices with decimal point
  * @param pretty_ts Format timestamps as ISO 8601
  * @param map_symbols Append raw symbol to each record
  * @param split_symbols Split files by symbol
- * @param split_duration Split duration (0=Day, 1=Week, 2=Month, 3=None)
+ * @param split_duration Split duration (0=None, 1=Day, 2=Week, 3=Month, 4=Year); mapped explicitly to databento-cpp, other values are rejected
  * @param split_size Split size in bytes (0 for no size-based splitting)
- * @param delivery Delivery method (0=Download)
+ * @param delivery Delivery method (0=Download); other values are rejected
  * @param stype_in Input symbology type
  * @param stype_out Output symbology type
  * @param limit Maximum number of records (0 for no limit)

@@ -756,6 +756,7 @@ Trade with Consolidated BBO - same structure as Cmbp1Message.
 | `Day` | `day` | Split by day |
 | `Week` | `week` | Split by week |
 | `Month` | `month` | Split by month |
+| `Year` | `year` | Split by year |
 
 #### Delivery
 

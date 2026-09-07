@@ -31,21 +31,26 @@ public enum FeedMode
 }
 
 /// <summary>
-/// Time duration for splitting batch output files
+/// Time duration for splitting batch output files.
+/// Numeric values are the wire contract with the native wrapper
+/// (see dbento_batch_submit_job_ex in databento_native.h); do not reorder.
 /// </summary>
 public enum SplitDuration
 {
     /// <summary>No splitting - single file</summary>
-    None,
+    None = 0,
 
     /// <summary>Split by day</summary>
-    Day,
+    Day = 1,
 
     /// <summary>Split by week</summary>
-    Week,
+    Week = 2,
 
     /// <summary>Split by month</summary>
-    Month
+    Month = 3,
+
+    /// <summary>Split by year</summary>
+    Year = 4
 }
 
 /// <summary>
@@ -241,6 +246,7 @@ public static class ConfigEnumExtensions
             SplitDuration.Day => "day",
             SplitDuration.Week => "week",
             SplitDuration.Month => "month",
+            SplitDuration.Year => "year",
             _ => throw new ArgumentOutOfRangeException(nameof(duration))
         };
     }
@@ -256,6 +262,7 @@ public static class ConfigEnumExtensions
             "day" => SplitDuration.Day,
             "week" => SplitDuration.Week,
             "month" => SplitDuration.Month,
+            "year" => SplitDuration.Year,
             _ => throw new ArgumentException($"Unknown split duration: {durationString}", nameof(durationString))
         };
     }

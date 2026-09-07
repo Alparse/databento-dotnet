@@ -9,7 +9,7 @@
 
     <!-- Package Information -->
     <PackageId>Databento.Client</PackageId>
-    <Version>5.3.5</Version>
+    <Version>5.3.6</Version>
     <Authors>Alparse</Authors>
     <Company>Databento</Company>
     <Product>databento-dotnet</Product>
@@ -20,7 +20,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Alparse/databento-dotnet</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v5.3.5: Fix ConsolidatedBidAskPair.AskPublisher reading reserved padding (offset 26) instead of ask_pb (offset 28) — was always 0. Affects Cmbp1, Cbbo, and Tcbbo record types (Issue #36).</PackageReleaseNotes>
+    <PackageReleaseNotes>v5.3.6: Fix BatchSubmitJobAsync splitDuration being mis-mapped to databento-cpp (Month was sent as year, Day as week, None as day) and the returned BatchJob.SplitDuration being decoded with the wrong ordering. Adds SplitDuration.Year. Unsupported Compression/Delivery values now fail with a clear error instead of being sent as &quot;Unknown&quot; (Issue #37).</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
     <!-- XML Documentation -->
